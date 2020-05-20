@@ -58,9 +58,9 @@ g.move_to(0.0)
 time.sleep(4.0)
 g.stop()
 
-print 'Save calibration [n]?'
+print 'Save calibration [y]?'
 x=raw_input()
-if x=='y' or x=='Y':
+if x=='y' or x=='Y' or x=='':
     g.write_device_params('stretch_gripper',g.params)
 
 

@@ -32,7 +32,7 @@ if args.plot:
     results = yaml.load(fid)
     fid.close()
 
-    s = scope.Scope4(yrange=[-60, 60], title='Force')
+    s = scope.Scope4(yrange=[-100, 100], title='Force')
     print 'Hit enter to view in forces'
     raw_input()
     s.draw_array_xy(results['pos_in'][0], results['pos_in'][1], results['pos_in'][2], results['pos_in'][3],

@@ -7,7 +7,7 @@ import stretch_body.lift as lift
 import stretch_body.scope as scope
 import yaml
 import stretch_body.hello_utils as hu
-
+import glob
 
 import argparse
 
@@ -33,15 +33,16 @@ if args.plot:
     results = yaml.load(fid)
     fid.close()
 
-    s = scope.Scope4(yrange=[-60, 60], title='Force')
-    print 'Hit enter to view in forces'
+    s = scope.Scope4(yrange=[-150,0], title='Force')
+    print 'Hit enter to view down forces'
     raw_input()
-    s.draw_array_xy(results['pos_in'][0], results['pos_in'][1], results['pos_in'][2], results['pos_in'][3],
-                    results['force_in'][0], results['force_in'][1], results['force_in'][2], results['force_in'][3])
-    print 'Hit enter to view out forces'
+    s.draw_array_xy(results['pos_down'][0], results['pos_down'][1], results['pos_down'][2], results['pos_down'][3],
+                    results['force_down'][0], results['force_down'][1], results['force_down'][2], results['force_down'][3])
+    print 'Hit enter to view up forces'
     raw_input()
-    s.draw_array_xy(results['pos_out'][0], results['pos_out'][1], results['pos_out'][2], results['pos_out'][3],
-                 results['force_out'][0], results['force_out'][1], results['force_out'][2], results['force_out'][3])
+    s = scope.Scope4(yrange=[0,100], title='Force')
+    s.draw_array_xy(results['pos_up'][0], results['pos_up'][1], results['pos_up'][2], results['pos_up'][3],
+                 results['force_up'][0], results['force_up'][1], results['force_up'][2], results['force_up'][3])
     print 'Hit enter to exit'
     raw_input()
     exit()
@@ -150,12 +151,12 @@ if args.measure:
 
     print 'Hit enter to view up forces'
     raw_input()
-    s = scope.Scope4(yrange=[-60,60], title='Force')
+    s = scope.Scope4(yrange=[0,100], title='Force')
     s.draw_array_xy(pos_up[0],pos_up[1],pos_up[2],pos_up[3],force_up[0],force_up[1],force_up[2],force_up[3])
 
     print 'Hit enter to view down forces'
     raw_input()
-    s = scope.Scope4(yrange=[-60,60], title='Force')
+    s = scope.Scope4(yrange=[-150,0], title='Force')
     s.draw_array_xy(pos_down[0],pos_down[1],pos_down[2],pos_down[3],force_down[0],force_down[1],force_down[2],force_down[3])
 
     margin_f = 15.0  # Margin beyond peak (N)
