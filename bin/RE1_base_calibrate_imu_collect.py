@@ -30,7 +30,7 @@ def fill_sample(sample, base_status, pimu_status):
         
 if __name__ == '__main__':
     parser = ap.ArgumentParser(description='Collect mobile base IMU calibration data and work with resulting files.')
-    parser.add_argument('--validation', action='store_true', help='Collect measurements using existing calibration parameters to validate its fit.')
+    parser.add_argument('--validate', action='store_true', help='Collect measurements using existing calibration parameters to validate its fit.')
     args=parser.parse_args()
 
     try:
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         robot = rb.Robot()
 
         #Temporarily set imu calibration on Pimu to Identity
-        if not args.validation:
+        if not args.validate:
             robot.pimu.config['mag_offsets'][0]=0
             robot.pimu.config['mag_offsets'][1] = 0
             robot.pimu.config['mag_offsets'][2] = 0

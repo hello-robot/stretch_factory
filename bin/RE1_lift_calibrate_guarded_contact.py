@@ -103,7 +103,7 @@ if args.test:
 
 # ###################################
 pos_top=l.params['range_m'][1]#-.005
-pos_bottom=l.params['range_m'][0]#+.005
+pos_bottom=l.params['range_m'][0] +.005
 if args.measure:
     l.motor.disable_guarded_mode()
     l.push_command()
