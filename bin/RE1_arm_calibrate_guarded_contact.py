@@ -73,6 +73,9 @@ if args.test:
             a.pull_status()
 
 # ###################################
+xpos_out=a.params['range_m'][1]-.002
+xpos_in=a.params['range_m'][0] +.002
+
 if args.measure:
     a.motor.disable_guarded_mode()
     a.push_command()
@@ -88,7 +91,7 @@ if args.measure:
     out_max=0
     in_min =0
     for i in range(4):
-        a.move_to(a.params['range_m'][1])
+        a.move_to(xpos_out)
         a.push_command()
         time.sleep(0.25)
         a.pull_status()
@@ -101,7 +104,7 @@ if args.measure:
         out_max=max(out_max,max(force_out[i]))
         print('Out: Itr %d Len %d Max %f'%(i,len(force_out[i]),max(force_out[i])))
 
-        a.move_to(a.params['range_m'][0])
+        a.move_to(xpos_in)
         a.push_command()
         time.sleep(0.25)
         a.pull_status()
