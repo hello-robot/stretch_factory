@@ -127,10 +127,10 @@ if args.measure:
     s = scope.Scope4(yrange=[-60,60], title='Force')
     s.draw_array_xy(pos_in[0],pos_in[1],pos_in[2],pos_in[3],force_in[0],force_in[1],force_in[2],force_in[3])
 
-    margin_f = 10.0  # Margin beyond peak (N)
+    margin_f = 20.0  # Margin beyond peak (N)
     print 'Using a margin of:', margin_f
     print 'Proposed limits are (N)', [in_min-margin_f, out_max + margin_f]
-    print 'Nominal limits are (N) [-45, 55]'
+    print 'Nominal limits are (N) [-55, 65]'
     print 'Save to factory calibration? [y]'
     x=raw_input()
 
