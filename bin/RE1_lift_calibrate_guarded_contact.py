@@ -17,6 +17,8 @@ print 'This procuedure requires the range to have been first calibrated'
 parser=argparse.ArgumentParser(description='Measure and test Lift guarded contact forces')
 parser.add_argument("--test", help="Test current settings",action="store_true")
 parser.add_argument("--measure", help="Measure forces",action="store_true")
+parser.add_argument("--offset_top", help="Offset top of range by 5mm",action="store_true")
+parser.add_argument("--offset_bottom", help="Offset bottom of range by 5mm",action="store_true")
 parser.add_argument("--plot", help="Plot most recent calibration data",action="store_true")
 args = parser.parse_args()
 
@@ -102,8 +104,12 @@ if args.test:
             l.pull_status()
 
 # ###################################
-pos_top=l.params['range_m'][1]-.005
-pos_bottom=l.params['range_m'][0] +.005
+pos_top=l.params['range_m'][1]
+pos_bottom=l.params['range_m'][0]
+if args.offset_top:
+    pos_top=pos_top-.005
+if args.offset_bottom:
+    pos_bottom=pos_bottom +.005
 if args.measure:
     l.motor.disable_guarded_mode()
     l.push_command()

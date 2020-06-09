@@ -16,6 +16,8 @@ parser=argparse.ArgumentParser(description='Measure and test Arm guarded contact
 parser.add_argument("--test", help="Test current settings",action="store_true")
 parser.add_argument("--measure", help="Measure forces",action="store_true")
 parser.add_argument("--plot", help="Plot most recent calibration data",action="store_true")
+parser.add_argument("--offset_out", help="Offset out range by 2mm",action="store_true")
+parser.add_argument("--offset_in", help="Offset in range by 2mm",action="store_true")
 args = parser.parse_args()
 
 
@@ -73,8 +75,16 @@ if args.test:
             a.pull_status()
 
 # ###################################
-xpos_out=a.params['range_m'][1]-.002
-xpos_in=a.params['range_m'][0] +.002
+if args.offset_out:
+    xpos_out=a.params['range_m'][1]-.002
+else:
+    xpos_out = a.params['range_m'][1]
+
+if args.offset_in:
+    xpos_in=a.params['range_m'][0] +.002
+else:
+    xpos_in = a.params['range_m'][0]
+
 
 if args.measure:
     a.motor.disable_guarded_mode()
