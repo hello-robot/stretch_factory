@@ -118,7 +118,7 @@ if __name__ == '__main__':
         robot.stop()
 
         calibration_directory = hu.get_fleet_directory()+'calibration_base_imu/'
-        if args.validation:
+        if args.validate:
             filename = calibration_directory + hu.get_fleet_id()+'_base_imu_calibration_data_validate_' + hu.create_time_string() + '.yaml'
         else:
             filename = calibration_directory + hu.get_fleet_id() + '_base_imu_calibration_data_' + hu.create_time_string() + '.yaml'
