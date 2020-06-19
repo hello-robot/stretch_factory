@@ -1,4 +1,5 @@
-# Stretch Factory
+![](./images/banner.png)
+# Overview
 
 This package provides Python tools for testing and calibration of the Hello Robot Stretch RE1. 
 
