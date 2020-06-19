@@ -16,6 +16,8 @@ parser=argparse.ArgumentParser(description='Measure and test Arm guarded contact
 parser.add_argument("--test", help="Test current settings",action="store_true")
 parser.add_argument("--measure", help="Measure forces",action="store_true")
 parser.add_argument("--plot", help="Plot most recent calibration data",action="store_true")
+parser.add_argument("--offset_out", help="Offset out range by 2mm",action="store_true")
+parser.add_argument("--offset_in", help="Offset in range by 2mm",action="store_true")
 args = parser.parse_args()
 
 
@@ -32,7 +34,7 @@ if args.plot:
     results = yaml.load(fid)
     fid.close()
 
-    s = scope.Scope4(yrange=[-60, 60], title='Force')
+    s = scope.Scope4(yrange=[-100, 100], title='Force')
     print 'Hit enter to view in forces'
     raw_input()
     s.draw_array_xy(results['pos_in'][0], results['pos_in'][1], results['pos_in'][2], results['pos_in'][3],
@@ -73,6 +75,17 @@ if args.test:
             a.pull_status()
 
 # ###################################
+if args.offset_out:
+    xpos_out=a.params['range_m'][1]-.002
+else:
+    xpos_out = a.params['range_m'][1]
+
+if args.offset_in:
+    xpos_in=a.params['range_m'][0] +.002
+else:
+    xpos_in = a.params['range_m'][0]
+
+
 if args.measure:
     a.motor.disable_guarded_mode()
     a.push_command()
@@ -88,7 +101,7 @@ if args.measure:
     out_max=0
     in_min =0
     for i in range(4):
-        a.move_to(a.params['range_m'][1])
+        a.move_to(xpos_out)
         a.push_command()
         time.sleep(0.25)
         a.pull_status()
@@ -101,7 +114,7 @@ if args.measure:
         out_max=max(out_max,max(force_out[i]))
         print('Out: Itr %d Len %d Max %f'%(i,len(force_out[i]),max(force_out[i])))
 
-        a.move_to(a.params['range_m'][0])
+        a.move_to(xpos_in)
         a.push_command()
         time.sleep(0.25)
         a.pull_status()
@@ -124,10 +137,10 @@ if args.measure:
     s = scope.Scope4(yrange=[-60,60], title='Force')
     s.draw_array_xy(pos_in[0],pos_in[1],pos_in[2],pos_in[3],force_in[0],force_in[1],force_in[2],force_in[3])
 
-    margin_f = 10.0  # Margin beyond peak (N)
+    margin_f = 20.0  # Margin beyond peak (N)
     print 'Using a margin of:', margin_f
     print 'Proposed limits are (N)', [in_min-margin_f, out_max + margin_f]
-    print 'Nominal limits are (N) [-45, 55]'
+    print 'Nominal limits are (N) [-55, 65]'
     print 'Save to factory calibration? [y]'
     x=raw_input()
 

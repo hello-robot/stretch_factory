@@ -65,7 +65,7 @@ def step_interaction():
             m.go_to_pos(m.get_pos()-500)
         if x[0]=='z':
             m.disable_torque()
-            m.zero_position()
+            m.zero_position(verbose=True)
             m.enable_torque()
         if x[0]=='v':
             v=int(x[2:])
