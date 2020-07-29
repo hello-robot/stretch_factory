@@ -31,6 +31,7 @@ def fill_sample(sample, base_status, pimu_status):
 if __name__ == '__main__':
     parser = ap.ArgumentParser(description='Collect mobile base IMU calibration data and work with resulting files.')
     parser.add_argument('--validate', action='store_true', help='Collect measurements using existing calibration parameters to validate its fit.')
+    parser.add_argument('--qc', action='store_true', help='QC script mode.')
     args=parser.parse_args()
 
     try:
@@ -66,16 +67,17 @@ if __name__ == '__main__':
             robot.pimu.config['gravity_vector_scale']=1.0
 
         # wait so that cables can be unplugged prior to the turn
-        print('WARNING: The robot will make a {0} degree turn.'.format(turn_angle_deg))
-        seconds = input('Enter the number of seconds to wait prior to turning: ')
-        seconds = int(seconds)
-        print('Will wait {0} seconds before turning {1} degrees.'.format(seconds, turn_angle_deg))
-        count_down = seconds
-        print(count_down)
-        for n in range(seconds):
-            time.sleep(1)
-            count_down = count_down - 1
+        if not args.qc:
+            print('WARNING: The robot will make a {0} degree turn.'.format(turn_angle_deg))
+            seconds = input('Enter the number of seconds to wait prior to turning: ')
+            seconds = int(seconds)
+            print('Will wait {0} seconds before turning {1} degrees.'.format(seconds, turn_angle_deg))
+            count_down = seconds
             print(count_down)
+            for n in range(seconds):
+                time.sleep(1)
+                count_down = count_down - 1
+                print(count_down)
 
         robot.startup()
         robot.pimu.trigger_beep()

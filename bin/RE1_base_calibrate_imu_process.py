@@ -16,6 +16,7 @@ import open3d as op
 from scipy.optimize import minimize, minimize_scalar
 import matplotlib.pyplot as plt
 import matplotlib
+import yaml
 
 
 def use_all_data(sample_number, sample):
@@ -123,11 +124,12 @@ def write_factory_params(cma_result):
 # ################################################################
 
 class MobileBaseImuCalibrator:
-    def __init__(self, calibration_directory, sample_selector_func, calibration_options, visualize, validation_run):
+    def __init__(self, calibration_directory, sample_selector_func, calibration_options, visualize, validation_run,qc):
         self.visualize = visualize
         self.use_this_sample = sample_selector_func 
         self.calibration_directory = calibration_directory
         self.data = None
+        self.qc=qc
         self.validation_run=validation_run
         self.num_parameters = len(self.get_names_of_parameters_to_fit())
         self.initial_center, self.initial_normal, self.initial_radius, self.initial_turn_axis, self.initial_gravity = self.unpack_parameters(np.zeros(self.num_parameters))
@@ -317,10 +319,16 @@ class MobileBaseImuCalibrator:
         frame = op.geometry.TriangleMesh.create_coordinate_frame(size=2.0, origin=[0,0,0])
 
         #op.visualization.draw_geometries([magnetometer_point_cloud, frame, circle_point_cloud])
-        op.visualization.draw_geometries([frame,
-                                          magnetometer_point_cloud, torus, 
-                                          rate_gyro_point_cloud, accelerometer_point_cloud,
-                                          rate_gyro_sphere, accel_sphere])
+        if self.qc:
+            self.qc_draw_geometries([frame,
+                                     magnetometer_point_cloud, torus,
+                                     rate_gyro_point_cloud, accelerometer_point_cloud,
+                                     rate_gyro_sphere, accel_sphere])
+        else:
+            op.visualization.draw_geometries([frame,
+                                              magnetometer_point_cloud, torus,
+                                              rate_gyro_point_cloud, accelerometer_point_cloud,
+                                              rate_gyro_sphere, accel_sphere])
         
     def visualize_data(self):
         # magnetometer_point_cloud = op.geometry.PointCloud()
@@ -353,7 +361,35 @@ class MobileBaseImuCalibrator:
         #op.visualization.draw_geometries([rate_gyro_point_cloud, base_velocity_point_cloud, frame])
         op.visualization.draw_geometries([rate_gyro_point_cloud, base_velocity_point_cloud])
         
-        
+    def qc_draw_geometries(self,geometry):
+        # The following code achieves the same effect as:
+        # o3d.visualization.draw_geometries([pcd])
+        vis = op.visualization.Visualizer()
+        vis.create_window()
+        for g in geometry:
+            vis.add_geometry(g)
+        ctr = vis.get_view_control()
+
+        #x (float): Distance the mouse cursor has moved in x-axis.
+        #y (float): Distance the mouse cursor has moved in y-axis.
+        #xo (float, optional, default=0.0): Original point coordinate of the mouse in x-axis.
+        #yo (float, optional, default=0.0): Original point coordinate of the mouse in y-axis.
+
+        # Do a single render at a set viewpoint, saves the image, and exit non blocking
+        if self.validation_run:
+            ctr.rotate(0.0, 250.0)
+            # vis.run()
+            vis.poll_events()
+            vis.update_renderer()
+            vis.capture_screen_image('base_imu_calibration_calibrated_fit.png')
+        else:
+            ctr.rotate(0.0, 1200.0)
+            #vis.run()
+            vis.poll_events()
+            vis.update_renderer()
+            vis.capture_screen_image('base_imu_calibration_uncalibrated_fit.png')
+        vis.destroy_window()
+
     def calculate_error(self, parameters_to_fit):
         center, normal, radius, turn_axis, gravity = self.unpack_parameters(parameters_to_fit)
         #print('magnetometer_data =', self.magnetometer_data)
@@ -429,6 +465,7 @@ class MobileBaseImuCalibrator:
 
         # find the turn duration
         turn_duration = end_time - start_time
+
         print('turn lasted = {0} s'.format(turn_duration))
         print('start_angle = {0} deg'.format(180.0 * (start_angle/np.pi)))
         print('end_angle = {0} deg'.format(180.0 * (end_angle/np.pi)))
@@ -457,6 +494,20 @@ class MobileBaseImuCalibrator:
         gravity_scale = 9.80665 / np.linalg.norm(gravity)
         print('gravity vector scale = {0}'.format(gravity_scale))
 
+        if self.qc:
+            results={'turn_duration':float(turn_duration),
+                    'turn_angle':float(180.0 * (turn_angle/np.pi)),
+                    'turn_velocity':float(180.0 * (rad_per_s/np.pi)),
+                    'rate_gyro_scale':float(rate_gyro_scale),
+                    'gravity_scale':float(gravity_scale)}
+            if self.validation_run:
+                with open('base_imu_calibrated_results.yaml', 'w') as yaml_file:
+                    yaml.dump(results, yaml_file, default_flow_style=False)
+            else:
+                with open('base_imu_uncalibrated_results.yaml', 'w') as yaml_file:
+                    yaml.dump(results, yaml_file, default_flow_style=False)
+
+
         return rate_gyro_scale, gravity_scale
         
 
@@ -475,7 +526,8 @@ if __name__ == '__main__':
         parser.add_argument('--only_vis', action='store_true', help='Only visualize the fit of the CMA-ES optimization results. This does not save any results.')
         parser.add_argument('--no_vis', action='store_true', help='Do not calculate or publish any visualizations. This results in faster fitting.')
         parser.add_argument('--validate', action='store_true', help='Fit and visualize most recent validation run.')
-        
+        parser.add_argument('--qc', action='store_true', help='QC script mode.')
+
         args, unknown = parser.parse_known_args()
         opt_results_file_to_load = args.load
         load_most_recent_opt_results = args.load_prev
@@ -504,7 +556,7 @@ if __name__ == '__main__':
 
             calibration_options = cma_result.get('calibration_options', {})
             fit_parameters = np.array(cma_result['best_parameters'])
-            calibrator = MobileBaseImuCalibrator(calibration_directory, sample_selector_func, calibration_options, visualize)
+            calibrator = MobileBaseImuCalibrator(calibration_directory, sample_selector_func, calibration_options, visualize, validation_run,args.qc)
             
             if visualize_only:
                 print('Loading the most recent data file.')
@@ -515,7 +567,7 @@ if __name__ == '__main__':
                 print('Not Implemented: Should update files based on previous optimization that was loaded.')
         else:
             calibration_options = {}
-            calibrator = MobileBaseImuCalibrator(calibration_directory, sample_selector_func, calibration_options, visualize, validation_run)
+            calibrator = MobileBaseImuCalibrator(calibration_directory, sample_selector_func, calibration_options, visualize, validation_run,args.qc)
             parameter_names = calibrator.get_names_of_parameters_to_fit()
 
             # different error tolerances for different speeds and qualities of fit
@@ -604,11 +656,14 @@ if __name__ == '__main__':
                 fid.close()
                 print('Finished saving.')
                 fit_parameters = cma_result['best_parameters']
-                print('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
-                x=raw_input()
-                if len(x)==0 or x=='y' or x=='Y':
-                    print('Writing yaml...')
+                if args.qc:
                     write_factory_params(cma_result)
+                else:
+                    print('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
+                    x=raw_input()
+                    if len(x)==0 or x=='y' or x=='Y':
+                        print('Writing yaml...')
+                        write_factory_params(cma_result)
             else:
                 print()
                 print('********************************************************')
