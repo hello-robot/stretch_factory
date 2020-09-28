@@ -4,6 +4,8 @@
 
 After installing a new wrist module the system UDEV needs to be updated
 
+### Update UDEV 
+
 First, pull down the files
 
 ```bash
@@ -24,6 +26,8 @@ Now reboot. After reboot check that the new wrist shows up on the bus
 >>$ ls /dev/hello-dynamixel-wrist
 >>$ ls /dev/hello-wacc
 ```
+
+### Test Wrist
 
 Then check that the Wacc is reporting sensor data back:
 
