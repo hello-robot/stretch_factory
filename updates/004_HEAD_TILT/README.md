@@ -9,7 +9,7 @@ Tools to debug the head tilt unit not working (assuming not a mechanical failure
 Check that both the pan and tilt are on the bus
 
 ```bash
->>$ RE1_dynamixel_scan.py /dev/hello-dynamixel-head
+>>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-head
 ```
 
 
