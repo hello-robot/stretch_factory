@@ -18,11 +18,12 @@ Now copy them over
 ```bash
 >>$ cd stretch_factory/updates/003_WRIST_SWAP
 >>$ sudo cp *.rules /etc/udev/rules.d
+>>$ sudo cp *.rules /etc/hello-robot/stretch-re1-1004/udev
 ```
 
 Now reboot. After reboot check that the new wrist shows up on the bus
 
-```
+```bash
 >>$ ls /dev/hello-dynamixel-wrist
 >>$ ls /dev/hello-wacc
 ```
