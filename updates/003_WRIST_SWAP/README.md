@@ -85,4 +85,29 @@ Moving to calibrated zero: (rad)
 
 ```
 
+### Update Wacc Calibration
+
+```bash
+>>$ pip2 install hello-robot-stretch-factory
+>>$ RE1_wacc_calibrate.py
+RE1_wacc_calibrate.py 
+Calibrating Wacc. Ensure arm is retracted and level to ground
+Hit enter when ready
+
+Itr 0 Val 9.59977857901
+...
+Itr 99 Val 10.1095601333
+Got a average value of 10.1372113882
+Gravity scalar of 0.967391 within bounds of 0.900000 to 1.100000
+Writing yaml...
+
+```
+
+Now copy the updated YAML to /etc so that it will be available to other (new) user  accounts.
+
+```
+>>$ cd ~/stretch_user/stretch-re1-1004
+>>$ sudo cp stretch_re1_factory_params.yaml /etc/hello-robot/stretch-re1-1004
+```
+
 You're all set!
