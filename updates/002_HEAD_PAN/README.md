@@ -40,9 +40,10 @@ head_pan: #Fix for gear offset
     - 300
 ```
 
-Next, add this update to the factory image YAML at  `/etc/hello-robot/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`. This will ensure that when new user accounts are made the fix is applied.
-
 **Note**: This fix is only applied to the current user account. If there are other existing user accounts they will want to apply this fix as well.
+
+Next, add this same bit of YAML to the factory image version of the file. This will ensure that when new user accounts are made the fix is applied. This file can be found at `/etc/hello-robot/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
+
 
 ### **Quick Test**
 
@@ -66,18 +67,18 @@ i: left
 j: up
 p: pan go to pos ticks
 t: tilt go to pos ticks
+x: home
 1: speed slow
 2: speed default
 3: speed fast
 4: speed max
 
 ```
-
- Verify that it looks straight ahead and looks straight back as expected when commanded from the tool's menu.
+Try out the homing with the 'x' command.  Verify that it looks straight ahead ('e') and looks straight back ('f') as expected when commanded from the tool's menu.
 
 **URDF Calibration **
 
-Finally, you will want to recalibrate the URDF to ensure a slight alignment error has not been introduced. This is a slightly more involved process and can take around an hour. The process [is described here](https://github.com/hello-robot/stretch_ros/blob/master/stretch_calibration/README.md).
+Finally, you will want to recalibrate the URDF. This is a slightly more involved process and can take around an hour. The process [is described here](https://github.com/hello-robot/stretch_ros/blob/master/stretch_calibration/README.md).
 
 That's it, you're all set!
 
