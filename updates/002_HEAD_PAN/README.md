@@ -76,7 +76,7 @@ x: home
 ```
 Try out the homing with the 'x' command.  Verify that it looks straight ahead ('e') and looks straight back ('f') as expected when commanded from the tool's menu.
 
-**URDF Calibration **
+### URDF Calibration 
 
 Finally, you will want to recalibrate the URDF. This is a slightly more involved process and can take around an hour. The process [is described here](https://github.com/hello-robot/stretch_ros/blob/master/stretch_calibration/README.md).
 
