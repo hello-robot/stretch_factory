@@ -2,7 +2,9 @@
 
 ### **Background**
 
-For robots with serial number prior to `stretch-re1-1023` the Dynamixel servos do not respond to the runstop button. While the robot's hardware architecture prevents integrating the runstop with the Robotis servos, we have implemented a software update that simulates this behavior. This update ships with robots starting with `stretch-re1-1023`.
+For robots with serial number prior to `stretch-re1-1023` the Dynamixel servos do not respond to the runstop button. While the robot's hardware architecture prevents integrating the runstop with the Robotis servos, we have implemented a software update that simulates this behavior. 
+
+This functionality is standard with robots starting with `stretch-re1-1023`.
 
 Note: This runstop behavior is only effective when there is an instance of the [Robot](https://github.com/hello-robot/stretch_body/blob/dxl_runstop/body/stretch_body/robot.py) class running. 
 
