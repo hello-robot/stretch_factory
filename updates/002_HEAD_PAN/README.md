@@ -1,5 +1,7 @@
 # 002_HEAD_PAN
 
+## **Note: This update is deprecated. Use update 005 instead.**
+
 ### **Background**
 
 Early Stretch robots have a production issue where the range of motion of the head pan is unnecessarily restricted. This is due to:
