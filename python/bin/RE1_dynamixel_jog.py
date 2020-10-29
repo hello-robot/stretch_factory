@@ -25,6 +25,7 @@ m.enable_pos()
 m.enable_torque()
 
 
+
 def menu_top():
     print('------ MENU -------')
     print('m: menu')
@@ -35,6 +36,8 @@ def menu_top():
     print('v: set profile velocity')
     print('u: set profile acceleration')
     print('z: zero position')
+    print('h: show homing offset')
+    print('o: zero homing offset')
     print('q: got to position')
     print 'p: ping'
     print 'r: reboot'
@@ -66,6 +69,17 @@ def step_interaction():
         if x[0]=='z':
             m.disable_torque()
             m.zero_position(verbose=True)
+            m.enable_torque()
+        if x[0]=='h':
+            m.disable_torque()
+            xn=m.get_homing_offset()
+            print 'Current homing offset is:',xn
+        if x[0]=='o':
+            m.disable_torque()
+            xn=m.get_homing_offset()
+            print 'Current homing offset is:',xn
+            m.set_homing_offset(0)
+            print 'Homing offset set to zero'
             m.enable_torque()
         if x[0]=='v':
             v=int(x[2:])
