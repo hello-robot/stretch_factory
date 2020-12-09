@@ -10,4 +10,5 @@ This directory contains recommended factory updates.
 | [004_HEAD_TILT](./004_HEAD_TILT/README.md)                   | Debug head tilt                                              | 1018         | 9/28/2020  |
 | [005_HEAD_PAN_CALIBRATION](./005_HEAD_PAN_CALIBRATION/README.md) | How to update robot YAML and recalibrate the head pan joint  | 1001 to 1022 | 10/8/2020  |
 | [006_DXL_RUNSTOP](./006_DXL_RUNSTOP/README.md)               | Allow robot Dynamixel servos to stop upon runstop activation | 1001 to 1022 | 10/8/2020  |
+| [007_LIFT_FINGER_GUARD](./007_LIFT_FINGER_GUARD/README.md)   | Recalibrate lift after installation of foam finger guards    | 1005         | 11/17/2020 |
 
