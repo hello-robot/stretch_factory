@@ -1,3 +1,5 @@
+
+
 # 008_SYNC_TIMESTAMPS
 
 ### **Background**
@@ -24,25 +26,19 @@ Then follow [the tutorial for upgrading firmware](https://github.com/hello-robot
 Robots with serial numbers `stretch-re1-1001` to `stretch-re1-1022` will need to update their user YAML Add the following to `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
 
 ```
-robot:
-  log_to_console: 0
-  use_time_manager: 1
 pimu_clock_manager:
   n_slew_history: 25
   trs: 450.0
   use_skew_compensation: 1
 
-robot_sentry:
-  dynamixel_stop_on_runstop: 1
-
-robot_timestamp_manager:
-  sync_mode_enabled: 1
-  time_align_status: 0
-
 wacc_clock_manager:
   n_slew_history: 25
   trs: 687.0
   use_skew_compensation: 1
+
+robot_timestamp_manager:
+  sync_mode_enabled: 1
+  time_align_status: 1
 ```
 
 **Note**: This fix is only applied to the current user account. If there are other existing user accounts they will want to apply this fix as well. 
@@ -69,6 +65,8 @@ First, move to the latest Stretch Body package (version >=0.0.20)
 ```
 >>$ pip2 install hello-robot-stretch-body
 ```
+
+### Try It Out
 
 Now test it out. Try running the timestamp jog tool.
 
@@ -101,6 +99,35 @@ Wacc Accel           : 1607575533.142721
 
 
 ```
+
+
+
+```bash
+>>$ stretch_robot_timestamps_jog.py --sensor_delta
+For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
+
+Starting sensor timestamp analysis...
+Sync mode enabled: 1
+Time align status: 0
+Use skew compensation: 1
+---------------------------
+DT Pimu IMU            :-10152
+DT Left Wheel Encoder  :-717
+DT Right Wheel Encoder :-1068
+DT Lift Encoder        :-361
+DT Arm Encoder         :-337
+DT Wacc Accel          :5703
+---------------------------
+DT Pimu IMU            :-7148
+DT Left Wheel Encoder  :-708
+DT Right Wheel Encoder :-953
+DT Lift Encoder        :-470
+DT Arm Encoder         :-864
+DT Wacc Accel          :84
+
+```
+
+
 
 ```
 >>$ stretch_robot_timestamps_jog.py --sensor_stats

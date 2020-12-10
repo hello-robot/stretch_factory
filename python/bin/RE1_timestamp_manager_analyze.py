@@ -14,10 +14,27 @@ hu.print_stretch_re_use()
 parser=argparse.ArgumentParser(description='Tool to analyze Stretch Timestamp Manager')
 parser.add_argument("--sensor_stats", help="Measure stats of the sensor timestamps",action="store_true")
 parser.add_argument("--runstop_toggle", help="Toggle runstop while measure",action="store_true")
+parser.add_argument("--outlier_detect", help="Look for spurious values",action="store_true")
 args=parser.parse_args()
 
 r=stretch_body.robot.Robot()
 r.startup()
+
+if args.outlier_detect:
+    print('Starting sensor timestamp analysis...')
+    print('Sync mode enabled: ' + str(r.timestamp_manager.param['sync_mode_enabled']))
+    print('Time align status: ' + str(r.timestamp_manager.param['time_align_status']))
+    print('Use skew compensation: ' + str(r.pimu.clock_manager.params['use_skew_compensation']))
+    print('---------------------------')
+    while True:
+        s = r.get_status()
+        hw_sync = s['timestamps']['hw_sync']
+        p0 = (s['timestamps']['pimu_imu'] - hw_sync).to_usecs()
+        t0 = (s['timestamps']['left_wheel_enc'] - hw_sync).to_usecs()
+        t1 = (s['timestamps']['right_wheel_enc'] - hw_sync).to_usecs()
+        t2 = (s['timestamps']['lift_enc'] - hw_sync).to_usecs()
+        t3 = (s['timestamps']['arm_enc'] - hw_sync).to_usecs()
+        w0 = (s['timestamps']['wacc_acc'] - hw_sync).to_usecs()
 
 if args.runstop_toggle:
     print('Starting sensor timestamp analysis...')
