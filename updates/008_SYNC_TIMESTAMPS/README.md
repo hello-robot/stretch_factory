@@ -75,33 +75,38 @@ Now test it out. Try running the timestamp jog tool.
 ```bash
 >>$ stretch_robot_timestamps_jog.py --display
 For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
-
 ------ Timestamp Manager -----
 Sync mode enabled    : 1
-Status ID            : 0
-Wall time            : 1607561343.448477
-Hardware sync        : 1607561343.491756
-Pimu IMU             : 1607561343.438736
-Lift Encdoer         : 1607561343.447244
-Arm Encoder          : 1607561343.448129
-Right Wheel Encoder  : 1607561343.447778
-Left Wheel Encoder   : 1607561343.447861
-Wacc Accel           : 1607561343.448106
+Status ID            : 121
+Wall time            : 1607575532.977621
+Hardware sync        : 1607575532.939872
+Pimu IMU             : 1607575532.930712
+Lift Encdoer         : 1607575532.938915
+Arm Encoder          : 1607575532.938884
+Right Wheel Encoder  : 1607575532.939187
+Left Wheel Encoder   : 1607575532.938882
+Wacc Accel           : 1607575532.934294
 ------ Timestamp Manager -----
 Sync mode enabled    : 1
-Status ID            : 5
-Wall time            : 1607561343.745096
-Hardware sync        : 1607561343.788372
-Pimu IMU             : 1607561343.738353
-Lift Encdoer         : 1607561343.743938
-Arm Encoder          : 1607561343.744408
-Right Wheel Encoder  : 1607561343.744721
-Left Wheel Encoder   : 1607561343.744759
-Wacc Accel           : 1607561343.745067
+Status ID            : 125
+Wall time            : 1607575533.187324
+Hardware sync        : 1607575533.148872
+Pimu IMU             : 1607575533.140704
+Lift Encdoer         : 1607575533.147775
+Arm Encoder          : 1607575533.148192
+Right Wheel Encoder  : 1607575533.148234
+Left Wheel Encoder   : 1607575533.147883
+Wacc Accel           : 1607575533.142721
 ...
->>$ stretch_robot_timestamps_jog.py --sensor_stats
+
 
 ```
+
+```
+>>$ stretch_robot_timestamps_jog.py --sensor_stats
+```
+
+![](./sensor_stats.png)
 
 That's it!
 
