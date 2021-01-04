@@ -12,4 +12,5 @@ This directory contains recommended factory updates.
 | [006_DXL_RUNSTOP](./006_DXL_RUNSTOP/README.md)               | Allow robot Dynamixel servos to stop upon runstop activation | 1001 to 1022 | 10/8/2020  |
 | [007_LIFT_FINGER_GUARD](./007_LIFT_FINGER_GUARD/README.md)   | Recalibrate lift after installation of foam finger guards    | 1005         | 11/17/2020 |
 | [008_SYNC_TIMESTAMPS](./008_SYNC_TIMESTAMPS/README.md)       | Upgrade firmware and Stretch Body to support synchronized timestamps    | Prior to 1050         | 12/08/2020 |
+| [009_STEPPER_STARTUP](./009_STEPPER_STARTUP/README.md) | Fix bug related to configuration of stepper controllers at startup | Prior to 1040 | 1/4/2020 |
 
