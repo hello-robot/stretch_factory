@@ -19,16 +19,17 @@ To replicate the bug:
 3. Run code below
 
 ```python
-import stretch_body.base
+import stretch_body.robot
+from time import sleep
 
-b = stretch_body.base.Base()
-b.startup()
+robot = stretch_body.robot.Robot()
+robot.startup()
 
-b.set_translate_velocity(0.0)
-b.push_command()
+robot.base.set_translate_velocity(0)
+robot.push_command()
 
-b.translate_by(0.1) #Will lurch
-b.push_command()
+robot.base.translate_by(0.1) #Causes the base to lurch forward
+robot.push_command()
 ```
 
 ### Fix
@@ -44,16 +45,18 @@ To fix the bug the stepper firmware must be updated. The instructions to update 
 To verify that the fix, try the test code again
 
 ```python
-import stretch_body.base
+import stretch_body.robot
+from time import sleep
 
-b = stretch_body.base.Base()
-b.startup()
+robot = stretch_body.robot.Robot()
+robot.startup()
 
-b.set_translate_velocity(0.0)
-b.push_command()
+robot.base.set_translate_velocity(0)
+robot.push_command()
 
-b.translate_by(0.1) #Will move smoothly
-b.push_command()
+robot.base.translate_by(0.1) #Causes smooth motion forward
+robot.push_command()
 ```
 
-### 
+
+
