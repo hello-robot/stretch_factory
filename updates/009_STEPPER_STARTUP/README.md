@@ -32,9 +32,19 @@ robot.base.translate_by(0.1) #Causes the base to lurch forward
 robot.push_command()
 ```
 
+### Affected Robots
+
+This bug affects firmware version `Stepper.v0.0.1p0`. To check your firmware version (of the arm for example), run the following and hit enter to print the actuator status:
+
+```bash
+>>$ RE1_stepper_jog.py hello-motor-arm
+..
+Firmware version: Stepper.v0.0.1p0
+```
+
 ### Fix
 
-To fix the bug the stepper firmware must be updated. The instructions to update firmware are provided [here](https://github.com/hello-robot/stretch_firmware). You will need to:
+To fix the bug the stepper firmware must be updated to version `Stepper.v0.0.2p0` or later. The instructions to update firmware are provided [here](https://github.com/hello-robot/stretch_firmware). You will need to:
 
 * Pull down the latest version of stretch_firmware from Git
 * Install the Arduino command line tools if not present
