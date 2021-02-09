@@ -11,7 +11,7 @@ usb = sys.argv[1]
 
 m=None
 try:
-    for id in range(25):
+    for id in range(15):
         m = DynamixelXL430(id, usb)
         m.startup()
         if (m.do_ping(verbose=False)):
