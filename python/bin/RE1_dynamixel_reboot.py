@@ -1,20 +1,20 @@
 #!/usr/bin/env python
-
-import time
 from stretch_body.dynamixel_XL430 import *
 from stretch_body.hello_utils import *
-import sys
+import argparse
 
-if len(sys.argv) < 2:
-    raise Exception("Provide usb path and ID e.g.: dynamixel_reboot.py /dev/hello-dynamixel-head")
-usb = sys.argv[1]
+
+parser=argparse.ArgumentParser(description='Reboot all of the Dynamixel servos on a bus')
+parser.add_argument("usb", help="The dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
+parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600]", type=int,default=57600)
+args = parser.parse_args()
 
 m=None
 try:
     for id in range(25):
-        m = DynamixelXL430(id, usb)
+        m = DynamixelXL430(id, args.usb,baud=args.baud)
         m.startup()
-        if (m.do_ping(verbose=False)):
+        if (m.do_ping(verbose=True)):
             m.do_reboot()
         else:
             m.stop()
