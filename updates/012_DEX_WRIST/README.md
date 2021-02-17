@@ -12,6 +12,8 @@ This update installs and configures the Beta unit of the Dexterous Wrist. The pr
 6. Update the robot YAML
 7. Test the wrist with the XBox controller
 
+![](./images/dex_wrist_A.png)
+
 ## Install Stretch Software Packages
 
 You'll be installing a beta version of relevant Stretch packages
@@ -123,9 +125,27 @@ Writing yaml...
 
 First, remove the standard Stretch Gripper [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
-X. 
+Next, note where the forward direction is on the wrist yaw tool plate. The forward direction is indicated by the  additional alignment hole that is just outside the bolt pattern (shown pointing down in the image)
+
+![](./images/dex_wrist_C.png)
+
+Next, using a Philips screwdriver, attache the wrist mount bracket to the bottom of the tool plate using the provided  M2 bolts. 
+
+**NOTE: ensure that the forward direction of the bracket (also indicated by an alignment hole) matches the forward direction of the tool plate.**
 
 
+
+![![]](./images/dex_wrist_B.png)
+
+Next, raise the wrist module up vertically into the mounting bracket, then sliding it over horizontally so that the bearing mates onto its post. Slide in the 3D printed spacer between the pitch servo and the mounting bracket.
+
+![![]](./images/dex_wrist_D.png)
+
+![![]](./images/dex_wrist_F.png)
+
+Finally, attach the body of the pitch servo to the mounting bracket using the 3 M2.5 screws provided.
+
+![](./images/dex_wrist_E.png)
 
 ## Update the Dynamixel servo baud rates
 
@@ -241,7 +261,7 @@ Each user account on Stretch will need to update their YAML as well. It is recom
 
 Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
 
-![](/home/hello-robot/.config/Typora/typora-user-images/image-20210217122504769.png)
+![](./images/stretch_re1_dex_wrist_teleop_guide.png)
 
 ```bash
 >>$ stretch_xbox_controller_teleop.py --dex_wrist
