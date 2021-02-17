@@ -9,7 +9,7 @@ This update installs and configures the Beta unit of the Dexterous Wrist. The pr
 3. Configure the new Wacc board
 4. Attach the Dexterous Wrist
 5. Update the Dynamixel servo baud rates
-6. Update the user YAML
+6. Update the robot YAML
 7. Test the wrist with the XBox controller
 
 ## Install Stretch Software Packages
@@ -37,7 +37,7 @@ You'll be installing a beta version of relevant Stretch packages
 ```bash
 >>$ cd ~/repos/stretch_factory/updates/012_DEX_WRIST
 >>$ sudo cp *.rules /etc/udev/rules.d
->>$ sudo cp *.rules /etc/hello-robot/stretch-re1-1018/udev
+>>$ sudo cp *.rules /etc/hello-robot/$HELLO_FLEET_ID/udev
 ```
 
 Now power down the robot.  Power it back oncheck that the new wrist shows up on the bus
@@ -119,14 +119,132 @@ Writing yaml...
 
 ```
 
-Now copy the updated YAML to /etc so that it will be available to other (new) user  accounts.
-
-```bash
->>$ cd ~/stretch_user/stretch-re1-1018
->>$ sudo cp stretch_re1_factory_params.yaml /etc/hello-robot/stretch-re1-1018
-```
-
 ## Attach the Dexterous Wrist
 
 First, remove the standard Stretch Gripper [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
+X. 
+
+
+
+## Update the Dynamixel servo baud rates
+
+First, check that the servos appear on the bus:
+
+```bash
+>>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-wrist --baud 115200
+Scanning bus /dev/hello-dynamixel-wrist at baud rate 115200
+----------------------------------------------------------
+...
+[Dynamixel ID:014] ping Succeeded. Dynamixel model number : 1060
+[Dynamixel ID:015] ping Succeeded. Dynamixel model number : 1120
+[Dynamixel ID:016] ping Succeeded. Dynamixel model number : 1020
+...
+
+>>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-wrist --baud 57600
+Scanning bus /dev/hello-dynamixel-wrist at baud rate 57600
+----------------------------------------------------------
+...
+[Dynamixel ID:013] ping Succeeded. Dynamixel model number : 1060
+...
+```
+
+The new wrist requires moving to 115200 Baud communication with the Stretch Dynamixel servos from the previous 57600.
+
+```bash
+>>$ RE1_dynamixel_set_baud.py /dev/hello-dynamixel-head 11 115200
+---------------------
+Checking servo current baud for 57600
+----
+Identified current baud of 57600. Changing baud to 115200
+Success at changing baud
+
+>>$ RE1_dynamixel_set_baud.py /dev/hello-dynamixel-head 12 115200
+---------------------
+Checking servo current baud for 57600
+----
+Identified current baud of 57600. Changing baud to 115200
+Success at changing baud
+
+>>$ RE1_dynamixel_set_baud.py /dev/hello-dynamixel-wrist 13 115200
+---------------------
+Checking servo current baud for 57600
+----
+Identified current baud of 57600. Changing baud to 115200
+Success at changing baud
+```
+
+
+
+## Update the robot YAML
+
+The new wrist requires a number of updates to the robot YAML.  
+
+```bash
+>>$ cd ~/repos/stretch_factory/updates/012_DEX_WRIST
+>>$ cat stretch_re1_tool_params.yaml >> ~/stretch_user/$HELLO_FLEET_ID/stretch_re1_tool_params.yaml
+>>$ cat stretch_re1_user_params.yaml >> ~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml
+```
+
+YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. For example:
+
+```yaml
+#Original YAML
+end_of_arm:
+  devices:
+    stretch_gripper:
+      py_class_name: StretchGripper
+      py_module_name: stretch_body.stretch_gripper
+
+# New YAML
+end_of_arm:
+  use_group_sync_read: 1
+  retry_on_comm_failure: 1
+  baud: 115200
+  devices:
+    wrist_pitch:
+      py_class_name: WristPitch
+      py_module_name: stretch_body.wrist_pitch
+    wrist_roll:
+      py_class_name: WristRoll
+      py_module_name: stretch_body.wrist_roll
+```
+
+Becomes:
+
+```yaml
+# New YAML
+end_of_arm:
+  use_group_sync_read: 1
+  retry_on_comm_failure: 1
+  baud: 115200
+  devices:
+    wrist_pitch:
+      py_class_name: WristPitch
+      py_module_name: stretch_body.wrist_pitch
+    wrist_roll:
+      py_class_name: WristRoll
+      py_module_name: stretch_body.wrist_roll
+    stretch_gripper:
+      py_class_name: StretchGripper
+      py_module_name: stretch_body.stretch_gripper
+```
+
+Each user account on Stretch will need to update their YAML as well. It is recommended practice to stored a reference of the YAML in /etc so that it will be available to other (new) user  accounts.
+
+```bash
+>>$ cd ~/stretch_user/$HELLO_FLEET_ID
+>>$ sudo cp *.yaml /etc/hello-robot/$HELLO_FLEET_ID
+```
+
+## Test the wrist with the XBox Controller
+
+Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
+
+![](/home/hello-robot/.config/Typora/typora-user-images/image-20210217122504769.png)
+
+```bash
+>>$ stretch_xbox_controller_teleop.py --dex_wrist
+```
+
+A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)

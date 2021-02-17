@@ -1,0 +1,100 @@
+factory_params: stretch_re1_factory_params.yaml
+tool_params: stretch_re1_tool_params.yaml
+# You can override factory settings for each device here
+# Otherwise defaults to the factory 'robot_params'
+# USE WITH CAUTION. IT IS POSSIBLE TO CAUSE UNSAFE BEHAVIOR OF THE ROBOT #
+
+
+end_of_arm:
+  use_group_sync_read: 1
+  retry_on_comm_failure: 1
+  baud: 115200
+  devices:
+    wrist_pitch:
+      py_class_name: WristPitch
+      py_module_name: stretch_body.wrist_pitch
+    wrist_roll:
+      py_class_name: WristRoll
+      py_module_name: stretch_body.wrist_roll
+
+
+robot:
+  log_to_console: 1
+  sync_mode_enabled: 1
+
+pimu_clock_manager:
+  n_slew_history: 25
+  trs: 450.0
+  use_skew_compensation: 1
+
+robot_sentry:
+  dynamixel_stop_on_runstop: 1
+  wrist_pitch_overload: 1
+  wrist_roll_overload: 1
+
+robot_timestamp_manager:
+  time_align_status: 1
+
+wacc_clock_manager:
+  n_slew_history: 25
+  trs: 687.0
+  use_skew_compensation: 1
+
+arm:
+  motion:
+    trajectory_max:
+      accel_m: 0.4
+      vel_m: 0.3
+  homing_force_N:
+  - -80
+  - 80
+
+lift:
+  motion:
+    trajectory_max:
+      accel_m: 0.3
+      vel_m: 0.15
+  i_feedforward: 0.80
+
+head_pan:
+  motion:
+    trajectory_max:
+      accel: 10.0
+      vel: 4.0
+  baud: 115200
+
+
+head_tilt:
+  motion:
+    trajectory_max:
+      accel: 10.0
+      vel: 4.0
+  baud: 115200
+
+wrist_yaw:
+  motion:
+    trajectory_max:
+      accel: 10.0
+      vel: 4.0
+  baud: 115200
+  retry_on_comm_failure: 1
+  verbose: 0
+
+base:
+  motion:
+    trajectory_translate_max:
+      accel_m: 1.0
+      vel_m: 1.0
+    trajectory_rotate_max:
+      accel_r: 4.0
+      vel_r: 2.0
+
+stretch_gripper:
+  baud: 115200
+  req_calibration: 0
+
+head:
+  use_group_sync_read: 1
+  baud: 115200
+
+
