@@ -15,5 +15,6 @@ This directory contains recommended factory updates.
 | [009_STEPPER_STARTUP](./009_STEPPER_STARTUP/README.md) | Fix bug related to configuration of stepper controllers at startup | Prior to 1040 | 1/4/2020 |
 | [010_WRIST_SWAP](./010_WRIST_SWAP/README.md) | Updating system YAML after installing a new wrist module | 1013 | 1/27/2021 |
 | [011_HEAD_TILT_SWAP](./011_HEAD_TILT_SWAP/README.md) | Updating the robot calibration and camera data after install a new head tilt module | 1007 | 2/8/21 |
+| [012_DEX_WRIST](./012_DEX_WRIST/README.md) | Installing and configuring the beta unit of the dexterous wrist | x | 2/17/21|
 
 
