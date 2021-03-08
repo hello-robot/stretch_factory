@@ -2,7 +2,7 @@
 
 ## **Background**
 
-This update installs and configures the Beta unit of the Dexterous Wrist. The procedure involves
+This update installs and configures the Beta unit of the Stretch Dex Wrist - Beta. The procedure involves
 
 1. Install Stretch software packages
 2. Install the new Wacc board
@@ -11,25 +11,32 @@ This update installs and configures the Beta unit of the Dexterous Wrist. The pr
 5. Update the Dynamixel servo baud rates
 6. Update the robot YAML
 7. Test the wrist with the XBox controller
+8. Configure for use in ROS
 
 ![](./images/dex_wrist_A.png)
 
-## Install Stretch Software Packages
+## Install Stretch Body Software Packages
 
-You'll be installing a beta version of relevant Stretch packages
+You'll be installing a beta version of relevant Stretch Body packages
 
 ```bash
 >>$ cd ~/repos
->>$ mkdir beta
->>$ cd beta
->>$ git clone --branch dexterous_wrist https://github.com/hello-robot/stretch_body
->>$ git clone --branch dex_wrist https://github.com/hello-robot/stretch_factory
+>>$ mkdir dex_wrist
+>>$ cd dex_wrist
+
+>>$ git clone --branch pluggable_end_effectors https://github.com/hello-robot/stretch_body
+>>$ git clone https://github.com/hello-robot/stretch_factory
+>>$ git clone --branch pluggable_end_effectors https://github.com/hello-robot/stretch_tool_share
+
 >>$ cd stretch_body/body
 >>$ ./local_install.sh
 >>$ cd ../tools
 >>$ ./local_install.sh
->>$ cd ../../stretch_factory/python/
+
+>>$ cd ../../stretch_tool_share/python
 >>$ ./local_install.sh
+
+>>$ pip2 install hello-robot-stretch-factory
 ```
 
 ## Install the new Wacc board
@@ -42,7 +49,7 @@ You'll be installing a beta version of relevant Stretch packages
 >>$ sudo cp *.rules /etc/hello-robot/$HELLO_FLEET_ID/udev
 ```
 
-Now power down the robot.  Power it back oncheck that the new wrist shows up on the bus
+Now power down the robot.  Power it back on and check that the new wrist shows up on the bus
 
 ```bash
 >>$ ls /dev/hello-dynamixel-wrist
@@ -90,7 +97,7 @@ d: set D3 off
 
 ```
 
-Finally, jog the wrist yaw joint:
+Finally, home the wrist yaw joint to ensure that it is working.
 
 ```bash
 >>$ stretch_wrist_yaw_home.py 
@@ -198,56 +205,53 @@ Success at changing baud
 
 ## Update the robot YAML
 
-The new wrist requires a number of updates to the robot YAML.  
+The new wrist requires a number of updates to the robot YAML
 
-```bash
->>$ cd ~/repos/stretch_factory/updates/012_DEX_WRIST
->>$ cat stretch_re1_tool_params.yaml >> ~/stretch_user/$HELLO_FLEET_ID/stretch_re1_tool_params.yaml
->>$ cat stretch_re1_user_params.yaml >> ~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml
-```
+YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. 
 
-YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. For example:
+Add the following to `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
 
 ```yaml
-#Original YAML
-end_of_arm:
-  devices:
-    stretch_gripper:
-      py_class_name: StretchGripper
-      py_module_name: stretch_body.stretch_gripper
+factory_params: stretch_re1_factory_params.yaml
 
-# New YAML
-end_of_arm:
-  use_group_sync_read: 1
-  retry_on_comm_failure: 1
+params:
+  - stretch_tool_share.stretch_dex_wrist_beta.params
+
+head:
   baud: 115200
-  devices:
-    wrist_pitch:
-      py_class_name: WristPitch
-      py_module_name: stretch_body.wrist_pitch
-    wrist_roll:
-      py_class_name: WristRoll
-      py_module_name: stretch_body.wrist_roll
-```
 
-Becomes:
-
-```yaml
-# New YAML
 end_of_arm:
-  use_group_sync_read: 1
-  retry_on_comm_failure: 1
   baud: 115200
-  devices:
-    wrist_pitch:
-      py_class_name: WristPitch
-      py_module_name: stretch_body.wrist_pitch
-    wrist_roll:
-      py_class_name: WristRoll
-      py_module_name: stretch_body.wrist_roll
-    stretch_gripper:
-      py_class_name: StretchGripper
-      py_module_name: stretch_body.stretch_gripper
+  tool: tool_stretch_dex_wrist
+  #tool: tool_stretch_gripper
+
+robot:
+  use_collision_manager: 1
+
+head_pan:
+  baud: 115200
+
+head_tilt:
+  baud: 115200
+
+wrist_yaw:
+  baud: 115200
+
+stretch_gripper:
+  baud: 115200
+  range_t:
+    - 0
+    - 6667
+  zero_t: 3817
+
+lift:
+  i_feedforward: 0.75
+
+hello-motor-lift:
+  gains:
+    i_safety_feedforward: 0.75
+
+
 ```
 
 Each user account on Stretch will need to update their YAML as well. It is recommended practice to stored a reference of the YAML in /etc so that it will be available to other (new) user  accounts.
@@ -264,7 +268,31 @@ Try out the new wrist! Note that the new key mapping does not allow for control 
 ![](./images/stretch_re1_dex_wrist_teleop_guide.png)
 
 ```bash
->>$ stretch_xbox_controller_teleop.py --dex_wrist
+>>$ stretch_xbox_controller_teleop.py
 ```
 
 A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
+
+## Configure for use in ROS
+
+```bash
+>>$ cd catkin_ws/src/stretch_ros/
+>>$ git checkout feature/pluggable_end_effector
+>>$ cd stretch_description
+
+>>$ cp ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description/urdf/stretch_dex_wrist_beta.xacro  urdf/
+>>$ cp ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description/meshes/*.STL meshes/
+
+>>$ rosrun stretch_calibration update_urdf_after_xacro_change.sh
+
+```
+
+Now check that the wrist appears in RVIZ and can be controlled from the keyboard interface:
+
+```bash
+>>$ roslaunch stretch_calibration simple_test_head_calibration.launch
+```
+
+
+
+![](./images/dex_wrist_rviz.png)
