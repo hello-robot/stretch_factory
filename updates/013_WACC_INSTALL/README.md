@@ -2,10 +2,14 @@
 
 ## **Background**
 
-This update installs and configures a new Wacc board. You will need
+This update installs and configures a new Wacc (Wrist + Accelerometer) board. You will need
 
 - Replacement Wacc board
 - USB-A to USB-micro cable
+- 1.5mm Hex wrench
+- 2.5mm Hex wrench
+- Small flat head screw driver or similar
+- Loctite 242 (blue)
 
 
 
@@ -19,7 +23,7 @@ First, on the robot run:
 >>$ chmod a+rw $HELLO_FLEET_PATH/$HELLO_FLEET_ID/udev/*
 ```
 
-Now attach the USB cable into a USB port of the robot trunk. Run the updating tool. When it prompts to 'Plug / Reset' plug in the cable to the new Wacc board (or unplug then plug back in.)
+Now attach the USB cable into a USB port of the robot trunk. Run the updating tool as shown below. When it prompts to 'Plug / Reset', plug the USB cable in to the new Wacc board (or if already plugged in, unplug then plug back in.)
 
 ```bash
 >>$ cd stretch_factory/updates/013_WACC_INSTALL
@@ -67,23 +71,33 @@ Overwriting existing entry...
 
 ## Install the new Wacc board
 
-You will need the following tools
-
-* 1.5mm Hex wrench
-* 2.5mm Hex wrench
-* Small flat head screw driver or similar
-* Loctite 242 (blue)
-
 1. Power down the robot from Ubuntu and turn off the main power switch.
-2. Manually pose the lift height and arm such that the wrist can sit on a table top.
+
+2. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly.3
+
 3. Using the 1.5mm wrench, remove the two M2 bolts holding the plastic cap to the end of the wrist 
-4. Using the 2.5mm wrench, remove the two M4 bolts holding the wrist module to the end of arm
-5. Slide the wrist module out of the arm tube while supporting the weight of the module so that it remains parallel to the ground.  Take care that the Wacc board clears the surrounding metal structure.
-6. With the screw driver, push back and dislodge the JST power cable and USB cable from the Wacc board.
+
+   ![](./images/end_cap_remove.png)
+
+4. Using the 2.5mm wrench, remove the two M4 bolts (blue arrows) holding the wrist module to the end of arm
+
+5. Slide the wrist module out of the arm tube while supporting the weight of the module so that it remains parallel to the ground.  Take care that the Wacc board clears the surrounding metal structure (shown in blue)
+
+![](./images/wrist_module_remove.png)
+
+
+
+6. With the screw driver, push back and dislodge the JST power cable and USB cable from the back of the Wacc board. Remove the JST servo cable at the front of the board.
+
 7. Using the 1.5mm wrench, remove the 4 M2 bolts holding the Wacc board to the sheetmetal frame. 
+
 8. Attach the replacement board onto the sheetmetal frame, first dipping the tips of the 4 M2 bolts into a drop of Loctite
-9. Reattach the USB and power cables and carefully slide the wrist module back into the arm. 
-10. Secure the wrist module to the arm with the 4 M4 bolts and the plastic cap with the two M2 bolts. Apply Loctite to the bolts first.
+
+9. Reattach the USB and power cables and carefully slide the wrist module back into the arm. Ensure that the cables are fully seated.
+
+![](./images/pcba_remove.png)
+
+10. Apply Loctite to the two M4 bolts. Secure the wrist module to the arm with the bolts. then attach the plastic cap with the two M2 bolts. 
 
 
 
