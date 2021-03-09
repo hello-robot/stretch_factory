@@ -73,6 +73,7 @@ add_arduino('hello-wacc')
 
 #Now copy over udev and restart USB
 subprocess.call('sudo cp $HELLO_FLEET_PATH/$HELLO_FLEET_ID/udev/*.rules /etc/udev/rules.d',shell=True)
+subprocess.call('sudo cp $HELLO_FLEET_PATH/$HELLO_FLEET_ID/udev/*.rules /etc/hello-robot/$HELLO_FLEET_ID/udev',shell=True)
 subprocess.call('sudo udevadm control --reload',shell=True)
 
 

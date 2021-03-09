@@ -17,7 +17,7 @@ This update installs and configures the Beta unit of the Stretch Dex Wrist - Bet
 
 ## Install Stretch Body Software Packages
 
-You'll be installing a beta version of relevant Stretch Body packages
+You'll be installing a local beta version of relevant Stretch Body packages
 
 ```bash
 >>$ cd ~/repos
@@ -43,92 +43,7 @@ You'll be installing a beta version of relevant Stretch Body packages
 
 ## Install the new Wacc board
 
-## Configure the Wacc board
-
-```bash
->>$ cd ~/repos/stretch_factory/updates/012_DEX_WRIST
->>$ sudo cp *.rules /etc/udev/rules.d
->>$ sudo cp *.rules /etc/hello-robot/$HELLO_FLEET_ID/udev
-```
-
-Now power down the robot.  Power it back on and check that the new wrist shows up on the bus
-
-```bash
->>$ ls /dev/hello-dynamixel-wrist
->>$ ls /dev/hello-wacc
-```
-
-Then check that the Wacc is reporting sensor data back:
-
-```bash
->>$  stretch_wacc_jog.py 
-For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
-
------- MENU -------
-m: menu
-r: reset board
-a: set D2 on
-b: set D2 off
-c: set D3 on
-d: set D3 off
--------------------
-
-------------------------------
-Ax (m/s^2) 9.8684213638
-Ay (m/s^2) 0.506848096848
-Az (m/s^2) 0.361166000366
-A0 381
-D0 (In) 1
-D1 (In) 1
-D2 (Out) 0
-D3 (Out) 0
-Single Tap Count 25
-State  0
-Debug 0
-Timestamp 1601320914.65
-Board version: Wacc.Guthrie.V1
-Firmware version: Wacc.v0.0.1p0
------- MENU -------
-m: menu
-r: reset board
-a: set D2 on
-b: set D2 off
-c: set D3 on
-d: set D3 off
--------------------
-
-```
-
-Finally, home the wrist yaw joint to ensure that it is working.
-
-```bash
->>$ stretch_wrist_yaw_home.py 
-For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
-
-Moving to first hardstop...
-Contact at position: -3029
-Hit first hardstop, marking to zero ticks
-Raw position: 14
-Moving to calibrated zero: (rad)
-
-```
-
-### Update Wacc Calibration
-
-```bash
->>$ RE1_wacc_calibrate.py
-RE1_wacc_calibrate.py 
-Calibrating Wacc. Ensure arm is retracted and level to ground
-Hit enter when ready
-
-Itr 0 Val 9.59977857901
-...
-Itr 99 Val 10.1095601333
-Got a average value of 10.1372113882
-Gravity scalar of 0.967391 within bounds of 0.900000 to 1.100000
-Writing yaml...
-
-```
+See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Attach the Dexterous Wrist
 
@@ -158,7 +73,7 @@ Finally, attach the body of the pitch servo to the mounting bracket using the 3 
 
 ## Update the Dynamixel servo baud rates
 
-First, check that the servos appear on the bus:
+First, check that the four wrist servos appear on the bus:
 
 ```bash
 >>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-wrist --baud 115200
@@ -178,7 +93,7 @@ Scanning bus /dev/hello-dynamixel-wrist at baud rate 57600
 ...
 ```
 
-The new wrist requires moving to 115200 Baud communication with the Stretch Dynamixel servos from the previous 57600.
+The new wrist requires moving to 115200 Baud communication for all servos from the previous 57600.
 
 ```bash
 >>$ RE1_dynamixel_set_baud.py /dev/hello-dynamixel-head 11 115200
