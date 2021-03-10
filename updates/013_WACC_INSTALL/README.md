@@ -23,7 +23,12 @@ First, on the robot run:
 >>$ chmod a+rw $HELLO_FLEET_PATH/$HELLO_FLEET_ID/udev/*
 ```
 
-Now attach the USB cable into a USB port of the robot trunk. Run the updating tool as shown below. When it prompts to 'Plug / Reset', plug the USB cable in to the new Wacc board (or if already plugged in, unplug then plug back in.)
+Now attach the USB cable into a USB port of the robot trunk. Run the updating tool as shown below. You will
+- Plug in USB when prompted
+- Hit enter
+- Unplug and plug in USB when prompted
+- Hit enter
+
 
 ```bash
 >>$ cd stretch_factory/updates/013_WACC_INSTALL
@@ -73,7 +78,7 @@ Overwriting existing entry...
 
 1. Power down the robot from Ubuntu and turn off the main power switch.
 
-2. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly.3
+2. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly
 
 3. Using the 1.5mm wrench, remove the two M2 bolts holding the plastic cap to the end of the wrist 
 
@@ -91,9 +96,11 @@ Overwriting existing entry...
 
 7. Using the 1.5mm wrench, remove the 4 M2 bolts holding the Wacc board to the sheetmetal frame. 
 
-8. Attach the replacement board onto the sheetmetal frame, first dipping the tips of the 4 M2 bolts into a drop of Loctite
+8. Attach the replacement board onto the sheetmetal frame using the provided 4 M2 bolts
 
-9. Reattach the USB and power cables and carefully slide the wrist module back into the arm. Ensure that the cables are fully seated.
+9. Reattach the USB and power cables to back of Wacc
+10. Carefully route the Dynamixel servo cable as shown [X]
+11. and carefully slide the wrist module back into the arm. Ensure that the cables are fully seated.
 
 ![](./images/pcba_remove.png)
 
@@ -183,4 +190,8 @@ Gravity scalar of 0.967391 within bounds of 0.900000 to 1.100000
 Writing yaml...
 
 ```
+Note: If the RE1* tools are not present you can install them as
 
+```bash
+>>$ pip2 install hello-robot-stretch-factory
+```
