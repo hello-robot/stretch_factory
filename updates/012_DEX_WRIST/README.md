@@ -43,6 +43,8 @@ You'll be installing a local beta version of relevant Stretch Body packages
 
 ## Install the new Wacc board
 
+Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot.
+
 See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Attach the Dexterous Wrist
@@ -192,25 +194,89 @@ A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_
 
 ## Configure for use in ROS
 
+First pull down the new stretch_ros branch and copy in the tool description:
+
 ```bash
 >>$ cd ~/catkin_ws/src/stretch_ros/
 >>$ git pull
 >>$ git checkout feature/pluggable_end_effector
->>$ cd stretch_description
 
->>$ cp ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description/urdf/stretch_dex_wrist_beta.xacro  urdf/
->>$ cp ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description/meshes/*.STL meshes/
+>>$ cd ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description
+>>$ cp urdf/stretch_dex_wrist_beta.xacro ~/catkin_ws/src/stretch_ros/stretch_description/urdf
+>>$ cp meshes/*.STL ~/catkin_ws/src/stretch_ros/stretch_description/urdf/meshes
+```
 
+Now configure `stretch_description.xacro` to use the StretchDexWrist tool:
+
+```bash
+>>$ emacs ~/catkin_ws/src/stretch_ros/stretch_description/urdf/stretch_description.xacro
+```
+
+to read,
+
+```bash
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_description">
+  <xacro:include filename="stretch_dex_wrist_beta.xacro" />
+  <xacro:include filename="stretch_main.xacro" />
+  <xacro:include filename="stretch_aruco.xacro" />
+  <xacro:include filename="stretch_d435i.xacro" />
+  <xacro:include filename="stretch_laser_range_finder.xacro" />
+  <xacro:include filename="stretch_respeaker.xacro" />
+</robot>
+```
+
+Update your URDF and export the URDF for Stretch Body to use
+
+```bash
 >>$ rosrun stretch_calibration update_urdf_after_xacro_change.sh
-
+>>$ cd ~/catkin_ws/src/stretch_ros/stretch_description/urdf
+>>$ ./export_urdf.sh
 ```
 
 Now check that the wrist appears in RVIZ and can be controlled from the keyboard interface:
 
 ```bash
 >>$ roslaunch stretch_calibration simple_test_head_calibration.launch
+...
+---------- KEYBOARD TELEOP MENU -----------|
+|                                           |
+|                 i HEAD UP                 |
+|     j HEAD LEFT          l HEAD RIGHT     |
+|                , HEAD DOWN                |
+|                                           |
+|                                           |
+|  7 BASE ROTATE LEFT   9 BASE ROTATE RIGHT |
+|         home                page-up       |
+|                                           |
+|                                           |
+|                 8 LIFT UP                 |
+|                 up-arrow                  |
+|    4 BASE FORWARD         6 BASE BACK     |
+|      left-arrow           right-arrow     |
+|                2 LIFT DOWN                |
+|                down-arrow                 |
+|                                           |
+|                                           |
+|                 w ARM OUT                 |
+|   a WRIST FORWARD        d WRIST BACK     |
+|                 x ARM IN                  |
+|                                           |
+|                                           |
+|   c PITCH FORWARD        v PITCH BACK     |
+|    o ROLL FORWARD         p ROLL BACK     |
+|              5 GRIPPER CLOSE              |
+|              0 GRIPPER OPEN               |
+|                                           |
+|   step size:  b BIG, m MEDIUM, s SMALL    |
+|                  q QUIT                   |
+|                                           |
+|-------------------------------------------|
 ```
 
 
 
 ![](./images/dex_wrist_rviz.png)
+
+
+
