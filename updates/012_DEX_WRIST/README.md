@@ -194,13 +194,13 @@ First pull down the new stretch_ros branch and copy in the tool description:
 
 >>$ cd ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description
 >>$ cp urdf/stretch_dex_wrist_beta.xacro ~/catkin_ws/src/stretch_ros/stretch_description/urdf
->>$ cp meshes/*.STL ~/catkin_ws/src/stretch_ros/stretch_description/urdf/meshes
+>>$ cp meshes/*.STL ~/catkin_ws/src/stretch_ros/stretch_description/meshes
 ```
 
 Now configure `stretch_description.xacro` to use the StretchDexWrist tool:
 
 ```bash
->>$ emacs ~/catkin_ws/src/stretch_ros/stretch_description/urdf/stretch_description.xacro
+>>$ nano ~/catkin_ws/src/stretch_ros/stretch_description/urdf/stretch_description.xacro
 ```
 
 to read,
@@ -217,7 +217,7 @@ to read,
 </robot>
 ```
 
-Update your URDF and export the URDF for Stretch Body to use
+Update your URDF (Ctrl-C to exit) and then export the URDF for Stretch Body to use
 
 ```bash
 >>$ rosrun stretch_calibration update_urdf_after_xacro_change.sh
@@ -243,6 +243,9 @@ Now check that the wrist appears in RVIZ and can be controlled from the keyboard
 
 ```bash
 >>$ roslaunch stretch_calibration simple_test_head_calibration.launch
+'''
+
+'''
 ...
 ---------- KEYBOARD TELEOP MENU -----------|
 |                                           |
