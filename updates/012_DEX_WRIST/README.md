@@ -34,7 +34,6 @@ You'll be installing a local beta version of relevant Stretch Body packages
 >>$ ./local_install.sh
 >>$ pip2 install urdfpy
 
->>$ pip2 install hello-robot-stretch-tool-share
 >>$ cd ../../stretch_tool_share/python
 >>$ ./local_install.sh
 
