@@ -130,6 +130,7 @@ The new wrist requires a number of updates to the robot YAML
 
 YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. 
 
+Note: Clean up tools yaml / stretch gripper end of arm
 Add the following to `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
 
 ```yaml
@@ -182,18 +183,6 @@ Each user account on Stretch will need to update their YAML as well. It is recom
 >>$ sudo cp *.yaml /etc/hello-robot/$HELLO_FLEET_ID
 ```
 
-## Test the wrist with the XBox Controller
-
-Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
-
-![](./images/stretch_re1_dex_wrist_teleop_guide.png)
-
-```bash
->>$ stretch_xbox_controller_teleop.py
-```
-
-A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
-
 ## Configure for use in ROS
 
 First pull down the new stretch_ros branch and copy in the tool description:
@@ -235,6 +224,20 @@ Update your URDF and export the URDF for Stretch Body to use
 >>$ cd ~/catkin_ws/src/stretch_ros/stretch_description/urdf
 >>$ ./export_urdf.sh
 ```
+
+## Test the wrist with the XBox Controller
+
+Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
+
+![](./images/stretch_re1_dex_wrist_teleop_guide.png)
+
+```bash
+>>$ stretch_xbox_controller_teleop.py
+```
+
+A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
+
+## Test the wrist with RViz
 
 Now check that the wrist appears in RVIZ and can be controlled from the keyboard interface:
 
