@@ -48,6 +48,8 @@ Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be
 See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Attach the Dexterous Wrist
+NOtes
+* flatheads on attach, cable routing through wrist
 
 First, remove the standard Stretch Gripper [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
