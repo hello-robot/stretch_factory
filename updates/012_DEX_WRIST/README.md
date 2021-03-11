@@ -48,6 +48,8 @@ Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be
 See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Attach the Dexterous Wrist
+NOtes
+* flatheads on attach, cable routing through wrist
 
 First, remove the standard Stretch Gripper [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
@@ -128,6 +130,7 @@ The new wrist requires a number of updates to the robot YAML
 
 YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. 
 
+Note: Clean up tools yaml / stretch gripper end of arm
 Add the following to `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
 
 ```yaml
@@ -180,18 +183,6 @@ Each user account on Stretch will need to update their YAML as well. It is recom
 >>$ sudo cp *.yaml /etc/hello-robot/$HELLO_FLEET_ID
 ```
 
-## Test the wrist with the XBox Controller
-
-Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
-
-![](./images/stretch_re1_dex_wrist_teleop_guide.png)
-
-```bash
->>$ stretch_xbox_controller_teleop.py
-```
-
-A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
-
 ## Configure for use in ROS
 
 First pull down the new stretch_ros branch and copy in the tool description:
@@ -203,13 +194,13 @@ First pull down the new stretch_ros branch and copy in the tool description:
 
 >>$ cd ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description
 >>$ cp urdf/stretch_dex_wrist_beta.xacro ~/catkin_ws/src/stretch_ros/stretch_description/urdf
->>$ cp meshes/*.STL ~/catkin_ws/src/stretch_ros/stretch_description/urdf/meshes
+>>$ cp meshes/*.STL ~/catkin_ws/src/stretch_ros/stretch_description/meshes
 ```
 
 Now configure `stretch_description.xacro` to use the StretchDexWrist tool:
 
 ```bash
->>$ emacs ~/catkin_ws/src/stretch_ros/stretch_description/urdf/stretch_description.xacro
+>>$ nano ~/catkin_ws/src/stretch_ros/stretch_description/urdf/stretch_description.xacro
 ```
 
 to read,
@@ -226,7 +217,7 @@ to read,
 </robot>
 ```
 
-Update your URDF and export the URDF for Stretch Body to use
+Update your URDF (Ctrl-C to exit) and then export the URDF for Stretch Body to use
 
 ```bash
 >>$ rosrun stretch_calibration update_urdf_after_xacro_change.sh
@@ -234,10 +225,27 @@ Update your URDF and export the URDF for Stretch Body to use
 >>$ ./export_urdf.sh
 ```
 
+## Test the wrist with the XBox Controller
+
+Try out the new wrist! Note that the new key mapping does not allow for control of the head. 
+
+![](./images/stretch_re1_dex_wrist_teleop_guide.png)
+
+```bash
+>>$ stretch_xbox_controller_teleop.py
+```
+
+A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
+
+## Test the wrist with RViz
+
 Now check that the wrist appears in RVIZ and can be controlled from the keyboard interface:
 
 ```bash
 >>$ roslaunch stretch_calibration simple_test_head_calibration.launch
+'''
+
+'''
 ...
 ---------- KEYBOARD TELEOP MENU -----------|
 |                                           |
