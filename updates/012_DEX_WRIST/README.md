@@ -266,3 +266,56 @@ The menu interface is:
 
 
 
+# Using the Stretch Dex Wrist
+
+Additional care should be taken when working with the Dex Wrist as it is now easier to accidentally collide the wrist and gripper with the robot, particularly during lift descent. 
+
+We've implemented a very coarse collision avoidance behavior in Stretch Body that is turned on by default. It is conservative and doesn't fully prevent collisions however. The collision avoidance can be turned off in the user YAML by:
+
+```yaml
+collision_stretch_dex_wrist_to_base:
+  enabled: 0
+
+collision_stretch_dex_wrist_to_self:
+  enabled: 0
+
+```
+
+You can jog the individual joints of the wrist using the tool:
+
+```bash
+>>$ stretch_dex_wrist_jog.py --pitch
+```
+
+Control of the Stretch Dex Wrist uses the same interfaces as the rest of the Stretch Body Robot joints.  For example:
+
+```python
+import stretch_body.robot
+robot=stretch_body.robot.Robot()
+robot.startup()
+
+#Move arm to safe manipulation location
+robot.stow()
+robot.lift.move_to(0.4)
+robot.push_command()
+time.sleep(2.0)
+
+#Pose the Dex Wrist
+robot.end_of_arm.move_to('wrist_yaw',0)
+robot.end_of_arm.move_to('wrist_pitch',0)
+robot.end_of_arm.move_to('wrist_roll',0)
+robot.end_of_arm.move_to('stretch_gripper',50)
+time.sleep(2.0)
+
+#Go back to stow and shutdown
+robot.stow()
+robot.stop()
+
+```
+
+
+
+For reference, the parameters for the Stretch Dex Wrist (which can be overriden in the user YAML) are found
+
+ at `.local/lib/python2.7/site-packages/stretch_tool_share/stretch_dex_wrist_beta/params.py`
+
