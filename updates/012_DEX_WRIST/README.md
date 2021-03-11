@@ -4,9 +4,8 @@
 
 This update installs and configures the Beta unit of the Stretch Dex Wrist - Beta. The procedure involves
 
-1. Install Stretch software packages
-2. Install the new Wacc board
-3. Configure the new Wacc board
+2. Install and configure the new Wacc board
+3. Install Stretch software packages
 4. Attach the Dexterous Wrist
 5. Update the Dynamixel servo baud rates
 6. Update the robot YAML
@@ -14,6 +13,12 @@ This update installs and configures the Beta unit of the Stretch Dex Wrist - Bet
 8. Configure for use in ROS
 
 ![](./images/dex_wrist_A.png)
+
+## Install and configure the new Wacc board
+
+Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot.
+
+See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Install Stretch Body Software Packages
 
@@ -25,7 +30,6 @@ You'll be installing a local beta version of relevant Stretch Body packages
 >>$ cd dex_wrist
 
 >>$ git clone --branch feature/pluggable_end_effectors  https://github.com/hello-robot/stretch_body
->>$ git clone https://github.com/hello-robot/stretch_factory
 >>$ git clone --branch feature/pluggable_end_effectors https://github.com/hello-robot/stretch_tool_share
 
 >>$ cd stretch_body/body
@@ -41,23 +45,17 @@ You'll be installing a local beta version of relevant Stretch Body packages
 >>$ pip2 install hello-robot-stretch-factory
 ```
 
-## Install the new Wacc board
 
-Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot.
-
-See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
 
 ## Attach the Dexterous Wrist
-NOtes
-* flatheads on attach, cable routing through wrist
 
-First, remove the standard Stretch Gripper [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
+First, remove the standard Stretch Gripper if it is still attached [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
 Next, note where the forward direction is on the wrist yaw tool plate. The forward direction is indicated by the  additional alignment hole that is just outside the bolt pattern (shown pointing down in the image)
 
 ![](./images/dex_wrist_C.png)
 
-Next, using a Philips screwdriver, attache the wrist mount bracket to the bottom of the tool plate using the provided  M2 bolts. 
+Next, using a Philips screwdriver, attach the wrist mount bracket to the bottom of the tool plate using the provided  M2 bolts. 
 
 **NOTE: ensure that the forward direction of the bracket (also indicated by an alignment hole) matches the forward direction of the tool plate.**
 
@@ -71,33 +69,13 @@ Next, raise the wrist module up vertically into the mounting bracket, then slidi
 
 ![![]](./images/dex_wrist_F.png)
 
-Finally, attach the body of the pitch servo to the mounting bracket using the 3 M2.5 screws provided.
+Finally, attach the body of the pitch servo to the mounting bracket using the 3 M2.5 screws provided. (**NOTE: Flat head screws provided, socket head screws shown below.)**
 
 ![](./images/dex_wrist_E.png)
 
 ## Update the Dynamixel servo baud rates
 
-First, check that the four wrist servos appear on the bus:
-
-```bash
->>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-wrist --baud 115200
-Scanning bus /dev/hello-dynamixel-wrist at baud rate 115200
-----------------------------------------------------------
-...
-[Dynamixel ID:014] ping Succeeded. Dynamixel model number : 1060
-[Dynamixel ID:015] ping Succeeded. Dynamixel model number : 1120
-[Dynamixel ID:016] ping Succeeded. Dynamixel model number : 1020
-...
-
->>$ RE1_dynamixel_id_scan.py /dev/hello-dynamixel-wrist --baud 57600
-Scanning bus /dev/hello-dynamixel-wrist at baud rate 57600
-----------------------------------------------------------
-...
-[Dynamixel ID:013] ping Succeeded. Dynamixel model number : 1060
-...
-```
-
-The new wrist requires moving to 115200 Baud communication for all servos from the previous 57600.
+The new wrist requires moving to 115200 Baud communication for all Dynamixel servos from the previous 57600.
 
 ```bash
 >>$ RE1_dynamixel_set_baud.py /dev/hello-dynamixel-head 11 115200
@@ -130,8 +108,7 @@ The new wrist requires a number of updates to the robot YAML
 
 YAML doesn't allow definition of multiple fields with the same name. Depending on what is already listed in your YAML you may need to manually edit and merge fields. 
 
-Note: Clean up tools yaml / stretch gripper end of arm
-Add the following to `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
+Add the following to you your  `~/stretch_user/$HELLO_FLEET_ID/stretch_re1_user_params.yaml`
 
 ```yaml
 factory_params: stretch_re1_factory_params.yaml
@@ -217,7 +194,7 @@ to read,
 </robot>
 ```
 
-Update your URDF (Ctrl-C to exit) and then export the URDF for Stretch Body to use
+Update your URDF and then export the URDF for Stretch Body to use  (you may need to Ctrl-C to exit `rosrun`)
 
 ```bash
 >>$ rosrun stretch_calibration update_urdf_after_xacro_change.sh
@@ -243,10 +220,11 @@ Now check that the wrist appears in RVIZ and can be controlled from the keyboard
 
 ```bash
 >>$ roslaunch stretch_calibration simple_test_head_calibration.launch
-'''
+```
 
-'''
-...
+The menu interface is:
+
+```
 ---------- KEYBOARD TELEOP MENU -----------|
 |                                           |
 |                 i HEAD UP                 |

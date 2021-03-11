@@ -78,31 +78,34 @@ Overwriting existing entry...
 
 1. Power down the robot from Ubuntu and turn off the main power switch.
 
-2. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly
+2. Remove the standard Stretch Gripper if it is still attached [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
 
-3. Using the 1.5mm wrench, remove the two M2 bolts holding the plastic cap to the end of the wrist 
+3. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly
+
+4. Using the 1.5mm wrench, remove the two M2 bolts holding the plastic cap to the end of the wrist 
 
    ![](./images/end_cap_remove.png)
 
-4. Using the 2.5mm wrench, remove the two M4 bolts (blue arrows) holding the wrist module to the end of arm
+5. Using the 2.5mm wrench, remove the two M4 bolts (blue arrows) holding the wrist module to the end of arm
 
-5. Slide the wrist module out of the arm tube while supporting the weight of the module so that it remains parallel to the ground.  Take care that the Wacc board clears the surrounding metal structure (shown in blue)
+6. Slide the wrist module out of the arm tube while supporting the weight of the module so that it remains parallel to the ground.  Take care that the Wacc board clears the surrounding metal structure (shown in blue)
 
 ![](./images/wrist_module_remove.png)
 
 
 
 6. With the screw driver, push back and dislodge the JST power cable and USB cable from the back of the Wacc board. Remove the JST servo cable at the front of the board.
-
 7. Using the 1.5mm wrench, remove the 4 M2 bolts holding the Wacc board to the sheetmetal frame. 
-
 8. Attach the replacement board onto the sheetmetal frame using the provided 4 M2 bolts
 
-9. Reattach the USB and power cables to back of Wacc
-10. Carefully route the Dynamixel servo cable as shown [X]
-11. and carefully slide the wrist module back into the arm. Ensure that the cables are fully seated.
-
 ![](./images/pcba_remove.png)
+
+6. Reattach the USB and power cables to back of Wacc
+7. Carefully route the Dynamixel servo cable as shown 
+
+![](./images/cable_route.png)
+
+11. Carefully slide the wrist module back into the arm. Ensure that the cables are fully seated.
 
 10. Apply Loctite to the two M4 bolts. Secure the wrist module to the arm with the bolts. then attach the plastic cap with the two M2 bolts. 
 
