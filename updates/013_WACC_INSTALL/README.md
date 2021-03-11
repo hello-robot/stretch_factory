@@ -101,7 +101,7 @@ Overwriting existing entry...
 ![](./images/pcba_remove.png)
 
 6. Reattach the USB and power cables to back of Wacc
-7. Carefully route the Dynamixel servo cable as shown 
+7. Carefully route the Dynamixel servo cable out of the arm as shown such that no cables are pinched when attaching the plastic cap.
 
 ![](./images/cable_route.png)
 
