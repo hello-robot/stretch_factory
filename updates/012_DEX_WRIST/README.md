@@ -31,18 +31,21 @@ You'll be installing a local beta version of relevant Stretch Body packages
 
 >>$ git clone --branch feature/pluggable_end_effectors  https://github.com/hello-robot/stretch_body
 >>$ git clone --branch feature/pluggable_end_effectors https://github.com/hello-robot/stretch_tool_share
-
+>>$ git clone  https://github.com/hello-robot/stretch_factory
+>>
 >>$ cd stretch_body/body
 >>$ ./local_install.sh
 >>$ cd ../tools
 >>$ ./local_install.sh
 >>$ pip2 install urdfpy
+>>
 
 >>$ pip2 install hello-robot-stretch-tool-share
 >>$ cd ../../stretch_tool_share/python
 >>$ ./local_install.sh
 
->>$ pip2 install hello-robot-stretch-factory
+>>$ cd ~/repos/dex_wrist/stretch_factory/python
+>> ./local_install.sh
 ```
 
 
