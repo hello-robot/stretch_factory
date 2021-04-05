@@ -4,13 +4,13 @@
 
 This update installs and configures the Beta unit of the Stretch Dex Wrist - Beta. The procedure involves
 
-2. Install and configure the new Wacc board
-3. Install Stretch software packages
-4. Attach the Dexterous Wrist
-5. Update the Dynamixel servo baud rates
-6. Update the robot YAML
-7. Test the wrist with the XBox controller
-8. Configure for use in ROS
+1. Install and configure the new Wacc board
+2. Install Stretch software packages
+3. Attach the Dexterous Wrist
+4. Update the Dynamixel servo baud rates
+5. Update the robot YAML
+6. Test the wrist with the XBox controller
+7. Configure for use in ROS
 
 ![](./images/dex_wrist_A.png)
 
