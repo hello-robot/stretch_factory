@@ -19,13 +19,6 @@ group.add_argument("--update_to", help="Update to a specific firmware version",a
 group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch",action="store_true")
 group.add_argument("--revert", help="Revert to older ",action="store_true")
 
-# group.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
-# group.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
-# group.add_argument("--arm", help="Upload Arm Stepper firmware",action="store_true")
-# group.add_argument("--lift", help="Upload Lift Stepper firmware",action="store_true")
-# group.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware",action="store_true")
-# group.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware",action="store_true")
-
 parser.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
 parser.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
 parser.add_argument("--arm", help="Upload Arm Stepper firmware",action="store_true")
@@ -44,7 +37,7 @@ The Stretch Firmware is managed by Git tags.
 The repo is tagged with versions as <Board>.v<Major>.<Minor>.<Bugfix><Protocol>
 For example Pimu.v0.0.1p0
 
-This same version is included the file Common.h and is burned to the board EEPROM. It 
+This same version is included the Arduino file Common.h and is burned to the board EEPROM. It 
 can be read from Stretch Body as <device>.board_info
 
 Each Stretch Body device (Stepper, Wacc, Pimu) includes a variable valid_firmware_protocol
@@ -121,9 +114,9 @@ class CurrrentConfiguration():
                     click.echo('Installed Firmware: %s'%self.config_info[device]['board_info']['firmware_version'])
                     click.echo('Stretch Body requires protocol: %s'%self.config_info[device]['valid_firmware_protocol'])
                     if self.config_info[device]['protocol_match']:
-                        click.secho('Protocol match')
+                        click.secho('Protocol match',fg="green")
                     else:
-                        click.secho('Protocol mismatch')
+                        click.secho('Protocol mismatch',fg="yellow")
                 else:
                     click.secho('Device not found')
 
@@ -272,8 +265,9 @@ class FirmwareUpdater():
         self.repo=repo
         self.current_config=current_config
         self.recommended = {'hello-motor-lift': None, 'hello-motor-arm': None, 'hello-motor-left-wheel': None,'hello-motor-right-wheel': None, 'hello-pimu': None, 'hello-wacc': None}
+        if self.__check_arduino_cli_install():
+            self.__get_recommend_updates()
 
-        self.__get_recommend_updates()
 
     def __get_recommend_updates(self):
         for device_name in self.recommended.keys():
@@ -283,6 +277,16 @@ class FirmwareUpdater():
                         v = self.repo.get_most_recent_version(device_name, cfg['valid_firmware_protocol'])
                         self.recommended[device_name]=v
         self.target=self.recommended.copy()
+
+    def __check_arduino_cli_install(self):
+        res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()[:11]
+        if not(res=='arduino-clia'):
+            click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
+            click.secho('WARNING: Tool arduino_cli not installed. See stretch_install_dev.sh (Stretch Install repo)', fg="yellow", bold=True)
+            click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
+            print('')
+            return False
+        return True
 
     def pretty_print_recommended(self):
         click.secho('############## Recommended Firmware Updates ##############', fg="green",bold=True)
