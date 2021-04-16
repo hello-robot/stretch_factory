@@ -9,6 +9,7 @@ setup.py
 ./bin/RE1_dynamixel_jog.py
 ./bin/RE1_dynamixel_reboot.py
 ./bin/RE1_dynamixel_set_baud.py
+./bin/RE1_firmware_updater.py
 ./bin/RE1_gripper_calibrate.py
 ./bin/RE1_head_calibrate_pan.py
 ./bin/RE1_hello_dynamixel_jog.py
@@ -18,6 +19,7 @@ setup.py
 ./bin/RE1_stepper_jog.py
 ./bin/RE1_stepper_mechaduino_menu.py
 ./bin/RE1_timestamp_manager_analyze.py
+./bin/RE1_usb_reset.py
 ./bin/RE1_wacc_calibrate.py
 ./bin/README.md
 hello_robot_stretch_factory.egg-info/PKG-INFO
