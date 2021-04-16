@@ -11,15 +11,28 @@ import stretch_body.wacc
 import stretch_body.hello_utils as hu
 
 parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
+
+group = parser.add_mutually_exclusive_group()
 parser.add_argument("--status", help="Display the current firmware status",action="store_true")
-parser.add_argument("--update", help="Update to recommended firmware",action="store_true")
-parser.add_argument("--update_to", help="Update to a specific firmware version",action="store_true")
+group.add_argument("--update", help="Update to recommended firmware",action="store_true")
+group.add_argument("--update_to", help="Update to a specific firmware version",action="store_true")
+group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch",action="store_true")
+group.add_argument("--revert", help="Revert to older ",action="store_true")
+
+# group.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
+# group.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
+# group.add_argument("--arm", help="Upload Arm Stepper firmware",action="store_true")
+# group.add_argument("--lift", help="Upload Lift Stepper firmware",action="store_true")
+# group.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware",action="store_true")
+# group.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware",action="store_true")
+
 parser.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
 parser.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
 parser.add_argument("--arm", help="Upload Arm Stepper firmware",action="store_true")
 parser.add_argument("--lift", help="Upload Lift Stepper firmware",action="store_true")
 parser.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware",action="store_true")
 parser.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware",action="store_true")
+
 
 args=parser.parse_args()
 
@@ -171,6 +184,15 @@ class FirmwareRepo():
                         recent=v
         return recent
 
+    def get_remote_branches(self):
+        branches=[]
+        for ref in self.repo.git.branch('-r').split('\n'):
+            branches.append(ref)
+        return branches
+
+
+
+
 class FirmwareVersion():
     def __init__(self,x,commit_msg=''):
         self.device='NONE'
@@ -189,6 +211,8 @@ class FirmwareVersion():
     def __gt__(self, other):
         if not self.valid or not other.valid:
             return False
+        if self.protocol>other.protocol:
+            return True
         if self.major > other.major:
             return True
         if self.minor > other.minor:
@@ -200,6 +224,8 @@ class FirmwareVersion():
     def __lt__(self, other):
         if not self.valid or not other.valid:
             return False
+        if self.protocol<other.protocol:
+            return True
         if self.major < other.major:
             return True
         if self.minor < other.minor:
@@ -210,7 +236,7 @@ class FirmwareVersion():
     def __eq__(self,other):
         if not other or not self.valid or not other.valid:
             return False
-        return self.major == other.major and self.minor == other.minor and self.bugfix == other.bugfix
+        return self.major == other.major and self.minor == other.minor and self.bugfix == other.bugfix and self.protocol==other.protocol
 
     def same_device(self,d):
         return d==self.device
@@ -266,31 +292,35 @@ class FirmwareUpdater():
                     print('%s | No device available'%device_name.upper().ljust(25))
                 else:
                     cfg = self.current_config.config_info[device_name]
-                    protocol_board = int(cfg['board_info']['protocol_version'][1:])
-                    protocol_required = int(cfg['valid_firmware_protocol'][1:])
-                    if protocol_required > protocol_board:
-                        rec='Upgrade required to %s'%self.recommended[device_name]
-                    elif protocol_required < protocol_board:
-                        rec = 'Downgrade required to %s' % self.recommended[device_name]
+                    if self.recommended[device_name]==None:
+                        print('%s | No recommendations available (might be on dev branch)' % device_name.upper().ljust(25))
                     else:
-                        if self.recommended[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']:
-                            rec='At most recent version with %s' % self.recommended[device_name]
+                        protocol_board = int(cfg['board_info']['protocol_version'][1:])
+                        protocol_required = int(cfg['valid_firmware_protocol'][1:])
+                        if protocol_required > protocol_board:
+                            rec='Upgrade required to %s'%self.recommended[device_name]
+                        elif protocol_required < protocol_board:
+                            rec = 'Downgrade required to %s' % self.recommended[device_name]
                         else:
-                            rec = 'Update available to %s' % self.recommended[device_name]
-                    print('%s | %s ' % (device_name.upper().ljust(25), rec.ljust(40)))
+                            if self.recommended[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']:
+                                rec='At most recent version with %s' % self.recommended[device_name]
+                            else:
+                                rec = 'Update available to %s' % self.recommended[device_name]
+                        print('%s | %s ' % (device_name.upper().ljust(25), rec.ljust(40)))
 
     def pretty_print_target(self):
         click.secho('############## Targeted Firmware Updates ##############', fg="green", bold=True)
         for device_name in self.target.keys():
             if self.use_device[device_name]:
                 if self.current_config.config_info[device_name] is None:
-                    print('%s | No device available' % device_name.upper().ljust(25))
+                    print('%s | No target available' % device_name.upper().ljust(25))
                 else:
                     cfg = self.current_config.config_info[device_name]
                     v_curr=FirmwareVersion(cfg['board_info']['firmware_version'])
                     v_targ=self.target[device_name]
-
-                    if v_curr > v_targ:
+                    if v_targ is None:
+                        rec = 'No target available'
+                    elif v_curr > v_targ:
                         rec = 'Downgrading to %s' % self.target[device_name]
                     elif v_curr<v_targ:
                         rec = 'Upgrading to %s' % self.target[device_name]
@@ -298,7 +328,39 @@ class FirmwareUpdater():
                         rec = 'Already at target of %s' % self.target[device_name]
                     print('%s | %s ' % (device_name.upper().ljust(25), rec.ljust(40)))
 
-    def update_to(self):
+    def print_upload_warning(self):
+        click.secho('------------------------------------------------', fg="yellow", bold=True)
+        click.secho('WARNING: Updating robot firmware should only be done by experienced users', fg="yellow", bold=True)
+        click.secho('WARNING: Do not have other robot processes running during update', fg="yellow", bold=True)
+        click.secho('WARNING: Leave robot powered on during update', fg="yellow", bold=True)
+        click.secho('WARNING: Ensure Lift has support clamp in place', fg="yellow", bold=True)
+        click.secho('------------------------------------------------', fg="yellow", bold=True)
+
+    def do_update(self):
+        #Count number of updates to do
+        self.num_update=0
+        for device_name in self.target.keys():
+            if self.use_device[device_name] and self.current_config.config_info[device_name] and self.target[device_name] is not None:
+                if not (self.target[device_name].to_string() == self.current_config.config_info[device_name]['board_info']['firmware_version']):
+                    self.num_update=self.num_update+1
+        self.pretty_print_target()
+        if not self.num_update:
+            click.secho('System is up to date. No updates to be done', fg="yellow",bold=True)
+            return
+        self.print_upload_warning()
+        self.fw_updated={}
+        if click.confirm('Proceed with update??'):
+            for device_name in self.target.keys():
+                self.fw_updated[device_name]=False
+                if self.use_device[device_name]:
+                    if self.target[device_name] is not None:
+                        if not (self.target[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']):
+                            self.flash_firmware_update(device_name,self.target[device_name].to_string())
+                            self.fw_updated[device_name]=True
+            click.secho('---- Firmware Update Complete!', fg="green",bold=True)
+            self.post_firmware_update()
+
+    def do_update_to(self):
         click.secho('######### Selecting target firmware versions ###########', fg="green", bold=True)
         for device_name in self.recommended.keys():
             if self.use_device[device_name]:
@@ -323,42 +385,38 @@ class FirmwareUpdater():
                     self.target[device_name]=vt
         print('')
         print('')
+        self.do_update()
 
-
-    def do_update(self):
-        #Count number of updates to do
-        self.num_update=0
-        for device_name in self.target.keys():
-            if self.use_device[device_name] and self.current_config.config_info[device_name]:
-                if not (self.target[device_name].to_string() == self.current_config.config_info[device_name]['board_info']['firmware_version']):
-                    self.num_update=self.num_update+1
-
-        self.pretty_print_target()
-
-        if not self.num_update:
-            click.secho('System is up to date. No updates to be done', fg="yellow",bold=True)
-            return
-
-        click.secho('------------------------------------------------', fg="yellow", bold=True)
-        click.secho('WARNING: Updating robot firmware should only be done by experienced users', fg="yellow",bold=True)
-        click.secho('WARNING: Do not have other robot processes running during update', fg="yellow",bold=True)
-        click.secho('WARNING: Leave robot powered on during update', fg="yellow", bold=True)
-        click.secho('WARNING: Ensure Lift has support clamp in place', fg="yellow", bold=True)
-        click.secho('------------------------------------------------', fg="yellow", bold=True)
-        self.fw_updated={}
+    def do_update_to_branch(self):
+        click.secho('######### Selecting target branch ###########', fg="green", bold=True)
+        branches=self.repo.get_remote_branches()
+        for id in range(len(branches)):
+            print('%d: %s' % (id, branches[id]))
+        print('')
+        branch_name=None
+        while branch_name == None:
+            id = click.prompt('Please enter desired branch id',default=0)
+            if id >= 0 and id < len(branches):
+                branch_name=branches[id]
+            else:
+                click.secho('Invalid ID', fg="red")
+        print('Selected branch %s'%branch_name )
+        print('')
+        print('')
+        #Burn the Head of the branch to each board regardless of what is currently installed
+        click.secho('############## Updating to branch %s <HEAD> ##############'%branch_name.upper(), fg="green", bold=True)
+        self.print_upload_warning()
+        self.fw_updated = {}
         if click.confirm('Proceed with update??'):
             for device_name in self.target.keys():
-                self.fw_updated[device_name]=False
-                if self.use_device[device_name]:
-                    if self.target[device_name] is not None:
-                        if not (self.target[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']):
-                            self.flash_firmware_update(device_name,self.target[device_name].to_string())
-                            self.fw_updated[device_name]=True
-            click.secho('---- Firmware Update Complete!', fg="green",bold=True)
-            self.post_firmware_update()
+                self.fw_updated[device_name] = False
+                if self.use_device[device_name] and self.current_config.config_info[device_name]:
+                    self.flash_firmware_update(device_name, branch_name)
+                    self.fw_updated[device_name] = True
+            click.secho('---- Firmware Update Complete!', fg="green", bold=True)
+            self.post_firmware_update(from_branch=True)
 
-
-    def post_firmware_update(self):
+    def post_firmware_update(self,from_branch=False):
         click.secho('############## Resetting USB Bus ##############', fg="green", bold=True)
         os.system('RE1_usb_reset.py')
         self.current_config = CurrrentConfiguration(self.use_device)
@@ -371,7 +429,10 @@ class FirmwareUpdater():
                 else:
                     cfg = self.current_config.config_info[device_name]
                     v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
-                    v_targ = self.target[device_name]
+                    if not from_branch:
+                        v_targ = self.target[device_name]
+                    else:
+                        v_targ=v_curr
                     if v_curr == v_targ:
                         click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
                     else:
@@ -432,82 +493,24 @@ if args.arm or args.lift or args.wacc or args.pimu or args.left_wheel or args.ri
 else:
     use_device = {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
 
+if args.status or args.update or args.update_to or args.update_to_branch:
+    c = CurrrentConfiguration(use_device)
+    r = FirmwareRepo()
+    u = FirmwareUpdater(use_device,c,r)
+    c.pretty_print()
+    print('')
+    r.pretty_print_available_versions()
+    print('')
+    u.pretty_print_recommended()
+    print('')
+    print('')
+    if args.update:
+        u.do_update()
+    elif args.update_to:
+        u.do_update_to()
+    elif args.update_to_branch:
+        u.do_update_to_branch()
+    r.cleanup()
+else:
+    parser.print_help()
 
-c = CurrrentConfiguration(use_device)
-r = FirmwareRepo()
-u = FirmwareUpdater(use_device,c,r)
-c.pretty_print()
-print('')
-r.pretty_print_available_versions()
-print('')
-u.pretty_print_recommended()
-print('')
-print('')
-if args.update_to:
-    u.update_to()
-if args.update or args.update_to:
-    u.do_update()
-r.cleanup()
-
-
-if 0:
-    port_name=None
-    sketch_name=None
-    device_name=None
-
-    if args.wacc:
-        device_name = 'hello-wacc'
-        sketch_name = 'hello_wacc'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Wacc at %s'%port_name)
-        next_steps="Test the Wacc using: stretch_wacc_jog.py"
-
-    if args.pimu:
-        device_name = 'hello-pimu'
-        sketch_name = 'hello_pimu'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Pimu at %s'%port_name)
-        next_steps = "Test the Pimu using: stretch_pimu_jog.py"
-
-    if args.lift:
-        device_name = 'hello-motor-lift'
-        sketch_name = 'hello_stepper'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Lift at %s'%port_name)
-        next_steps = "Write the stepper calibration using: RE1_stepper_calibration_YAML_to_flash.py hello-motor-lift"
-
-    if args.arm:
-        device_name = 'hello-motor-arm'
-        sketch_name = 'hello_stepper'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Arm at %s'%port_name)
-        next_steps = "Write the stepper calibration using: RE1_stepper_calibration_YAML_to_flash.py hello-motor-arm"
-
-    if args.left_wheel:
-        device_name = 'hello-motor-left-wheel'
-        sketch_name = 'hello_stepper'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Left Wheel at %s'%port_name)
-        next_steps = "Write the stepper calibration using: RE1_stepper_calibration_YAML_to_flash.py hello-motor-left-wheel"
-
-    if args.right_wheel:
-        device_name = 'hello-motor-right-wheel'
-        sketch_name = 'hello_stepper'
-        port_name=Popen("ls -l /dev/"+device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
-        print('Found Right Wheel at %s'%port_name)
-        next_steps = "Write the stepper calibration using: RE1_stepper_calibration_YAML_to_flash.py hello-motor-right-wheel"
-
-    if port_name is not None:
-        print('Uploading firmware to %s'%sketch_name)
-        print('---------------Compile-------------------------')
-        compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s ~/repos/stretch_firmware/arduino/%s'%(sketch_name,sketch_name)
-        upload_command = 'arduino-cli upload -p /dev/%s --fqbn hello-robot:samd:%s ~/repos/stretch_firmware/arduino/%s'%(port_name,sketch_name,sketch_name)
-        c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-        print(c)
-        print('---------------Upload-------------------------')
-        u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-        print(u)
-        print('---------------Next Steps-------------------------')
-        print(next_steps)
-    else:
-        print 'Failed to upload...'
