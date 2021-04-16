@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import argparse
 import click
 import os
@@ -17,7 +17,7 @@ parser.add_argument("--status", help="Display the current firmware status",actio
 group.add_argument("--update", help="Update to recommended firmware",action="store_true")
 group.add_argument("--update_to", help="Update to a specific firmware version",action="store_true")
 group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch",action="store_true")
-group.add_argument("--mgmt", help="Display overview on firmware management",action="store_true")
+group.add_argument("--revert", help="Revert to older ",action="store_true")
 
 parser.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
 parser.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
@@ -29,7 +29,7 @@ parser.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware",
 
 args=parser.parse_args()
 
-mgmt="""
+"""
 FIRMWARE MANAGEMENT
 --------------------
 The Stretch Firmware is managed by Git tags. 
@@ -56,8 +56,6 @@ After updating the firmware
   #define FIRMWARE_VERSION "Pimu.v0.0.5p1"
 * Tag with the full version name that matches Common.h , eg
   git tag -a Pimu.v0.0.5p1 -m "Pimu bugfix of foo"
-*Push tag to remote
-  git push origin --tags
 * Check the code in to stretch_firmware
 
 If there was a change in protocol number, also update Stretch Body
@@ -498,10 +496,6 @@ if args.arm or args.lift or args.wacc or args.pimu or args.left_wheel or args.ri
     use_device={'hello-motor-lift':args.lift,'hello-motor-arm':args.arm, 'hello-motor-right-wheel':args.right_wheel, 'hello-motor-left-wheel':args.left_wheel,'hello-pimu':args.pimu,'hello-wacc':args.wacc}
 else:
     use_device = {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
-
-if args.mgmt:
-    print(mgmt)
-    exit()
 
 if args.status or args.update or args.update_to or args.update_to_branch:
     c = CurrrentConfiguration(use_device)
