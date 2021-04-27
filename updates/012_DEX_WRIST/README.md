@@ -18,7 +18,7 @@ This update installs and configures the Beta unit of the Stretch Dex Wrist - Bet
 
 Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot.
 
-See the update [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) 
+See the update [013_WACC_INSTALL](../013_WACC_INSTALL/README.md) 
 
 ## Install Stretch Body Software Packages
 
