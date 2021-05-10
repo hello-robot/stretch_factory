@@ -214,8 +214,7 @@ Try out the new wrist! Note that the new key mapping does not allow for control 
 ```bash
 >>$ stretch_xbox_controller_teleop.py
 ```
-
-A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
+Ctrl-C to exit. A printable copy of the teleoperation interface is [here](stretch_re1_dex_wrist_teleop_guide.pdf)
 
 ## Test the wrist with RViz
 
@@ -224,8 +223,7 @@ Now check that the wrist appears in RVIZ and can be controlled from the keyboard
 ```bash
 >>$ roslaunch stretch_calibration simple_test_head_calibration.launch
 ```
-
-The menu interface is:
+You can type 'q' then Ctrl-C to exit when done. The menu interface is:
 
 ```
 ---------- KEYBOARD TELEOP MENU -----------|
