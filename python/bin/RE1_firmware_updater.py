@@ -284,7 +284,7 @@ class FirmwareUpdater():
 
     def __check_arduino_cli_install(self):
         res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()[:11]
-        if not(res=='arduino-clia'):
+        if not(res=='arduino-cli'):
             click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
             click.secho('WARNING: Tool arduino_cli not installed. See stretch_install_dev.sh (Stretch Install repo)', fg="yellow", bold=True)
             click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
