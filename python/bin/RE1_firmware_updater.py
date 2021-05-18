@@ -269,6 +269,8 @@ class FirmwareUpdater():
         self.recommended = {'hello-motor-lift': None, 'hello-motor-arm': None, 'hello-motor-left-wheel': None,'hello-motor-right-wheel': None, 'hello-pimu': None, 'hello-wacc': None}
         if self.__check_arduino_cli_install():
             self.__get_recommend_updates()
+        else:
+            exit()
 
 
     def __get_recommend_updates(self):
