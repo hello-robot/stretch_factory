@@ -242,7 +242,7 @@ class FirmwareVersion():
         #X is of form 'Stepper.v0.0.1p0'
         try:
             xl=x.split('.')
-            if len(xl) is not 4:
+            if len(xl) != 4:
                 raise Exception('Invalid version len')
             device=xl[0]
             if not (device=='Stepper' or device=='Wacc' or device=='Pimu'):
