@@ -242,7 +242,7 @@ class FirmwareVersion():
         #X is of form 'Stepper.v0.0.1p0'
         try:
             xl=x.split('.')
-            if len(xl) is not 4:
+            if len(xl) != 4:
                 raise Exception('Invalid version len')
             device=xl[0]
             if not (device=='Stepper' or device=='Wacc' or device=='Pimu'):
@@ -284,7 +284,7 @@ class FirmwareUpdater():
 
     def __check_arduino_cli_install(self):
         res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()[:11]
-        if not(res=='arduino-cli'):
+        if not(res==b'arduino-cli'):
             click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
             click.secho('WARNING: Tool arduino_cli not installed. See stretch_install_dev.sh (Stretch Install repo)', fg="yellow", bold=True)
             click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
