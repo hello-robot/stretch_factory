@@ -15,7 +15,8 @@ This directory contains recommended factory updates.
 | [009_STEPPER_STARTUP](./009_STEPPER_STARTUP/README.md) | Fix bug related to configuration of stepper controllers at startup | Prior to 1040 | 1/4/2020 |
 | [010_WRIST_SWAP](./010_WRIST_SWAP/README.md) | Updating system YAML after installing a new wrist module | 1013 | 1/27/2021 |
 | [011_HEAD_TILT_SWAP](./011_HEAD_TILT_SWAP/README.md) | Updating the robot calibration and camera data after install a new head tilt module | 1007 | 2/8/21 |
-| [012_DEX_WRIST](./012_DEX_WRIST/README.md) | Installing and configuring the beta unit of the dexterous wrist | x | 2/17/21|
-| [013_WACC_INSTALL](./013_WACC_INSTALL/README.md) | How to install and configure a replacement Wacc board | x | 3/7/20 |
+| [012_DEX_WRIST_BETA](./012_DEX_WRIST/README.md) | Installing and configuring the beta unit of the dexterous wrist | x | 2/17/21|
+| [014_WAYPOINTS](./014_WAYPOINTS/README.md) | How to upgrade to the beta version of the waypoints interface | x | x |
+| [015_DEX_WRIST](./015_DEX_WRIST/README.md) | Installing the production version of the Dex Wrist | x | 6/1/21 |
 
 
