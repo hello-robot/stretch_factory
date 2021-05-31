@@ -9,9 +9,10 @@ import argparse
 parser=argparse.ArgumentParser(description='Jog a Dynamixel servo from the command line')
 parser.add_argument("usb", help="The dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
 parser.add_argument("id", help="The ID to jog", type=int)
+parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600]", type=int,default=57600)
 args = parser.parse_args()
 
-m = DynamixelXL430(args.id, args.usb)
+m = DynamixelXL430(args.id, args.usb,baud=args.baud)
 m.startup()
 
 
