@@ -14,7 +14,7 @@ try:
     for id in range(25):
         m = DynamixelXL430(id, args.usb,baud=args.baud)
         m.startup()
-        if (m.do_ping(verbose=True)):
+        if (m.do_ping(verbose=False)):
             m.do_reboot()
         else:
             m.stop()
