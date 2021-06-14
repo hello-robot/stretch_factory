@@ -7,7 +7,7 @@ print('Ensure cliff sensors are not obstructed and base is on a flat surface')
 print('Hit enter when ready')
 raw_input()
 
-p = pimu.Pimu(verbose=False)
+p = pimu.Pimu()
 old_zero=p.config['cliff_zero'][:]
 p.config['cliff_zero'][0]=0
 p.config['cliff_zero'][1]=0

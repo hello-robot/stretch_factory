@@ -450,7 +450,7 @@ class FirmwareUpdater():
         for device_name in self.fw_updated.keys():
             if self.fw_updated[device_name]:
                 if device_name=='hello-motor-arm' or device_name=='hello-motor-lift' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-left-wheel':
-                    motor = stretch_body.stepper.Stepper('/dev/' + device_name, verbose=True)
+                    motor = stretch_body.stepper.Stepper('/dev/' + device_name)
                     motor.startup()
                     if not motor.hw_valid:
                         click.secho('Failed to startup stepper %s'%device_name,fg="red", bold=True)
