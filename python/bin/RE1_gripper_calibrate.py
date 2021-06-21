@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import stretch_body.stretch_gripper as gripper
 import time

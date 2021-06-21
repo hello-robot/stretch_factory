@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stretch_body.dynamixel_XL430 import *
 import argparse
 

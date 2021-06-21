@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This script aims to calculate the effective wheel separation, to make more accurate base rotations.
 # It's probably good to run the script multiple times with different commanded turning angles,

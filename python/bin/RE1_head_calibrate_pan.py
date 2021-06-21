@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import stretch_body.dynamixel_hello_XL430 as dxl
 from stretch_body.hello_utils import *
