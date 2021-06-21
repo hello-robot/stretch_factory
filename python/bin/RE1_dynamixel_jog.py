@@ -42,14 +42,14 @@ def menu_top():
     print('h: show homing offset')
     print('o: zero homing offset')
     print('q: got to position')
-    print 'p: ping'
-    print 'r: reboot'
-    print 'w: set max pwm'
-    print 't: set max temp'
-    print 'i: set id'
-    print 'd: disable torque'
-    print 'e: enable torque'
-    print '-------------------'
+    print('p: ping')
+    print('r: reboot')
+    print('w: set max pwm')
+    print('t: set max temp')
+    print('i: set id')
+    print('d: disable torque')
+    print('e: enable torque')
+    print('-------------------')
 
 def step_interaction():
     menu_top()
@@ -76,13 +76,13 @@ def step_interaction():
         if x[0]=='h':
             m.disable_torque()
             xn=m.get_homing_offset()
-            print 'Current homing offset is:',xn
+            print('Current homing offset is:',xn)
         if x[0]=='o':
             m.disable_torque()
             xn=m.get_homing_offset()
-            print 'Current homing offset is:',xn
+            print('Current homing offset is:',xn)
             m.set_homing_offset(0)
-            print 'Homing offset set to zero'
+            print('Homing offset set to zero')
             m.enable_torque()
         if x[0]=='v':
             v=int(x[2:])
@@ -104,18 +104,18 @@ def step_interaction():
             m.set_pwm_limit(pp)
             m.enable_torque()
         if x[0] == 'i':
-            print 'You will need to exit program and restart with new ID. Hit enter to continue'
+            print('You will need to exit program and restart with new ID. Hit enter to continue')
             raw_input()
             q = int(x[2:])
             m.disable_torque()
             m.set_id(q)
             m.enable_torque()
-            print 'New id is',m.get_id()
+            print('New id is',m.get_id())
         if x[0] == 'p':
             if m.do_ping():
-                print 'Ping success'
+                print('Ping success')
             else:
-                print 'Ping fail'
+                print('Ping fail')
         if x[0] == 'r':
             m.do_reboot()
     else:

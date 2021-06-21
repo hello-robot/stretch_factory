@@ -23,22 +23,22 @@ calibration_done=False
 
 i=0
 while i<3 and not calibration_done:
-    print 'Doing step ',i
+    print('Doing step ',i)
     motor.menu_transaction('s')
-    print 'Did motor step (y/n)[n]?'
+    print('Did motor step (y/n)[n]?')
     yn=raw_input()
     i=i+1
     if yn=='y':
-        print 'Starting encoder calibration'
+        print('Starting encoder calibration')
         motor.menu_transaction('c')
         calibration_done=True
-        print 'Hit enter when calibration done...'
+        print('Hit enter when calibration done...')
         raw_input()
         break
 if calibration_done:
-    print 'Calibration success.'
+    print('Calibration success.')
 else:
-    print 'Calibration failure'
+    print('Calibration failure')
 motor.turn_rpc_interface_on()
 motor.push_command()
 motor.board_reset()

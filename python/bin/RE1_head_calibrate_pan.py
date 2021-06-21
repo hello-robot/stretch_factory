@@ -14,5 +14,5 @@ if x == 'y' or x == 'Y':
     h.params['req_calibration']=1
     h.startup()
     h.home(single_stop=True)
-    print 'Recalibration done. Now redo the URDF calibration (see stretch_ros documentation)'
+    print('Recalibration done. Now redo the URDF calibration (see stretch_ros documentation)')
     h.stop()

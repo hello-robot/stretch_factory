@@ -54,12 +54,12 @@ if args.runstop_toggle:
             if rs_on ==nrs:
                 r.pimu.runstop_event_trigger()
                 r.push_command()
-                print 'Runstop triggered...'
+                print('Runstop triggered...')
             rs_on=rs_on-1
         else:
             r.pimu.runstop_event_reset()
             r.push_command()
-            print 'Runstop reset...'
+            print('Runstop reset...')
             rs_on=nrs
 
         time.sleep(random.random() * 0.1)
@@ -96,7 +96,7 @@ if args.sensor_stats:
       ts_hist[3].append(t3)
       ts_hist[4].append(p0)
       ts_hist[5].append(w0)
-      print r.status['timestamps']
+      print(r.status['timestamps'])
       time.sleep(random.random()*0.1) #Randomize timing so get non biased distribution
   r.stop()
   import matplotlib.pyplot as plt

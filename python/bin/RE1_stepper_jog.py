@@ -17,7 +17,7 @@ motor.disable_runstop()
 motor.push_command()
 
 def menu_top():
-    print '-----------'
+    print('-----------')
     print('ms: mode safety')
     print('mf: mode freewheel')
     print('mb: mode hold')
@@ -27,27 +27,27 @@ def menu_top():
     print('mc: mode pos traj incr')
     print('mv: mode vel traj')
     print('mi: mode current')
-    print 'x <val>: set x_des'
-    print 'v <val>: set v_des'
-    print 'a <val>: set a_des'
-    print 's <val>: set stiffness'
-    print 'f <val>: set feedforward'
-    print 'p <val>: set i_contact_pos'
-    print 'n <val>: set i_contact_neg'
-    print 'i <val>: set current'
-    print 'z <val>: mark position'
-    print 'g: set gain'
-    print 'r: reset board'
+    print('x <val>: set x_des')
+    print('v <val>: set v_des')
+    print('a <val>: set a_des')
+    print('s <val>: set stiffness')
+    print('f <val>: set feedforward')
+    print('p <val>: set i_contact_pos')
+    print('n <val>: set i_contact_neg')
+    print('i <val>: set current')
+    print('z <val>: mark position')
+    print('g: set gain')
+    print('r: reset board')
 
 def menu_gains():
-    print '-----------'
+    print('-----------')
     for k in motor.gains.keys():
-        print k + '     <val> [' + str(motor.gains[k])+']'
+        print(k + '     <val> [' + str(motor.gains[k])+']')
 
 def set_gains():
     x = sys.stdin.readline()
     if len(x)>4:
-        print x, len(x),
+        print(x, len(x))
         g=x[:x.find(' ')]
         v=float(x[x.find(' '):])
         for k in motor.gains.keys():
@@ -88,8 +88,8 @@ def step_interaction():
             motor.mark_position(float(x[1:]))
             motor.push_command()
             motor.pull_status()
-            print 'Position marked. Motor safety on.'
-            print 'At', motor.status['pos']
+            print('Position marked. Motor safety on.')
+            print('At', motor.status['pos'])
         if x[0]=='m':
             set_mode(x)
         if x[0]=='x':
@@ -120,7 +120,7 @@ def step_interaction():
             menu_gains()
             set_gains()
         if x[0]=='r':
-            print 'Resetting Board. Restart process...'
+            print('Resetting Board. Restart process...')
             motor.board_reset()
             motor.push_command()
     else:
@@ -132,7 +132,7 @@ try:
         try:
             step_interaction()
         except (ValueError):
-            print 'Bad input...'
+            print('Bad input...')
 except (KeyboardInterrupt, SystemExit):
     motor.stop()
 
