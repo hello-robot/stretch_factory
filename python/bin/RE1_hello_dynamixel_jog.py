@@ -23,11 +23,11 @@ def menu_top():
     print('A: increment position 50 deg')
     print('B: decrement position 50 deg')
     print('q: got to position (deg)')
-    print 'p: ping'
-    print 'r: reboot'
-    print 'd: disable torque'
-    print 'e: enable torque'
-    print '-------------------'
+    print('p: ping')
+    print('r: reboot')
+    print('d: disable torque')
+    print('e: enable torque')
+    print('-------------------')
 
 def step_interaction():
     m.pull_status()
@@ -53,9 +53,9 @@ def step_interaction():
             m.move_to(deg_to_rad(ff))
         if x[0] == 'p':
             if m.motor.do_ping():
-                print 'Ping success'
+                print('Ping success')
             else:
-                print 'Ping fail'
+                print('Ping fail')
         if x[0] == 'r':
             m.motor.do_reboot()
     else:
