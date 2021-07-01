@@ -29,8 +29,8 @@ p.stop()
 cum=[cum[0]/100.0,cum[1]/100.0,cum[2]/100.0,cum[3]/100.0]
 
 #Taken from Hank QC
-cliff_zero_min= 480
-cliff_zero_max= 570
+cliff_zero_min= 450
+cliff_zero_max= 650
 pass_test=1
 print('Got cliff zeros of: ',cum)
 
