@@ -18,6 +18,7 @@ try:
         try:
             m.startup()
         except DynamixelCommError:
+            print("ping failed for ID: " + str(id))
             continue
         m.do_ping()
         m.stop()
