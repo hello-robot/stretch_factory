@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from stretch_body.dynamixel_XL430 import *
+from stretch_body.dynamixel_XL430 import DynamixelXL430, DynamixelCommError
 import argparse
 
 
@@ -15,7 +15,11 @@ m=None
 try:
     for id in range(25):
         m = DynamixelXL430(id, args.usb,baud=args.baud)
-        m.startup()
+        try:
+            m.startup()
+        except DynamixelCommError:
+            print("ping failed for ID: " + str(id))
+            continue
         m.do_ping()
         m.stop()
 except (KeyboardInterrupt, SystemExit):
