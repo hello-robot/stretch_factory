@@ -10,7 +10,6 @@ import stretch_body.pimu
 import stretch_body.wacc
 import stretch_body.hello_utils as hu
 
-
 parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
 group = parser.add_mutually_exclusive_group()
@@ -132,11 +131,14 @@ class FirmwareRepo():
         self.__clone_firmware_repo()
         self.__get_available_firmware_versions()
 
-    def __clone_firmware_repo(self):
-        self.repo_path = '/tmp/stretch_firmware_update_' + hu.create_time_string()
-        print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
-        git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
-        self.repo = git.Repo( self.repo_path)
+    def __clone_firmware_repo(self,branch):
+        self.repo_path = '/tmp/stretch_firmware_update'
+        if not os.path.isdir(self.repo_path):
+            print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
+            git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
+        self.repo = git.Repo(self.repo_path)
+        o = self.repo.remotes.origin
+        o.pull()
 
     def cleanup(self):
         #Use with care!
