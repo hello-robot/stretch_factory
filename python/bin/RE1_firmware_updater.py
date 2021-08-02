@@ -146,7 +146,7 @@ class FirmwareRepo():
 
 
     def pretty_print_available_versions(self):
-        click.secho('######### Currently Available Versions of Stretch Firmware on Master Branch ##########',fg="green", bold=True)
+        click.secho('######### Currently Available Versions of Stretch Firmware on GitHub ##########',fg="green", bold=True)
         for device_name in self.versions.keys():
             print('---- %s ----'%device_name.upper())
             for v in self.versions[device_name]:
@@ -471,7 +471,7 @@ class FirmwareUpdater():
                 if device_name=='hello-motor-arm' or device_name=='hello-motor-lift' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-left-wheel':
                     motor = stretch_body.stepper.Stepper('/dev/' + device_name)
                     motor.startup()
-                    if False:#not motor.hw_valid:
+                    if not motor.hw_valid:
                         click.secho('Failed to startup stepper %s'%device_name,fg="red", bold=True)
                     else:
                         print('Reading calibration data from YAML...')
