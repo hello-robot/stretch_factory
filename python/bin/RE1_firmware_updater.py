@@ -10,6 +10,7 @@ import stretch_body.pimu
 import stretch_body.wacc
 import stretch_body.hello_utils as hu
 
+
 parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
 group = parser.add_mutually_exclusive_group()
