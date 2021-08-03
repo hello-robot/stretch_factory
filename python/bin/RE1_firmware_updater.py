@@ -471,7 +471,7 @@ class FirmwareUpdater():
                 if device_name=='hello-motor-arm' or device_name=='hello-motor-lift' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-left-wheel':
                     motor = stretch_body.stepper.Stepper('/dev/' + device_name)
                     motor.startup()
-                    if False:#not motor.hw_valid:
+                    if not motor.hw_valid:
                         click.secho('Failed to startup stepper %s'%device_name,fg="red", bold=True)
                     else:
                         print('Reading calibration data from YAML...')
