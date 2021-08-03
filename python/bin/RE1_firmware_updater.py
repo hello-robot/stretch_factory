@@ -88,6 +88,8 @@ The user may update Stetch Body version from time to time. After installing
 a new version of Stretch Body, this firmware updater tools should be run. 
 """
 
+
+
 class CurrrentConfiguration():
     def __init__(self,use_device):
         self.use_device=use_device
@@ -116,7 +118,7 @@ class CurrrentConfiguration():
                 click.secho('------------ %s ------------'%device.upper())
                 if self.config_info[device]:
                     click.echo('Installed Firmware: %s'%self.config_info[device]['board_info']['firmware_version'])
-                    click.echo('Stretch Body requires protocol: %s'%self.config_info[device]['valid_firmware_protocol'])
+                    click.echo('Installed Stretch Body requires protocol: %s'%self.config_info[device]['valid_firmware_protocol'])
                     if self.config_info[device]['protocol_match']:
                         click.secho('Protocol match',fg="green")
                     else:
@@ -136,7 +138,7 @@ class FirmwareRepo():
     def __clone_firmware_repo(self):
         self.repo_path = '/tmp/stretch_firmware_update'
         if not os.path.isdir(self.repo_path):
-            print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
+            #print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
             git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
         self.repo = git.Repo(self.repo_path)
         os.chdir(self.repo_path)
@@ -146,7 +148,7 @@ class FirmwareRepo():
 
 
     def pretty_print_available_versions(self):
-        click.secho('######### Currently Available Versions of Stretch Firmware on Master Branch ##########',fg="green", bold=True)
+        click.secho('######### Currently Tagged Versions of Stretch Firmware on Master Branch ##########',fg="green", bold=True)
         for device_name in self.versions.keys():
             print('---- %s ----'%device_name.upper())
             for v in self.versions[device_name]:
@@ -157,7 +159,7 @@ class FirmwareRepo():
         if self.repo is None:
             return
         for t in self.repo.tags:
-            v = FirmwareVersion(t.name, t.commit.message)
+            v = FirmwareVersion(t.name)
             if v.valid:
                 if v.device == 'Stepper':
                     self.versions['hello-motor-lift'].append(v)
@@ -192,15 +194,14 @@ class FirmwareRepo():
 
 
 class FirmwareVersion():
-    def __init__(self,x,commit_msg=''):
+    def __init__(self,version_str):
         self.device='NONE'
         self.major=0
         self.minor=0
         self.bugfix=0
         self.protocol=0
         self.valid=False
-        self.commit_msg=commit_msg
-        self.from_string(x)
+        self.from_string(version_str)
     def __str__(self):
         return self.to_string()
     def to_string(self):
@@ -430,6 +431,23 @@ class FirmwareUpdater():
         print('Selected branch %s'%branch_name )
         print('')
         print('')
+
+        #Check that version of target branch is compatible
+        for device_name in self.target.keys():
+            if self.use_device[device_name]:
+                sketch_name=self.get_sketch_name(device_name)
+                git_protocol = self.get_firmware_version_from_git(sketch_name, branch_name).protocol
+                body_protocol = int(self.current_config.config_info[device_name]['valid_firmware_protocol'][1:])
+                if git_protocol!=body_protocol:
+                    click.secho('---------------------------', fg="yellow")
+                    click.secho('Target firmware branch of %s is incompatible with installed Stretch Body for device %s'%(branch_name,device_name),fg="yellow")
+                    click.secho('Installed Stretch Body supports protocol P%d'%body_protocol,fg="yellow")
+                    click.secho('Target branch supports protocol P%d'%git_protocol,fg="yellow")
+                    if git_protocol>body_protocol:
+                        click.secho('Upgrade Stretch Body first...',fg="yellow")
+                    else:
+                        click.secho('Downgrade Stretch Body first...',fg="yellow")
+                    return
         #Burn the Head of the branch to each board regardless of what is currently installed
         click.secho('############## Updating to branch %s <HEAD> ##############'%branch_name.upper(), fg="green", bold=True)
         self.print_upload_warning()
@@ -485,17 +503,36 @@ class FirmwareUpdater():
         time.sleep(2.0)
         os.system('RE1_usb_reset.py')
 
+    def get_firmware_version_from_git(self,sketch_name,tag):
+        #click.secho('---------------Git Checkout-------------------------', fg="green")
+        os.chdir(self.repo.repo_path)
+        git_checkout_command = 'git checkout ' + tag
+        g = Popen(git_checkout_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
+                  close_fds=True).stdout.read().strip()
+        #print('Checkout out firmware %s from Git' % tag)
+        file_path = self.repo.repo_path+'/arduino/'+sketch_name+'/Common.h'
+        f=open(file_path,'r')
+        lines=f.readlines()
+        for l in lines:
+            if l.find('FIRMWARE_VERSION_HR')>=0:
+                version=l[l.find('FIRMWARE_VERSION_HR') + 21:-2]
+                return FirmwareVersion(version)
+        return None
+
+    def get_sketch_name(self,device_name):
+        if device_name=='hello-motor-left-wheel' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-arm' or device_name=='hello-motor-lift':
+            return 'hello_stepper'
+        if device_name == 'hello-wacc':
+            return 'hello_wacc'
+        if device_name == 'hello-pimu':
+            return 'hello_pimu'
 
     def flash_firmware_update(self,device_name, tag):
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="green", bold=True)
         port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
         config_file=self.repo.repo_path+'/arduino-cli.yaml'
-        if device_name=='hello-motor-left-wheel' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-arm' or device_name=='hello-motor-lift':
-            sketch_name = 'hello_stepper'
-        if device_name == 'hello-wacc':
-            sketch_name = 'hello_wacc'
-        if device_name == 'hello-pimu':
-            sketch_name = 'hello_pimu'
+        sketch_name=self.get_sketch_name(device_name)
+
         if port_name is not None:
             click.secho('---------------Git Checkout-------------------------', fg="green")
             os.chdir(self.repo.repo_path)
