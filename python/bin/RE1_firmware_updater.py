@@ -574,19 +574,21 @@ class FirmwareUpdater():
         itr=0
         while(time.time()-ts<timeout):
             if self.is_device_present(device_name):
-                print(b'\n')
+                print('\n')
                 return True
             itr=itr+1
             if itr % 5 == 0:
                 sys.stdout.write('.')
                 sys.stdout.flush()
             time.sleep(0.1)
-        print(b'\n')
+        print('\n')
         return False
 
     def get_port_name(self, device_name):
         try:
             port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
+            if not type(port_name)==str:
+                port_name=port_name.decode('utf-8')
             return port_name
         except IndexError:
             return None
