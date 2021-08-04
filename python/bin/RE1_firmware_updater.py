@@ -11,6 +11,7 @@ import stretch_body.wacc
 import stretch_body.hello_utils as hu
 import yaml
 import time
+import sys
 
 parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
@@ -363,6 +364,8 @@ class FirmwareUpdater():
         click.secho('WARNING: Ensure Lift has support clamp in place', fg="yellow", bold=True)
         click.secho('------------------------------------------------', fg="yellow", bold=True)
 
+
+
     def do_update(self):
         #Count number of updates to do
         self.num_update=0
@@ -382,8 +385,7 @@ class FirmwareUpdater():
                 if self.use_device[device_name]:
                     if self.target[device_name] is not None:
                         if not (self.target[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']):
-                            self.flash_firmware_update(device_name,self.target[device_name].to_string())
-                            self.fw_updated[device_name]=True
+                            self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string())
             click.secho('---- Firmware Update Complete!', fg="green",bold=True)
             self.post_firmware_update()
 
@@ -438,17 +440,39 @@ class FirmwareUpdater():
             for device_name in self.target.keys():
                 self.fw_updated[device_name] = False
                 if self.use_device[device_name] and self.current_config.config_info[device_name]:
-                    self.flash_firmware_update(device_name, branch_name)
-                    self.fw_updated[device_name] = True
+                    self.fw_updated[device_name] = self.flash_firmware_update(device_name, branch_name)
             click.secho('---- Firmware Update Complete!', fg="green", bold=True)
             self.post_firmware_update(from_branch=True)
 
+    def flash_stepper_calibration(self,device_name):
+        if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
+                click.secho('############## Flashing Stepper Calibration: %s ##############' % device_name, fg="green",bold=True)
+                time.sleep(1.0)
+                motor = stretch_body.stepper.Stepper('/dev/' + device_name)
+                motor.startup()
+                if not motor.hw_valid:
+                    click.secho('Failed to startup stepper %s' % device_name, fg="red", bold=True)
+                else:
+                    print('Reading calibration data from YAML...')
+                    data = motor.read_encoder_calibration_from_YAML()
+                    print('Writing calibration data to flash...')
+                    motor.write_encoder_calibration_to_flash(data)
+                    print('Successful write of FLASH. Resetting board now.')
+                    motor.board_reset()
+                    motor.push_command()
+                    motor.transport.ser.close()
+                    time.sleep(2.0)
+                    self.wait_on_device(device_name)
+
+
+
     def post_firmware_update(self,from_branch=False):
-        click.secho('############## Resetting USB Bus ##############', fg="green", bold=True)
-        os.system('RE1_usb_reset.py')
-        self.current_config = CurrrentConfiguration(self.use_device)
+        for device_name in self.target.keys():
+            if self.fw_updated[device_name]:
+                self.flash_stepper_calibration(device_name)
         print('')
         click.secho('############## Confirming Firmware Updates ##############', fg="green", bold=True)
+        self.current_config = CurrrentConfiguration(self.use_device)
         for device_name in self.target.keys():
             if self.use_device[device_name] and self.fw_updated[device_name]:
                 if self.current_config.config_info[device_name] is None:
@@ -464,38 +488,70 @@ class FirmwareUpdater():
                         click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
                     else:
                         click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-        print('')
-        click.secho('############## Flashing Stepper Calibration ##############', fg="green", bold=True)
-        for device_name in self.fw_updated.keys():
-            if self.fw_updated[device_name]:
-                if device_name=='hello-motor-arm' or device_name=='hello-motor-lift' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-left-wheel':
-                    motor = stretch_body.stepper.Stepper('/dev/' + device_name)
-                    motor.startup()
-                    if not motor.hw_valid:
-                        click.secho('Failed to startup stepper %s'%device_name,fg="red", bold=True)
-                    else:
-                        print('Reading calibration data from YAML...')
-                        data = motor.read_encoder_calibration_from_YAML()
-                        print('Writing calibration data to flash...')
-                        motor.write_encoder_calibration_to_flash(data)
-                        print('Successful write of FLASH. Resetting board now.')
-                        motor.board_reset()
-                        motor.push_command()
-        click.secho('############## Resetting USB Bus ##############', fg="green", bold=True)
-        time.sleep(2.0)
-        os.system('RE1_usb_reset.py')
 
+    def exec_process(self,cmdline, silent, input=None, **kwargs):
+        """Execute a subprocess and returns the returncode, stdout buffer and stderr buffer.
+           Optionally prints stdout and stderr while running."""
+        try:
+            sub = Popen(cmdline, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                                   **kwargs)
+            stdout, stderr = sub.communicate(input=input)
+            returncode = sub.returncode
+            if not silent:
+                sys.stdout.write(stdout.decode('utf-8'))
+                sys.stderr.write(stderr.decode('utf-8'))
+        except OSError as e:
+            if e.errno == 2:
+                raise RuntimeError('"%s" is not present on this system' % cmdline[0])
+            else:
+                raise
+        if returncode != 0:
+            raise RuntimeError('Got return value %d while executing "%s", stderr output was:\n%s' % (
+            returncode, " ".join(cmdline), stderr.rstrip(b"\n")))
+        return stdout
+
+    # ###################################
+    def is_device_present(self,device_name):
+        try:
+            self.exec_process(['ls', '/dev/'+device_name], True)
+            return True
+        except RuntimeError as e:
+            return False
+
+    def wait_on_device(self,device_name,timeout=10.0):
+        #Wait for device to appear on bus for timeout seconds
+        print('Waiting for device %s to return to bus.'%device_name)
+        ts=time.time()
+        itr=0
+        while(time.time()-ts<timeout):
+            if self.is_device_present(device_name):
+                print(b'\n')
+                return True
+            itr=itr+1
+            if itr % 5 == 0:
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            time.sleep(0.1)
+        print(b'\n')
+        return False
+
+    def get_port_name(self, device_name):
+        try:
+            port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
+            return port_name
+        except IndexError:
+            return None
 
     def flash_firmware_update(self,device_name, tag):
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="green", bold=True)
-        port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
-        config_file=self.repo.repo_path+'/arduino-cli.yaml'
-        if device_name=='hello-motor-left-wheel' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-arm' or device_name=='hello-motor-lift':
+        config_file = self.repo.repo_path + '/arduino-cli.yaml'
+        if device_name == 'hello-motor-left-wheel' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift':
             sketch_name = 'hello_stepper'
         if device_name == 'hello-wacc':
             sketch_name = 'hello_wacc'
         if device_name == 'hello-pimu':
             sketch_name = 'hello_pimu'
+        port_name = self.get_port_name(device_name)
         if port_name is not None:
             click.secho('---------------Git Checkout-------------------------', fg="green")
             os.chdir(self.repo.repo_path)
@@ -511,8 +567,24 @@ class FirmwareUpdater():
             upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, self.repo.repo_path,sketch_name)
             print(upload_command)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-            print(u)
-            return True
+            uu = u.split(b'\n')
+            # Pretty print the result
+            for l in uu:
+                k = l.split(b'\r')
+                if len(k) == 1:
+                    print(k[0].decode('utf-8'))
+                else:
+                    for m in k:
+                        print(m.decode('utf-8'))
+            success = uu[-1] == b'CPU reset.'
+            if not success:
+                print('Firmware flash. Failed to upload to %s' % (port_name))
+            else:
+                print('Success in firmware flash.')
+                if self.wait_on_device(device_name):
+                    return True
+            print('Failure for device %s to return to USB bus after upload'%device_name)
+            return False
         else:
             print('Firmware update %s. Failed to find device %s'%(tag,device_name))
             return False
