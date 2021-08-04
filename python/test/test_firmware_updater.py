@@ -24,6 +24,7 @@ class TestFirmwareUpdater(unittest.TestCase):
     #     self.assertTrue(u.do_update(no_prompts=True))
 
     def test_all_update(self):
+        #This will install all available tags to each device, and then restore the original version
         print('Testing All Update')
         use_device={'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc':True}
         c = CurrrentConfiguration(use_device)
