@@ -100,4 +100,6 @@ if os.geteuid() == 0:
     if not any:
         s.reset_all()
 else:
-    subprocess.call(['sudo', 'python'] + sys.argv)  # modified
+    success=False
+    while not success: #Avoid incorrect entry of pass
+        success=(subprocess.call(['sudo', 'python'] + sys.argv)==0)
