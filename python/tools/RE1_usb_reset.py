@@ -1,107 +1,44 @@
 #!/usr/bin/env python
 
 import argparse
-import serial.tools.list_ports
 import subprocess
-from subprocess import Popen, PIPE
 import os
-import usb.core
 import sys
-# ###################################
-
-
-
-class StretchSerialInfo:
-    def __init__(self):
-        self.comports= serial.tools.list_ports.comports()
-        self.device_names = ['hello-motor-arm',
-                             'hello-motor-lift',
-                             'hello-motor-right-wheel',
-                             'hello-motor-left-wheel',
-                             'hello-dynamixel-wrist',
-                             'hello-dynamixel-head']
-        self.device_info={}
-        for d in self.device_names:
-            self.device_info[d]={'device':None,'info':None, 'core':None}
-
-        #Build mapping between symlink and device name
-        n_match=0
-        lsdev=Popen("ls -ltr /dev/hello*", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().split('\n')
-        for name in self.device_info.keys():
-            for line in lsdev:
-                if line.find(name)>=0:
-                    map=line[line.find(name):] #eg: hello-motor-arm -> ttyACM4
-                    device=map[map.find('->')+3:] #eg ttyACM
-                    self.device_info[name]['device']=device
-                    n_match=n_match+1
-        if not n_match==len(self.device_info.keys()):
-            print('Failed to match all devices for StretchSerialInfo')
-            print(self.device_info)
-        for c in self.comports:
-            for name in self.device_info.keys():
-                if c.device[5:]==self.device_info[name]['device']:
-                    self.device_info[name]['info']=c
-        devs = []
-        all = usb.core.find(find_all=True)
-        for dev in all:
-            if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
-                devs.append(dev)
-            if dev.idVendor == 0x0403 and dev.idProduct == 0x6001:
-                devs.append(dev)
-        n_match=0
-        for name in self.device_info.keys():
-            for d in devs:
-                if d is not None and self.device_info[name]['info'] is not None:
-                    if self.device_info[name]['info'].serial_number == d.serial_number:
-                        n_match=n_match+1
-                        self.device_info[name]['core']=d
-        if not n_match==len(self.device_info.keys()):
-            print('Failed to match all devices for StretchSerialInfo')
-            print(self.device_info)
-
-
-
-    def pretty_print(self):
-        print('---- Stretch Serial Info ----')
-        for name in self.device_info.keys():
-            print('-----------------------------------------')
-            print('%s : %s'%(name,self.device_info[name]['device']))
-            if self.device_info[name]['info'] is not None:
-                print('Serial: %s'%self.device_info[name]['info'].serial_number)
-                print('Description: %s' % self.device_info[name]['info'].description)
-                print('Location: %s' % self.device_info[name]['info'].location)
-
-    def reset_all(self):
-        print('Resetting all Stretch USB devices')
-        print('---------------------------------')
-        for name in self.device_info.keys():
-            self.reset(name)
-
-    def reset(self,name):
-        if self.device_info[name]['core'] is not None:
-            print('Resetting %s' % name)
-            self.device_info[name]['core'].reset()
-        else:
-            print('Not able to reset device %s'%name)
-
+from stretch_factory.device_mgmt import StretchDeviceMgmt
 
 
 if os.geteuid() == 0:
-    s = StretchSerialInfo()
+    s = StretchDeviceMgmt()
     parser = argparse.ArgumentParser(description='Software reset of Stretch USB devices')
-    for d in s.device_names:
-        parser.add_argument("--%s"%d, help="Reset %s"%d, action="store_true")
+    parser.add_argument("--hello-motor-lift", help="Reset Lift USB", action="store_true")
+    parser.add_argument("--hello-motor-right-wheel", help="Reset Right Wheel USB", action="store_true")
+    parser.add_argument("--hello-motor-left-wheel", help="Reset Left Wheel USB", action="store_true")
+    parser.add_argument("--hello-motor-arm", help="Reset Arm USB", action="store_true")
+    parser.add_argument("--hello-pimu", help="Reset Pimu USB", action="store_true")
+    parser.add_argument("--hello-wacc", help="Reset Wacc USB", action="store_true")
+    parser.add_argument("--hello-dynamixel-wrist", help="Reset Wrist USB", action="store_true")
+    parser.add_argument("--hello-dynamixel-head", help="Reset Head USB", action="store_true")
+
     args = parser.parse_args()
-    any=False
-    try:
-        for d in s.device_names:
-            if args.__dict__[d.replace('-','_')]: #argparse changes - to _
-                s.reset(d)
-                any=True
-    except KeyError:
-        print('Invalid argument')
-        exit()
-    if not any:
+    if args.hello_motor_lift:
+        s.reset('hello-motor-lift')
+    if args.hello_motor_arm:
+        s.reset('hello-motor-arm')
+    if args.hello_motor_left_wheel:
+        s.reset('hello-motor-left_wheel')
+    if args.hello_motor_right_wheel:
+        s.reset('hello-motor-right-wheel')
+    if args.hello_pimu:
+        s.reset('hello-pimu')
+    if args.hello_wacc:
+        s.reset('hello-wacc')
+    if args.hello_dynamixel_head:
+        s.reset('hello-dynamixel-head')
+    if args.hello_dynamixel_wrist:
+        s.reset('hello-dynamixel-wrist')
+
+    if not any([args.hello_motor_lift, args.hello_motor_arm, args.hello_motor_left_wheel,args.hello_motor_right_wheel,args.hello_pimu,args.hello_wacc,args.hello_dynamixel_head,args.hello_wacc,args.hello_dynamixel_wrist]):
         s.reset_all()
+
 else:
     subprocess.call(['sudo', 'python'] + sys.argv)
