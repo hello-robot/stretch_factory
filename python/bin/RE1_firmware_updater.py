@@ -4,11 +4,13 @@ import click
 import os
 from subprocess import Popen, PIPE
 import git
-
+import fcntl
 import stretch_body.stepper
 import stretch_body.pimu
 import stretch_body.wacc
 import stretch_body.hello_utils as hu
+import yaml
+import time
 
 parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
@@ -132,18 +134,19 @@ class FirmwareRepo():
         self.__get_available_firmware_versions()
 
     def __clone_firmware_repo(self):
-        self.repo_path = '/tmp/stretch_firmware_update_' + hu.create_time_string()
-        print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
-        git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
-        self.repo = git.Repo( self.repo_path)
+        self.repo_path = '/tmp/stretch_firmware_update'
+        if not os.path.isdir(self.repo_path):
+            print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
+            git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
+        self.repo = git.Repo(self.repo_path)
+        os.chdir(self.repo_path)
+        os.system('git checkout master')
+        os.system('git fetch --tags')
+        os.system('git pull')
 
-    def cleanup(self):
-        #Use with care!
-        if self.repo_path is not None:
-            os.system('rm -rf '+self.repo_path)
 
     def pretty_print_available_versions(self):
-        click.secho('######### Currently Available Versions of Stretch Firmware on GitHub ##########',fg="green", bold=True)
+        click.secho('######### Currently Available Versions of Stretch Firmware on Master Branch ##########',fg="green", bold=True)
         for device_name in self.versions.keys():
             print('---- %s ----'%device_name.upper())
             for v in self.versions[device_name]:
@@ -268,6 +271,7 @@ class FirmwareUpdater():
         self.current_config=current_config
         self.recommended = {'hello-motor-lift': None, 'hello-motor-arm': None, 'hello-motor-left-wheel': None,'hello-motor-right-wheel': None, 'hello-pimu': None, 'hello-wacc': None}
         if self.__check_arduino_cli_install():
+            self.__create_arduino_config_file()
             self.__get_recommend_updates()
         else:
             exit()
@@ -281,6 +285,21 @@ class FirmwareUpdater():
                         v = self.repo.get_most_recent_version(device_name, cfg['valid_firmware_protocol'])
                         self.recommended[device_name]=v
         self.target=self.recommended.copy()
+
+
+    def __create_arduino_config_file(self):
+        arduino_config = {'board_manager': {'additional_urls': []},
+                          'daemon': {'port': '50051'},
+                          'directories': {'data': os.environ['HOME'] + '/.arduino15',
+                                          'downloads': os.environ['HOME'] + '/.arduino15/staging',
+                                          'user': self.repo.repo_path + '/arduino'},
+                          'library': {'enable_unsafe_install': False},
+                          'logging': {'file': '', 'format': 'text', 'level': 'info'},
+                          'metrics': {'addr': ':9090', 'enabled': True},
+                          'sketch': {'always_export_binaries': False},
+                          'telemetry': {'addr': ':9090', 'enabled': True}}
+        with open(self.repo.repo_path + '/arduino-cli.yaml', 'w') as yaml_file:
+            yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_arduino_cli_install(self):
         res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()[:11]
@@ -463,11 +482,14 @@ class FirmwareUpdater():
                         motor.board_reset()
                         motor.push_command()
         click.secho('############## Resetting USB Bus ##############', fg="green", bold=True)
+        time.sleep(2.0)
         os.system('RE1_usb_reset.py')
+
 
     def flash_firmware_update(self,device_name, tag):
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="green", bold=True)
         port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
+        config_file=self.repo.repo_path+'/arduino-cli.yaml'
         if device_name=='hello-motor-left-wheel' or device_name=='hello-motor-right-wheel' or device_name=='hello-motor-arm' or device_name=='hello-motor-lift':
             sketch_name = 'hello_stepper'
         if device_name == 'hello-wacc':
@@ -481,12 +503,12 @@ class FirmwareUpdater():
             g = Popen(git_checkout_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip()
             print('Checkout out firmware %s from Git'%tag)
             click.secho('---------------Compile-------------------------', fg="green")
-            compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s %s/arduino/%s'%(sketch_name,self.repo.repo_path,sketch_name)
+            compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,self.repo.repo_path,sketch_name)
             print(compile_command)
             c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             print(c)
             click.secho('---------------Upload-------------------------', fg="green")
-            upload_command = 'arduino-cli upload -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (port_name, sketch_name, self.repo.repo_path,sketch_name)
+            upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, self.repo.repo_path,sketch_name)
             print(upload_command)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             print(u)
@@ -522,7 +544,6 @@ if args.status or args.update or args.update_to or args.update_to_branch:
         u.do_update_to()
     elif args.update_to_branch:
         u.do_update_to_branch()
-    r.cleanup()
 else:
     parser.print_help()
 
