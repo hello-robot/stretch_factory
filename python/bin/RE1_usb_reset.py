@@ -8,150 +8,103 @@ import fcntl
 import subprocess
 
 import argparse
-
+import serial.tools.list_ports
+from subprocess import Popen, PIPE
 # ###################################
 
 
-# devices={'hello-motor-arm','hello-motor-lift','hello-motor-right-wheel'}
-# parser.add_argument("--device", type=str,help="Device to reset")
-# args = parser.parse_args()
-import serial.tools.list_ports
-from subprocess import Popen, PIPE
 
 class StretchSerialInfo:
     def __init__(self):
         self.comports= serial.tools.list_ports.comports()
-
-        self.ports={'hello-motor-arm': {'device':None,'info':None},
-                    'hello-motor-lift': {'device': None, 'info': None},
-                    'hello-motor-right-wheel': {'device': None, 'info': None},
-                    'hello-motor-left-wheel': {'device': None, 'info': None},
-                    'hello-dynamixel-wrist': {'device': None, 'info': None},
-                    'hello-dynamixel-head': {'device': None, 'info': None},
-                    'hello-respeaker': {'device': None, 'info': None},
-                    'hello-lrf':  {'device': None, 'info': None}}
+        self.device_names = ['hello-motor-arm',
+                             'hello-motor-lift',
+                             'hello-motor-right-wheel',
+                             'hello-motor-left-wheel',
+                             'hello-dynamixel-wrist',
+                             'hello-dynamixel-head']
+        self.device_info={}
+        for d in self.device_names:
+            self.device_info[d]={'device':None,'info':None, 'core':None}
 
         #Build mapping between symlink and device name
+        n_match=0
         lsdev=Popen("ls -ltr /dev/hello*", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().split('\n')
-        for name in self.ports.keys():
+        for name in self.device_info.keys():
             for line in lsdev:
                 if line.find(name)>=0:
                     map=line[line.find(name):] #eg: hello-motor-arm -> ttyACM4
                     device=map[map.find('->')+3:] #eg ttyACM
-                    self.ports[name]['device']=device
-
+                    self.device_info[name]['device']=device
+                    n_match=n_match+1
+        if not n_match==len(self.device_info.keys()):
+            print('Failed to match all devices for StretchSerialInfo')
+            print(self.device_info)
         for c in self.comports:
-            for name in self.ports.keys():
-                if c.device[5:]==self.ports[name]['device']:
-                    self.ports[name]['info']=c
+            for name in self.device_info.keys():
+                if c.device[5:]==self.device_info[name]['device']:
+                    self.device_info[name]['info']=c
+        devs = []
+        all = usb.core.find(find_all=True)
+        for dev in all:
+            if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
+                devs.append(dev)
+            if dev.idVendor == 0x0403 and dev.idProduct == 0x6001:
+                devs.append(dev)
+        n_match=0
+        for name in self.device_info.keys():
+            for d in devs:
+                if d is not None and self.device_info[name]['info'] is not None:
+                    if self.device_info[name]['info'].serial_number == d.serial_number:
+                        n_match=n_match+1
+                        self.device_info[name]['core']=d
+        if not n_match==len(self.device_info.keys()):
+            print('Failed to match all devices for StretchSerialInfo')
+            print(self.device_info)
+
+
+
     def pretty_print(self):
         print('---- Stretch Serial Info ----')
-        for name in self.ports.keys():
+        for name in self.device_info.keys():
             print('-----------------------------------------')
-            print('%s : %s'%(name,self.ports[name]['device']))
-            if self.ports[name]['info'] is not None:
-                print('Serial: %s'%self.ports[name]['info'].serial_number)
-                print('Description: %s' % self.ports[name]['info'].description)
-                print('Location: %s' % self.ports[name]['info'].location)
+            print('%s : %s'%(name,self.device_info[name]['device']))
+            if self.device_info[name]['info'] is not None:
+                print('Serial: %s'%self.device_info[name]['info'].serial_number)
+                print('Description: %s' % self.device_info[name]['info'].description)
+                print('Location: %s' % self.device_info[name]['info'].location)
+
+    def reset_all(self):
+        print('Resetting all Stretch USB devices')
+        print('---------------------------------')
+        for name in self.device_info.keys():
+            self.reset(name)
 
     def reset(self,name):
-        print('Resetting %s. Bus: %s | Device  %s ' % (name,bus, device))
-        f = open("/dev/bus/usb/%s/%s" % (bus, device), 'w', os.O_WRONLY)
-        fcntl.ioctl(f, USBDEVFS_RESET, 0)
-        # for port in self.ports_list:
-        #     if port.vid==0x2341 and port.pid==0x804d: #Arduino
-        #         pass
-        #     if port.vid == 0x0403 and port.pid == 0x6001:  # FTDI
-        #         pass
-
-s=StretchSerialInfo()
-s.pretty_print()
-
-# devs = []
-# all = usb.core.find(find_all=True)
-# for dev in all:
-#     if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
-#         devs.append(dev)
-# print('Found %d Arduino devices' % len(devs))
-# for d in devs:
-#     print('Resetting Arduino. Bus: %s | Device  %s ' % (d.bus, d.address))
-    #f = open("/dev/bus/usb/%s/%s" % (d.bus, d.address), 'w', os.O_WRONLY)
-    #fcntl.ioctl(f, USBDEVFS_RESET, 0)
-    # try:
-    #     d.reset()
-    # except usb.core.USBError:
-    #     print('Error in resetting device')
+        if self.device_info[name]['core'] is not None:
+            print('Resetting %s' % name)
+            self.device_info[name]['core'].reset()
+        else:
+            print('Not able to reset device %s'%name)
 
 
-# def get_bus_device_no(port):
-#     cmd = "echo `udevadm info - -name = / dev / hello - motor - arm - -attribute - walk | sed - n 's/\s*ATTRS{\(\(devnum\)\|\(busnum\)\)}==\"\([^\"]\+\)\"/\1\ \4/p' | head - n2 | awk '{$1 = sprintf("%s:%03d", $1, $2); print $1;}'"`
 
-
-def reset_arduino_usb():
-    USBDEVFS_RESET = 21780
-    lsusb_out = Popen("lsusb | grep -i %s" % 'Arduino', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                      close_fds=True).stdout.read().strip().split()
-    while len(lsusb_out):
-        bus = lsusb_out[1]
-        device = lsusb_out[3][:-1]
-        try:
-            print('Resetting Arduino. Bus: %s | Device  %s '%(bus, device))
-            f = open("/dev/bus/usb/%s/%s" % (bus, device), 'w', os.O_WRONLY)
-            fcntl.ioctl(f, USBDEVFS_RESET, 0)
-        except Exception as msg:
-            print("failed to reset device: %s" % msg)
-        lsusb_out = lsusb_out[8:]
-
-def reset_FTDI_usb():
-    USBDEVFS_RESET = 21780
-    lsusb_out = Popen("lsusb | grep -i %s"%'Future', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()
-    while len(lsusb_out):
-        bus = lsusb_out[1]
-        device = lsusb_out[3][:-1]
-        try:
-            print('Resetting FTDI. Bus: %s | Device  %s '%(bus, device))
-            f = open("/dev/bus/usb/%s/%s" % (bus, device), 'w', os.O_WRONLY)
-            fcntl.ioctl(f, USBDEVFS_RESET, 0)
-
-        except Exception as msg:
-            print("failed to reset device: %s"%msg)
-        lsusb_out=lsusb_out[15:]
-
-# if os.geteuid() == 0:
-#     reset_arduino_usb()
-#     reset_FTDI_usb()
-# else:
-#     subprocess.call(['sudo', 'python'] + sys.argv)  # modified
-def reset_arduino_usb2():
-    devs=[]
-    all = usb.core.find(find_all=True)
-    for dev in all:
-        if dev.idVendor==0x2341 and dev.idProduct==0x804d:
-            devs.append(dev)
-    print('Found %d Arduino devices'%len(devs))
-    for d in devs:
-        print('Resetting Arduino. Bus: %s | Device  %s ' % (d.bus, d.address))
-        try:
-            d.reset()
-        except usb.core.USBError:
-            print('Error in resetting device')
-
-def reset_FTDI_usb2():
-    devs=[]
-    all = usb.core.find(find_all=True)
-    for dev in all:
-        if dev.idVendor==0x0403 and dev.idProduct==0x6001:
-            devs.append(dev)
-    print('Found %d FTDI devices'%len(devs))
-    for d in devs:
-        print('Resetting FTDI. Bus: %s | Device  %s ' % (d.bus, d.address))
-        try:
-            d.reset()
-        except usb.core.USBError:
-            print('Error in resetting device')
-
-# if os.geteuid() == 0:
-#     reset_arduino_usb()
-#     reset_FTDI_usb()
-# else:
-#     subprocess.call(['sudo', 'python'] + sys.argv)  # modified
+if os.geteuid() == 0:
+    s = StretchSerialInfo()
+    parser = argparse.ArgumentParser(description='Software reset of Stretch USB devices')
+    for d in s.device_names:
+        parser.add_argument("--%s"%d, help="Reset %s"%d, action="store_true")
+    args = parser.parse_args()
+    any=False
+    try:
+        for d in s.device_names:
+            if args.__dict__[d.replace('-','_')]: #argparse changes - to _
+                s.reset(d)
+                any=True
+    except KeyError:
+        print('Invalid argument')
+        exit()
+    if not any:
+        s.reset_all()
+else:
+    subprocess.call(['sudo', 'python'] + sys.argv)  # modified
