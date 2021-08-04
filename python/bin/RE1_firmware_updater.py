@@ -146,7 +146,7 @@ class FirmwareRepo():
 
 
     def pretty_print_available_versions(self):
-        click.secho('######### Currently Available Versions of Stretch Firmware on GitHub ##########',fg="green", bold=True)
+        click.secho('######### Currently Available Versions of Stretch Firmware on Master Branch ##########',fg="green", bold=True)
         for device_name in self.versions.keys():
             print('---- %s ----'%device_name.upper())
             for v in self.versions[device_name]:
