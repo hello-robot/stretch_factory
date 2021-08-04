@@ -386,7 +386,6 @@ class FirmwareUpdater():
                     if self.target[device_name] is not None:
                         if not (self.target[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']):
                             self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string())
-                            self.flash_stepper_calibration(device_name)
             click.secho('---- Firmware Update Complete!', fg="green",bold=True)
             self.post_firmware_update()
 
@@ -442,12 +441,11 @@ class FirmwareUpdater():
                 self.fw_updated[device_name] = False
                 if self.use_device[device_name] and self.current_config.config_info[device_name]:
                     self.fw_updated[device_name] = self.flash_firmware_update(device_name, branch_name)
-                    self.flash_stepper_calibration(device_name)
             click.secho('---- Firmware Update Complete!', fg="green", bold=True)
             self.post_firmware_update(from_branch=True)
 
     def flash_stepper_calibration(self,device_name):
-        if self.fw_updated[device_name] and (device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel'):
+        if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
                 click.secho('############## Flashing Stepper Calibration: %s ##############' % device_name, fg="green",bold=True)
                 time.sleep(1.0)
                 motor = stretch_body.stepper.Stepper('/dev/' + device_name)
@@ -462,11 +460,19 @@ class FirmwareUpdater():
                     print('Successful write of FLASH. Resetting board now.')
                     motor.board_reset()
                     motor.push_command()
+                    motor.transport.ser.close()
+                    time.sleep(2.0)
+                    self.wait_on_device(device_name)
+
+
 
     def post_firmware_update(self,from_branch=False):
-        self.current_config = CurrrentConfiguration(self.use_device)
+        for device_name in self.target.keys():
+            if self.fw_updated[device_name]:
+                self.flash_stepper_calibration(device_name)
         print('')
         click.secho('############## Confirming Firmware Updates ##############', fg="green", bold=True)
+        self.current_config = CurrrentConfiguration(self.use_device)
         for device_name in self.target.keys():
             if self.use_device[device_name] and self.fw_updated[device_name]:
                 if self.current_config.config_info[device_name] is None:
