@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-import usb.core
-
-import os
-import sys
-from subprocess import Popen, PIPE
-import fcntl
-import subprocess
 
 import argparse
 import serial.tools.list_ports
