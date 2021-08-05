@@ -451,13 +451,13 @@ class FirmwareUpdater():
         git_checkout_command = 'git checkout ' + tag
         g = Popen(git_checkout_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
                   close_fds=True).stdout.read().strip()
-        #print('Checkout out firmware %s from Git' % tag)
+        print('Checkout out firmware %s from Git for %s' % (tag,sketch_name))
         file_path = self.repo.repo_path+'/arduino/'+sketch_name+'/Common.h'
         f=open(file_path,'r')
         lines=f.readlines()
         for l in lines:
-            if l.find('FIRMWARE_VERSION_HR')>=0:
-                version=l[l.find('FIRMWARE_VERSION_HR') + 21:-2]
+            if l.find('FIRMWARE_VERSION')>=0:
+                version=l[l.find('"')+1:-2] #Format of: '#define FIRMWARE_VERSION "Wacc.v0.0.1p1"\n'
                 return FirmwareVersion(version)
         return None
 
