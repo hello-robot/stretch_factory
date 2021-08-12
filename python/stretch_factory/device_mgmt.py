@@ -45,9 +45,12 @@ class StretchDeviceMgmt:
         for name in self.device_info.keys():
             for d in devs:
                 if d is not None and self.device_info[name]['info'] is not None:
-                    if self.device_info[name]['info'].serial_number == d.serial_number:
-                        n_match=n_match+1
-                        self.device_info[name]['core']=d
+                    try:
+                        if self.device_info[name]['info'].serial_number == d.serial_number:
+                            n_match=n_match+1
+                            self.device_info[name]['core']=d
+                    except ValueError:
+                        print('ValueError. %s on serial number - may not be running as sudo'%name)
         if not n_match==len(self.device_info.keys()):
             print('Failed to match all devices for StretchSerialInfo')
             print(self.device_info)

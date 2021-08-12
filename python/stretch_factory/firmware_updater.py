@@ -428,7 +428,7 @@ class FirmwareUpdater():
         success=True
         for device_name in self.target.keys():
             if self.use_device[device_name]:
-                if   self.fw_updated[device_name]
+                if self.fw_updated[device_name]:
                     if self.current_config.config_info[device_name] is None:
                         print('%s | No device available' % device_name.upper().ljust(25))
                     else:
