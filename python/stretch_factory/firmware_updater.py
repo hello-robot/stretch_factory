@@ -427,21 +427,25 @@ class FirmwareUpdater():
         self.current_config = CurrrentConfiguration(self.use_device)
         success=True
         for device_name in self.target.keys():
-            if self.use_device[device_name] and self.fw_updated[device_name]:
-                if self.current_config.config_info[device_name] is None:
-                    print('%s | No device available' % device_name.upper().ljust(25))
+            if self.use_device[device_name]:
+                if   self.fw_updated[device_name]
+                    if self.current_config.config_info[device_name] is None:
+                        print('%s | No device available' % device_name.upper().ljust(25))
+                    else:
+                        cfg = self.current_config.config_info[device_name]
+                        v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
+                        if not from_branch:
+                            v_targ = self.target[device_name]
+                        else:
+                            v_targ=v_curr
+                        if v_curr == v_targ:
+                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
+                        else:
+                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                            success=False
                 else:
-                    cfg = self.current_config.config_info[device_name]
-                    v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
-                    if not from_branch:
-                        v_targ = self.target[device_name]
-                    else:
-                        v_targ=v_curr
-                    if v_curr == v_targ:
-                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
-                    else:
-                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-                        success=False
+                    click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                    success = False
         return success
 
 
