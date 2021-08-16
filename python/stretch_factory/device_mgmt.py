@@ -1,17 +1,8 @@
-#!/usr/bin/env python
-
-import argparse
 import serial.tools.list_ports
-import subprocess
 from subprocess import Popen, PIPE
-import os
 import usb.core
-import sys
-# ###################################
 
-
-
-class StretchSerialInfo:
+class StretchDeviceMgmt:
     def __init__(self):
         self.comports= serial.tools.list_ports.comports()
         self.device_names = ['hello-motor-arm',
@@ -19,7 +10,9 @@ class StretchSerialInfo:
                              'hello-motor-right-wheel',
                              'hello-motor-left-wheel',
                              'hello-dynamixel-wrist',
-                             'hello-dynamixel-head']
+                             'hello-dynamixel-head',
+                             'hello-pimu',
+                             'hello-wacc']
         self.device_info={}
         for d in self.device_names:
             self.device_info[d]={'device':None,'info':None, 'core':None}
@@ -52,13 +45,15 @@ class StretchSerialInfo:
         for name in self.device_info.keys():
             for d in devs:
                 if d is not None and self.device_info[name]['info'] is not None:
-                    if self.device_info[name]['info'].serial_number == d.serial_number:
-                        n_match=n_match+1
-                        self.device_info[name]['core']=d
+                    try:
+                        if self.device_info[name]['info'].serial_number == d.serial_number:
+                            n_match=n_match+1
+                            self.device_info[name]['core']=d
+                    except ValueError:
+                        print('ValueError. %s on serial number - may not be running as sudo'%name)
         if not n_match==len(self.device_info.keys()):
             print('Failed to match all devices for StretchSerialInfo')
             print(self.device_info)
-
 
 
     def pretty_print(self):
@@ -81,27 +76,7 @@ class StretchSerialInfo:
         if self.device_info[name]['core'] is not None:
             print('Resetting %s' % name)
             self.device_info[name]['core'].reset()
+            return True
         else:
             print('Not able to reset device %s'%name)
 
-
-
-if os.geteuid() == 0:
-    s = StretchSerialInfo()
-    parser = argparse.ArgumentParser(description='Software reset of Stretch USB devices')
-    for d in s.device_names:
-        parser.add_argument("--%s"%d, help="Reset %s"%d, action="store_true")
-    args = parser.parse_args()
-    any=False
-    try:
-        for d in s.device_names:
-            if args.__dict__[d.replace('-','_')]: #argparse changes - to _
-                s.reset(d)
-                any=True
-    except KeyError:
-        print('Invalid argument')
-        exit()
-    if not any:
-        s.reset_all()
-else:
-    subprocess.call(['sudo', 'python'] + sys.argv)

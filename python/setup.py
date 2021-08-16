@@ -6,7 +6,7 @@ from os.path import isfile, join
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-script_path='./bin'
+script_path='./tools'
 stretch_scripts={script_path+'/'+f for f in listdir(script_path) if isfile(join(script_path, f))}
 
 setuptools.setup(
@@ -25,5 +25,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
     ],
-    install_requires=['pyserial','pyusb','gitpython','hello-robot-stretch-body']
+    install_requires=['pyserial','pyusb','gitpython']
 )
+
+#,'hello-robot-stretch-body'

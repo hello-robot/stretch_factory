@@ -1,95 +1,15 @@
 #!/usr/bin/env python
-import argparse
+
 import click
 import os
 from subprocess import Popen, PIPE
 import git
-import fcntl
 import stretch_body.stepper
 import stretch_body.pimu
 import stretch_body.wacc
-import stretch_body.hello_utils as hu
 import yaml
 import time
 import sys
-
-parser=argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
-
-group = parser.add_mutually_exclusive_group()
-parser.add_argument("--status", help="Display the current firmware status",action="store_true")
-group.add_argument("--update", help="Update to recommended firmware",action="store_true")
-group.add_argument("--update_to", help="Update to a specific firmware version",action="store_true")
-group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch",action="store_true")
-group.add_argument("--mgmt", help="Display overview on firmware management",action="store_true")
-
-parser.add_argument("--pimu", help="Upload Pimu firmware",action="store_true")
-parser.add_argument("--wacc", help="Upload Wacc firmware",action="store_true")
-parser.add_argument("--arm", help="Upload Arm Stepper firmware",action="store_true")
-parser.add_argument("--lift", help="Upload Lift Stepper firmware",action="store_true")
-parser.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware",action="store_true")
-parser.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware",action="store_true")
-
-
-args=parser.parse_args()
-
-mgmt="""
-FIRMWARE MANAGEMENT
---------------------
-The Stretch Firmware is managed by Git tags. 
-
-The repo is tagged with versions as <Board>.v<Major>.<Minor>.<Bugfix><Protocol>
-For example Pimu.v0.0.1p0
-
-This same version is included the Arduino file Common.h and is burned to the board EEPROM. It 
-can be read from Stretch Body as <device>.board_info
-
-Each Stretch Body device (Stepper, Wacc, Pimu) includes a variable valid_firmware_protocol
-For example, stepper.valid_firmware_protocol='p0'
-
-The updater will determine the available firmware versions given the current Stretch Body that is installed on 
-the default Python path.
-
-The updater will then query each device to determine what firmware is currently flashed to the boards. It can then
-recommend updates to the user.
-
-WHEN UPDATING FIRMWARE CODE
-----------------------
-After updating the firmware
-* Increment the version / protocol in the device's Common.h', eg
-  #define FIRMWARE_VERSION "Pimu.v0.0.5p1"
-* Tag with the full version name that matches Common.h , eg
-  git tag -a Pimu.v0.0.5p1 -m "Pimu bugfix of foo"
-*Push tag to remote
-  git push origin --tags
-* Check the code in to stretch_firmware
-
-If there was a change in protocol number, also update Stretch Body
-accordingly. For example in stepper.py:
-    self.valid_firmware_protocol='p1'
-
-TAGGING
---------
-https://git-scm.com/book/en/v2/Git-Basics-Tagging
-
-To see available tags
-  git log --pretty=oneline 
-
-To tag an older commit
-  git tag -a Pimu.v0.0.5p1 <hash> -m "Pimu bugfix of foo"
-  
-Push tags
-  git push origin --tags
-
-Delete tags
-  git tag -d Pimu.v0.0.5p1
-  git push origin --delete  Pimu.v0.0.5p1
-USER EXPERIENCE
-----------------
-The user may update Stetch Body version from time to time. After installing
-a new version of Stretch Body, this firmware updater tools should be run. 
-"""
-
-
 
 class CurrrentConfiguration():
     def __init__(self,use_device):
@@ -233,6 +153,10 @@ class FirmwareVersion():
         if self.bugfix < other.bugfix:
             return True
         return False
+
+    def __ne__(self,other):
+        return not self.__eq__(other)
+
     def __eq__(self,other):
         if not other or not self.valid or not other.valid:
             return False
@@ -272,11 +196,13 @@ class FirmwareUpdater():
         self.repo=repo
         self.current_config=current_config
         self.recommended = {'hello-motor-lift': None, 'hello-motor-arm': None, 'hello-motor-left-wheel': None,'hello-motor-right-wheel': None, 'hello-pimu': None, 'hello-wacc': None}
+
+    def startup(self):
         if self.__check_arduino_cli_install():
             self.__create_arduino_config_file()
             self.__get_recommend_updates()
-        else:
-            exit()
+            return True
+        return False
 
 
     def __get_recommend_updates(self):
@@ -367,8 +293,9 @@ class FirmwareUpdater():
 
 
 
-    def do_update(self):
-        #Count number of updates to do
+    def do_update(self,no_prompts=False):
+        # Return True if system was upgraded
+        # Return False if system was not upgraded / error happened
         self.num_update=0
         for device_name in self.target.keys():
             if self.use_device[device_name] and self.current_config.config_info[device_name] and self.target[device_name] is not None:
@@ -377,10 +304,10 @@ class FirmwareUpdater():
         self.pretty_print_target()
         if not self.num_update:
             click.secho('System is up to date. No updates to be done', fg="yellow",bold=True)
-            return
+            return False
         self.print_upload_warning()
         self.fw_updated={}
-        if click.confirm('Proceed with update??'):
+        if no_prompts or click.confirm('Proceed with update??'):
             for device_name in self.target.keys():
                 self.fw_updated[device_name]=False
                 if self.use_device[device_name]:
@@ -388,9 +315,12 @@ class FirmwareUpdater():
                         if not (self.target[device_name].to_string()==self.current_config.config_info[device_name]['board_info']['firmware_version']):
                             self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string())
             click.secho('---- Firmware Update Complete!', fg="green",bold=True)
-            self.post_firmware_update()
+            success=self.post_firmware_update()
+            return success
 
     def do_update_to(self):
+        # Return True if system was upgraded
+        # Return False if system was not upgraded / error happened
         click.secho('######### Selecting target firmware versions ###########', fg="green", bold=True)
         for device_name in self.recommended.keys():
             if self.use_device[device_name]:
@@ -415,9 +345,11 @@ class FirmwareUpdater():
                     self.target[device_name]=vt
         print('')
         print('')
-        self.do_update()
+        return self.do_update()
 
     def do_update_to_branch(self):
+        # Return True if system was upgraded
+        # Return False if system was not upgraded / error happened
         click.secho('######### Selecting target branch ###########', fg="green", bold=True)
         branches=self.repo.get_remote_branches()
         for id in range(len(branches)):
@@ -449,7 +381,7 @@ class FirmwareUpdater():
                         click.secho('Upgrade Stretch Body first...',fg="yellow")
                     else:
                         click.secho('Downgrade Stretch Body first...',fg="yellow")
-                    return
+                    return False
         #Burn the Head of the branch to each board regardless of what is currently installed
         click.secho('############## Updating to branch %s <HEAD> ##############'%branch_name.upper(), fg="green", bold=True)
         self.print_upload_warning()
@@ -460,7 +392,8 @@ class FirmwareUpdater():
                 if self.use_device[device_name] and self.current_config.config_info[device_name]:
                     self.fw_updated[device_name] = self.flash_firmware_update(device_name, branch_name)
             click.secho('---- Firmware Update Complete!', fg="green", bold=True)
-            self.post_firmware_update(from_branch=True)
+            return self.post_firmware_update(from_branch=True)
+        return False
 
     def flash_stepper_calibration(self,device_name):
         if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
@@ -485,27 +418,35 @@ class FirmwareUpdater():
 
 
     def post_firmware_update(self,from_branch=False):
+        #Return True if no errors
         for device_name in self.target.keys():
             if self.fw_updated[device_name]:
                 self.flash_stepper_calibration(device_name)
         print('')
         click.secho('############## Confirming Firmware Updates ##############', fg="green", bold=True)
         self.current_config = CurrrentConfiguration(self.use_device)
+        success=True
         for device_name in self.target.keys():
-            if self.use_device[device_name] and self.fw_updated[device_name]:
-                if self.current_config.config_info[device_name] is None:
-                    print('%s | No device available' % device_name.upper().ljust(25))
+            if self.use_device[device_name]:
+                if self.fw_updated[device_name]:
+                    if self.current_config.config_info[device_name] is None:
+                        print('%s | No device available' % device_name.upper().ljust(25))
+                    else:
+                        cfg = self.current_config.config_info[device_name]
+                        v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
+                        if not from_branch:
+                            v_targ = self.target[device_name]
+                        else:
+                            v_targ=v_curr
+                        if v_curr == v_targ:
+                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
+                        else:
+                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                            success=False
                 else:
-                    cfg = self.current_config.config_info[device_name]
-                    v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
-                    if not from_branch:
-                        v_targ = self.target[device_name]
-                    else:
-                        v_targ=v_curr
-                    if v_curr == v_targ:
-                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
-                    else:
-                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                    click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                    success = False
+        return success
 
 
     def get_firmware_version_from_git(self,sketch_name,tag):
@@ -514,13 +455,13 @@ class FirmwareUpdater():
         git_checkout_command = 'git checkout ' + tag
         g = Popen(git_checkout_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
                   close_fds=True).stdout.read().strip()
-        #print('Checkout out firmware %s from Git' % tag)
+        print('Checkout out firmware %s from Git for %s' % (tag,sketch_name))
         file_path = self.repo.repo_path+'/arduino/'+sketch_name+'/Common.h'
         f=open(file_path,'r')
         lines=f.readlines()
         for l in lines:
-            if l.find('FIRMWARE_VERSION_HR')>=0:
-                version=l[l.find('FIRMWARE_VERSION_HR') + 21:-2]
+            if l.find('FIRMWARE_VERSION')>=0:
+                version=l[l.find('"')+1:-2] #Format of: '#define FIRMWARE_VERSION "Wacc.v0.0.1p1"\n'
                 return FirmwareVersion(version)
         return None
 
@@ -531,12 +472,6 @@ class FirmwareUpdater():
             return 'hello_wacc'
         if device_name == 'hello-pimu':
             return 'hello_pimu'
-
-    def flash_firmware_update(self,device_name, tag):
-        click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="green", bold=True)
-        port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
-        config_file=self.repo.repo_path+'/arduino-cli.yaml'
-        sketch_name=self.get_sketch_name(device_name)
 
     def exec_process(self,cmdline, silent, input=None, **kwargs):
         """Execute a subprocess and returns the returncode, stdout buffer and stderr buffer.
@@ -639,34 +574,3 @@ class FirmwareUpdater():
         else:
             print('Firmware update %s. Failed to find device %s'%(tag,device_name))
             return False
-
-
-if args.arm or args.lift or args.wacc or args.pimu or args.left_wheel or args.right_wheel:
-    use_device={'hello-motor-lift':args.lift,'hello-motor-arm':args.arm, 'hello-motor-right-wheel':args.right_wheel, 'hello-motor-left-wheel':args.left_wheel,'hello-pimu':args.pimu,'hello-wacc':args.wacc}
-else:
-    use_device = {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
-
-if args.mgmt:
-    print(mgmt)
-    exit()
-
-if args.status or args.update or args.update_to or args.update_to_branch:
-    c = CurrrentConfiguration(use_device)
-    r = FirmwareRepo()
-    u = FirmwareUpdater(use_device,c,r)
-    c.pretty_print()
-    print('')
-    r.pretty_print_available_versions()
-    print('')
-    u.pretty_print_recommended()
-    print('')
-    print('')
-    if args.update:
-        u.do_update()
-    elif args.update_to:
-        u.do_update_to()
-    elif args.update_to_branch:
-        u.do_update_to_branch()
-else:
-    parser.print_help()
-
