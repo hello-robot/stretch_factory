@@ -408,12 +408,14 @@ class FirmwareUpdater():
                     data = motor.read_encoder_calibration_from_YAML()
                     print('Writing calibration data to flash...')
                     motor.write_encoder_calibration_to_flash(data)
-                    print('Successful write of FLASH. Resetting board now.')
+                    print('Successful write of FLASH.')
                     motor.board_reset()
                     motor.push_command()
                     motor.transport.ser.close()
-                    time.sleep(2.0)
+                    print('Resetting board')
+                    time.sleep(2.0) #Flashing causes board to reset, give time to reset
                     self.wait_on_device(device_name)
+                    print('Successful return of device to bus.')
 
 
 
@@ -424,28 +426,22 @@ class FirmwareUpdater():
                 self.flash_stepper_calibration(device_name)
         print('')
         click.secho('############## Confirming Firmware Updates ##############', fg="green", bold=True)
-        self.current_config = CurrrentConfiguration(self.use_device)
+        self.current_config = CurrrentConfiguration(self.use_device) #Pull the currently installed system from fw
         success=True
         for device_name in self.target.keys():
             if self.use_device[device_name]:
-                if self.fw_updated[device_name]:
-                    if self.current_config.config_info[device_name] is None:
-                        print('%s | No device available' % device_name.upper().ljust(25))
-                    else:
-                        cfg = self.current_config.config_info[device_name]
-                        v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])
-                        if not from_branch:
-                            v_targ = self.target[device_name]
-                        else:
-                            v_targ=v_curr
-                        if v_curr == v_targ:
-                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
-                        else:
-                            click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-                            success=False
+                if self.current_config.config_info[device_name] is None: #Device may not have come back on bus
+                    print('%s | No device available' % device_name.upper().ljust(25))
+                    success=False
                 else:
-                    click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-                    success = False
+                    cfg = self.current_config.config_info[device_name]
+                    v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])  # Version that is now on the board
+                    v_targ = self.target[device_name] if not from_branch else v_curr #Target version
+                    if v_curr == v_targ:
+                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
+                    else:
+                        click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                        success=False
         return success
 
 
