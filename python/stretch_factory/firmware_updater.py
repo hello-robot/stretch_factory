@@ -409,11 +409,11 @@ class FirmwareUpdater():
                     print('Writing calibration data to flash...')
                     motor.write_encoder_calibration_to_flash(data)
                     print('Successful write of FLASH.')
+                    self.wait_on_device(device_name)
                     motor.board_reset()
                     motor.push_command()
                     motor.transport.ser.close()
-                    print('Resetting board')
-                    time.sleep(2.0) #Flashing causes board to reset, give time to reset
+                    time.sleep(2.0)
                     self.wait_on_device(device_name)
                     print('Successful return of device to bus.')
 
