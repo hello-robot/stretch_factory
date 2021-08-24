@@ -109,6 +109,7 @@ class FirmwareRepo():
         branches=[]
         for ref in self.repo.git.branch('-r').split('\n'):
             branches.append(ref)
+        branches=[b for b in branches if b.find('HEAD')==-1]
         return branches
 
 
