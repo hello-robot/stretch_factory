@@ -9,6 +9,8 @@ import subprocess
 import sys
 import shutil
 import stretch_body.dynamixel_XL430 as dxl
+import stretch_body.hello_utils as hello_utils
+import stretch_body.robot_params
 
 # ###################################
 def check_internet():
@@ -302,4 +304,76 @@ def run_dxl_spin():
     print('SUCCESS: Dynamixel Spin complete')
     return {'success':1,'sn':sn,'port':port}
 
+# ######################## RDK Tools ##########################################
+def modify_bashrc(env_var,env_var_val):
+    f=open(os.environ['HOME']+'/.bashrc','r')
+    x=f.readlines()
+    x_out=''
+    for xx in x:
+        if xx.find(env_var)>0:
+            x_out=x_out+'export '+env_var+'='+env_var_val+'\n'
+        else:
+            x_out=x_out+xx
+    f.close()
+    f=open(os.environ['HOME']+'/.bashrc','w')
+    f.write(x_out)
+    f.close()
 
+def add_arduino_udev_line(device_name, serial_no):
+    f = open(hello_utils.get_fleet_directory()+'udev/95-hello-arduino.rules', 'r')
+    x = f.readlines()
+    x_out = ''
+    overwrite=False
+    uline = 'KERNEL=="ttyACM*", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="804d",MODE:="0666", ATTRS{serial}=="'+serial_no + '", SYMLINK+="'+device_name+'", ENV{ID_MM_DEVICE_IGNORE}="1"\n'
+    for xx in x:
+        if xx.find(device_name) > 0 and xx[0]!='#':
+            overwrite=True
+            x_out = x_out + uline
+            print('Overwriting existing entry...')
+        else:
+            x_out = x_out + xx
+    if not overwrite:
+        print('Creating new entry...')
+        x_out = x_out + uline
+    f.close()
+    f = open(hello_utils.get_fleet_directory()+'udev/95-hello-arduino.rules', 'w')
+    f.write(x_out)
+    f.close()
+
+def add_ftdi_udev_line(device_name, serial_no):
+    f = open(hello_utils.get_fleet_directory()+'udev/99-hello-dynamixel.rules', 'r')
+    x = f.readlines()
+    x_out = ''
+    overwrite=False
+    uline = 'SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTR{device/latency_timer}="1", ATTRS{serial}=="'+serial_no+'", SYMLINK+="'+device_name+'"'
+    for xx in x:
+        if xx.find(device_name) > 0 and xx[0]!='#':
+            overwrite=True
+            x_out = x_out + uline +'\n'
+            print('Overwriting existing entry...')
+        else:
+            x_out = x_out + xx
+    if not overwrite:
+        print('Creating new entry...')
+        x_out = x_out + uline + '\n'
+    f.close()
+    f = open(hello_utils.get_fleet_directory()+'udev/99-hello-dynamixel.rules', 'w')
+    f.write(x_out)
+    f.close()
+
+def set_rdk_params():
+    log_dir = hello_utils.get_stretch_directory(hello_utils.get_fleet_id() +'/log/')
+    if not os.path.exists(log_dir):
+        print( 'Creating log folder')
+        os.makedirs(log_dir)
+    rdk_params = {
+        "logging": {
+            "handlers": {
+                "file_handler": {
+                    "filename": log_dir + 'stretchbody_{0}.log'.format(hello_utils.create_time_string())
+                }
+            }
+        }
+
+    }
+    stretch_body.robot_params.RobotParams.add_params(rdk_params)
