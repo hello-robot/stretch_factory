@@ -13,7 +13,7 @@ m=None
 try:
     for id in range(25):
         m = DynamixelXL430(id, args.usb,baud=args.baud)
-        m.startup()
+        #m.startup() #Don't startup as may be in error state
         if (m.do_ping(verbose=False)):
             m.do_reboot()
         else:
