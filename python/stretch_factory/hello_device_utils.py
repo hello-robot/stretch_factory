@@ -13,6 +13,30 @@ import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 
 # ###################################
+class stream_tee(object):
+    # Based on https://gist.github.com/327585 by Anand Kunal
+    # http://www.tentech.ca/2011/05/stream-tee-in-python-saving-stdout-to-file-while-keeping-the-console-alive/
+    def __init__(self, stream1, stream2):
+        self.stream1 = stream1
+        self.stream2 = stream2
+        self.__missing_method_name = None  # Hack!
+
+    def __getattribute__(self, name):
+        return object.__getattribute__(self, name)
+
+    def __getattr__(self, name):
+        self.__missing_method_name = name  # Could also be a property
+        return getattr(self, '__methodmissing__')
+
+    def __methodmissing__(self, *args, **kwargs):
+        # Emit method call to the log copy
+        callable2 = getattr(self.stream2, self.__missing_method_name)
+        callable2(*args, **kwargs)
+
+        # Emit method call to stdout (stream 1)
+        callable1 = getattr(self.stream1, self.__missing_method_name)
+        return callable1(*args, **kwargs)
+# ###################################
 def check_internet():
     url = "http://github.com"
     timeout = 10
@@ -361,19 +385,27 @@ def add_ftdi_udev_line(device_name, serial_no):
     f.write(x_out)
     f.close()
 
-def set_rdk_params():
-    log_dir = hello_utils.get_stretch_directory(hello_utils.get_fleet_id() +'/log/')
-    if not os.path.exists(log_dir):
-        print( 'Creating log folder')
-        os.makedirs(log_dir)
-    rdk_params = {
-        "logging": {
-            "handlers": {
-                "file_handler": {
-                    "filename": log_dir + 'stretchbody_{0}.log'.format(hello_utils.create_time_string())
-                }
-            }
-        }
+def assign_arduino_to_robot(device_name,is_stepper=False):
+    device=find_arduino()
+    if device['board'] is not None:
+        add_arduino_udev_line(device_name,device['serial'])
+        if is_stepper:
+            print('Setting serial number in YAML for %s to %s'%(device_name,device['serial']))
+            d = stretch_body.device.Device()
+            d.robot_params[device_name]['serial_no'] = device['serial']
+            d.write_device_params(device_name, d.robot_params[device_name])
+        return  {'success': 1, 'sn': device['serial']}
+    else:
+        print('No Arduino device device found')
+    return  {'success': 0, 'sn':None}
 
-    }
-    stretch_body.robot_params.RobotParams.add_params(rdk_params)
+def assign_dynamixel_to_robot(device_name):
+    sn=find_ftdi_sn()
+    if sn is not None:
+        print('Found Dynamixel device with SerialNumber %s'%sn)
+        print('Writing UDEV for %s'%sn)
+        add_ftdi_udev_line(device_name, sn)
+        return {'success': 1, 'sn': sn}
+    else:
+        print('No Dynamixel device found')
+        return {'success': 0, 'sn': None}
