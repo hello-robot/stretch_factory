@@ -8,7 +8,7 @@ import fcntl
 import subprocess
 import sys
 import shutil
-import stretch_body.dynamixel_XL430 as dxl
+
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 
@@ -98,17 +98,22 @@ def find_sole_ACM_device():
     """
     acms=[]
     try:
-        devices=exec_process(['ls','-l','/dev'],False)
+        devices=exec_process(['ls','-l','/dev'],True)
         devices=devices.split(b'\n')
         for d in devices:
-            #print(d)
             if d.find('ttyACM')>0:
                 acms.append(d[d.find('ttyACM'):d.find('ttyACM')+6])
-        print(acms)
-        return acms
     except RuntimeError as e:
         print('No ttyACM devices found')
         return []
+    if len(acms)==0:
+        print('No ttyACM devices found')
+        return []
+    if len(acms) >1:
+        print('More than one ttyACM devices found')
+        return []
+    print('Found ACM %s '%acms[0])
+    return acms[0]
 
 # ###################################
 def get_dmesg():
@@ -274,59 +279,6 @@ def run_firmware_flash(port,sketch):
         print('Failure: could not find board SN')
         return {'success': 0, 'sn': x['serial']}
 
-# ##############################################################
-def run_dxl_spin():
-    print('### Runing Dynamixel Spin')
-    print('###################################################################')
-
-    port=find_ftdi_port()
-    if port is not None:
-        print('SUCCESS: Found FTDI device with on port %s' % port)
-    else:
-        print('FAIL: Did not find FTDI device on bus')
-        return {'success':0,'sn':None,'port':None}
-
-    sn = find_ftdi_sn()
-    if sn is not None:
-        print('SUCCESS: Found FTDI device serial no of %s' % sn)
-    else:
-        print('FAIL: Did not find FTDI serial no')
-        return {'success':0,'sn':None,'port':port}
-
-    try:
-        servo=dxl.DynamixelXL430(dxl_id=1,usb=port)
-        if servo.do_ping():
-            print('SUCCESS: Pinged servo at ID 1')
-        else:
-            print('FAIL: Unable to ping servo')
-            return {'success':0,'sn':sn,'port':port}
-
-        servo.disable_torque()
-        servo.enable_pos()
-        servo.enable_torque()
-
-        servo.go_to_pos(500)
-        time.sleep(2.0)
-        x1=servo.get_pos()
-        print('Moved to %d'%x1)
-
-        servo.go_to_pos(1500)
-        time.sleep(2.0)
-        x2 = servo.get_pos()
-        print('Moved to %d' % x2)
-
-        if abs(x1-500)<20 and abs(x2-1500)<20:
-            print('SUCCESS: Servo motion observed')
-        else:
-            print('FAIL: Unable to move servo')
-            return {'success':0,'sn':sn,'port':port}
-    except dxl.DynamixelCommError:
-        print('FAIL: Unable to communicate with servo')
-        return {'success': 0, 'sn': sn, 'port': port}
-
-    print('###################################################################')
-    print('SUCCESS: Dynamixel Spin complete')
-    return {'success':1,'sn':sn,'port':port}
 
 # ######################## RDK Tools ##########################################
 def modify_bashrc(env_var,env_var_val):
