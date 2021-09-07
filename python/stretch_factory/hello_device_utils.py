@@ -7,8 +7,9 @@ from subprocess import Popen, PIPE
 import fcntl
 import subprocess
 import sys
-import shutil
 
+from subprocess import Popen, PIPE
+import usb.core
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 
@@ -91,29 +92,21 @@ def is_device_present(device):
     except RuntimeError as e:
         return False
 # ###################################
-def find_sole_ACM_device():
-    """
-    Find a device named /dev/ttyACM*
-    Error if more than one found
-    """
-    acms=[]
-    try:
-        devices=exec_process(['ls','-l','/dev'],True)
-        devices=devices.split(b'\n')
-        for d in devices:
-            if d.find('ttyACM')>0:
-                acms.append(d[d.find('ttyACM'):d.find('ttyACM')+6])
-    except RuntimeError as e:
-        print('No ttyACM devices found')
-        return []
-    if len(acms)==0:
-        print('No ttyACM devices found')
-        return []
-    if len(acms) >1:
-        print('More than one ttyACM devices found')
-        return []
-    print('Found ACM %s '%acms[0])
-    return acms[0]
+def find_arduinos():
+    devs = []
+    all = usb.core.find(find_all=True)
+    for dev in all:
+        if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
+            devs.append(dev)
+    return devs
+
+def find_ftdis():
+    devs = []
+    all = usb.core.find(find_all=True)
+    for dev in all:
+        if dev.idVendor == 0x0403 and dev.idProduct == 0x6001:
+            devs.append(dev)
+    return devs
 
 # ###################################
 def get_dmesg():
@@ -338,26 +331,36 @@ def add_ftdi_udev_line(device_name, serial_no):
     f.close()
 
 def assign_arduino_to_robot(device_name,is_stepper=False):
-    device=find_arduino()
-    if device['board'] is not None:
-        add_arduino_udev_line(device_name,device['serial'])
-        if is_stepper:
-            print('Setting serial number in YAML for %s to %s'%(device_name,device['serial']))
-            d = stretch_body.device.Device()
-            d.robot_params[device_name]['serial_no'] = device['serial']
-            d.write_device_params(device_name, d.robot_params[device_name])
-        return  {'success': 1, 'sn': device['serial']}
+    """
+    This expects only a single arduino device on the bus
+    Tie the uC serial number to device_name under udev
+    Also update the YAML with the serial number if a stepper
+    The YAML writing requres the HELLO_FLEET_ID to be set in advance
+    """
+    a = find_arduinos()
+    if len(a) != 1:
+        print('Error: Only one Arduino should be on the bus')
     else:
-        print('No Arduino device device found')
+        sn=a[0].serial_number
+        add_arduino_udev_line(device_name,sn)
+        if is_stepper:
+            print('Setting serial number in YAML for %s to %s'%(device_name,sn))
+            d = stretch_body.device.Device()
+            d.robot_params[device_name]['serial_no'] = sn
+            d.write_device_params(device_name, d.robot_params[device_name])
+        return  {'success': 1, 'sn': sn}
     return  {'success': 0, 'sn':None}
 
 def assign_dynamixel_to_robot(device_name):
-    sn=find_ftdi_sn()
-    if sn is not None:
-        print('Found Dynamixel device with SerialNumber %s'%sn)
-        print('Writing UDEV for %s'%sn)
-        add_ftdi_udev_line(device_name, sn)
-        return {'success': 1, 'sn': sn}
+    """
+    This expects only a single FTDI device on the bus
+    Tie the FTDI serial number to device_name under udev
+    """
+    f=find_ftdis()
+    if len(f) != 1:
+        print('Error: Only one FTDI should be on the bus')
     else:
-        print('No Dynamixel device found')
-        return {'success': 0, 'sn': None}
+        sn=f[0].serial_number
+        add_ftdi_udev_line(device_name,sn)
+        return  {'success': 1, 'sn': sn}
+    return  {'success': 0, 'sn':None}
