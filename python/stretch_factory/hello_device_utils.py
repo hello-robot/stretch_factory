@@ -170,12 +170,11 @@ def find_ftdi_port():
         print('FTDI port not found')
         return None
 # ###################################
-def compile_arduino_firmware(sketch_name):
+def compile_arduino_firmware(sketch_name,repo_path):
     """
     :param sketch_name: eg 'hello_stepper'
     :return T if success:
     """
-    repo_path='/home/hello-robot/repos/stretch_pcba_qc'
     compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s %s/arduino/%s' % (sketch_name, repo_path, sketch_name)
     print(compile_command)
     c = Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
@@ -233,7 +232,7 @@ def reset_arduino_usb():
         lsusb_out=lsusb_out[8:]
 # ##############################################################
 
-def run_firmware_flash(port,sketch):
+def run_firmware_flash(port,sketch,repo_path=''):
     #Return board serial # / success
     print('### Running Firmware Flash on port %s and sketch %s'%(port,sketch))
     print('###################################################################')
@@ -249,7 +248,7 @@ def run_firmware_flash(port,sketch):
         print('FAIL: Did not find PCBA on %s'%port)
         return  {'success':0,'sn':None}
 
-    if compile_arduino_firmware(sketch):
+    if compile_arduino_firmware(sketch,repo_path):
         print('SUCCESS: Found compiled sketch %s' % sketch)
     else:
         print('FAIL: Could not compile sketch %s' % sketch)
