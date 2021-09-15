@@ -180,13 +180,13 @@ def compile_arduino_firmware(sketch_name,repo_path):
     c = Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
     return c.find(b'Sketch uses')>-1
 
-def burn_arduino_firmware(port, sketch_name):
-    repo_path='/home/hello-robot/repos/stretch_pcba_qc'
+def burn_arduino_firmware(port, sketch_name,repo_path):
     print('-------- Flashing firmware %s | %s ------------' % (port, sketch_name))
     port_name = Popen("ls -l " + port, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
     port_name=port_name.decode("utf-8")
     if port_name is not None:
         upload_command = 'arduino-cli upload -p %s --fqbn hello-robot:samd:%s %s/arduino/%s' % (port_name, sketch_name,repo_path, sketch_name)
+        print('Running: %s'%upload_command)
         u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
         uu = u.split(b'\n')
         #Pretty print the result
@@ -255,7 +255,7 @@ def run_firmware_flash(port,sketch,repo_path=''):
         return  {'success':0,'sn':None}
 
     get_dmesg()
-    if burn_arduino_firmware(port,sketch):
+    if burn_arduino_firmware(port,sketch,repo_path):
         print('SUCCESS: Flashed sketch %s' % sketch)
     else:
         print('FAIL: Could not flash sketch %s' % sketch)
