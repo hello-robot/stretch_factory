@@ -359,8 +359,10 @@ def assign_dynamixel_to_robot(device_name, robot_sn=None):
     This expects only a single FTDI device on the bus
     Tie the FTDI serial number to device_name under udev
     """
+    print('A',hello_utils.get_fleet_directory())
+    print('B',os.environ['HELLO_FLEET_PATH'],robot_sn)
     if robot_sn is None:
-       fleet_dir=hello_utils.get_fleet_directory()
+        fleet_dir=hello_utils.get_fleet_directory()
     else:
         fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn+'/'
     f=find_ftdis()
