@@ -287,8 +287,8 @@ def modify_bashrc(env_var,env_var_val):
     f.write(x_out)
     f.close()
 
-def add_arduino_udev_line(device_name, serial_no):
-    f = open(hello_utils.get_fleet_directory()+'udev/95-hello-arduino.rules', 'r')
+def add_arduino_udev_line(device_name, serial_no,fleet_dir):
+    f = open(fleet_dir+'udev/95-hello-arduino.rules', 'r')
     x = f.readlines()
     x_out = ''
     overwrite=False
@@ -304,12 +304,12 @@ def add_arduino_udev_line(device_name, serial_no):
         print('Creating new entry...')
         x_out = x_out + uline
     f.close()
-    f = open(hello_utils.get_fleet_directory()+'udev/95-hello-arduino.rules', 'w')
+    f = open(fleet_dir+'udev/95-hello-arduino.rules', 'w')
     f.write(x_out)
     f.close()
 
-def add_ftdi_udev_line(device_name, serial_no):
-    f = open(hello_utils.get_fleet_directory()+'udev/99-hello-dynamixel.rules', 'r')
+def add_ftdi_udev_line(device_name, serial_no,fleet_dir):
+    f = open(fleet_dir+'udev/99-hello-dynamixel.rules', 'r')
     x = f.readlines()
     x_out = ''
     overwrite=False
@@ -325,23 +325,27 @@ def add_ftdi_udev_line(device_name, serial_no):
         print('Creating new entry...')
         x_out = x_out + uline + '\n'
     f.close()
-    f = open(hello_utils.get_fleet_directory()+'udev/99-hello-dynamixel.rules', 'w')
+    f = open(fleet_dir+'udev/99-hello-dynamixel.rules', 'w')
     f.write(x_out)
     f.close()
 
-def assign_arduino_to_robot(device_name,is_stepper=False):
+def assign_arduino_to_robot(device_name,is_stepper=False,robot_sn=None):
     """
     This expects only a single arduino device on the bus
     Tie the uC serial number to device_name under udev
     Also update the YAML with the serial number if a stepper
     The YAML writing requres the HELLO_FLEET_ID to be set in advance
     """
+    if robot_sn is None:
+       fleet_dir=hello_utils.get_fleet_directory()
+    else:
+        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn
     a = find_arduinos()
     if len(a) != 1:
         print('Error: Only one Arduino should be on the bus')
     else:
         sn=a[0].serial_number
-        add_arduino_udev_line(device_name,sn)
+        add_arduino_udev_line(device_name,sn,fleet_dir)
         if is_stepper:
             print('Setting serial number in YAML for %s to %s'%(device_name,sn))
             d = stretch_body.device.Device()
@@ -350,16 +354,20 @@ def assign_arduino_to_robot(device_name,is_stepper=False):
         return  {'success': 1, 'sn': sn}
     return  {'success': 0, 'sn':None}
 
-def assign_dynamixel_to_robot(device_name):
+def assign_dynamixel_to_robot(device_name, robot_sn=None):
     """
     This expects only a single FTDI device on the bus
     Tie the FTDI serial number to device_name under udev
     """
+    if robot_sn is None:
+       fleet_dir=hello_utils.get_fleet_directory()
+    else:
+        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn
     f=find_ftdis()
     if len(f) != 1:
         print('Error: Only one FTDI should be on the bus')
     else:
         sn=f[0].serial_number
-        add_ftdi_udev_line(device_name,sn)
+        add_ftdi_udev_line(device_name,sn,fleet_dir)
         return  {'success': 1, 'sn': sn}
     return  {'success': 0, 'sn':None}
