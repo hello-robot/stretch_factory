@@ -339,7 +339,7 @@ def assign_arduino_to_robot(device_name,is_stepper=False,robot_sn=None):
     if robot_sn is None:
        fleet_dir=hello_utils.get_fleet_directory()
     else:
-        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn
+        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn+'/'
     a = find_arduinos()
     if len(a) != 1:
         print('Error: Only one Arduino should be on the bus')
@@ -362,7 +362,7 @@ def assign_dynamixel_to_robot(device_name, robot_sn=None):
     if robot_sn is None:
        fleet_dir=hello_utils.get_fleet_directory()
     else:
-        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn
+        fleet_dir=os.environ['HELLO_FLEET_PATH']+'/'+robot_sn+'/'
     f=find_ftdis()
     if len(f) != 1:
         print('Error: Only one FTDI should be on the bus')
