@@ -6,7 +6,9 @@ from stretch_factory.firmware_updater import *
 parser = argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
 group = parser.add_mutually_exclusive_group()
-parser.add_argument("--status", help="Display the current firmware status", action="store_true")
+parser.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
+parser.add_argument("--available", help="Display the availabel firmware versions", action="store_true")
+parser.add_argument("--recommended", help="Display the recommended firmware to install", action="store_true")
 group.add_argument("--update", help="Update to recommended firmware", action="store_true")
 group.add_argument("--update_to", help="Update to a specific firmware version", action="store_true")
 group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch", action="store_true")
@@ -32,8 +34,8 @@ For example Pimu.v0.0.1p0
 This same version is included the Arduino file Common.h and is burned to the board EEPROM. It 
 can be read from Stretch Body as <device>.board_info
 
-Each Stretch Body device (Stepper, Wacc, Pimu) includes a variable valid_firmware_protocol
-For example, stepper.valid_firmware_protocol='p0'
+Each Stretch Body device (Stepper, Wacc, Pimu) includes a dictionary: supported_protocols
+For example, stepper.supported_protocols.keys()=['p0','p1']
 
 The updater will determine the available firmware versions given the current Stretch Body that is installed on 
 the default Python path.
@@ -45,7 +47,9 @@ WHEN UPDATING FIRMWARE CODE
 ----------------------
 After updating the firmware
 * Increment the version / protocol in the device's Common.h', eg
-  #define FIRMWARE_VERSION "Pimu.v0.0.5p1"
+  #define FIRMWARE_VERSION "Pimu.v0.0.5p0"
+* When updating the protocol version increment the <Minor> version as well, for example
+    Pimu.v0.0.5p0 --> Pimu.v0.1.0p1
 * Tag with the full version name that matches Common.h , eg
   git tag -a Pimu.v0.0.5p1 -m "Pimu bugfix of foo"
 *Push tag to remote
@@ -53,8 +57,7 @@ After updating the firmware
 * Check the code in to stretch_firmware
 
 If there was a change in protocol number, also update Stretch Body
-accordingly. For example in stepper.py:
-    self.valid_firmware_protocol='p1'
+accordingly. For example in stepper.supported_protocols, add {'p1': Stepper_Protocol_P1}
 
 TAGGING
 --------
@@ -87,17 +90,30 @@ if args.mgmt:
     print(mgmt)
     exit()
 
-if args.status or args.update or args.update_to or args.update_to_branch:
-    c = CurrrentConfiguration(use_device)
-    r = FirmwareRepo()
-    u = FirmwareUpdater(use_device,c,r)
+if args.current:
+    c = InstalledFirmware(use_device)
+    c.pretty_print()
+    exit()
+
+if args.recommended:
+    r = RecommendedFirmware(use_device)
+    r.pretty_print()
+    exit()
+
+if args.available:
+    a = AvailableFirmware(use_device)
+    a.pretty_print()
+    exit()
+
+if args.update or args.update_to or args.update_to_branch:
+    u = FirmwareUpdater(use_device)
     if not u.startup():
         exit()
-    c.pretty_print()
-    print('')
-    r.pretty_print_available_versions()
-    print('')
-    u.pretty_print_recommended()
+    #u.fw_installed.pretty_print()
+    #print('')
+    #u.fw_available.pretty_print()
+    #print('')
+    u.fw_recommended.pretty_print()
     print('')
     print('')
     if args.update:
