@@ -11,7 +11,7 @@ stretch_scripts={script_path+'/'+f for f in listdir(script_path) if isfile(join(
 
 setuptools.setup(
     name="hello_robot_stretch_factory",
-    version="0.1.5",
+    version="0.1.6",
     author="Hello Robot Inc.",
     author_email="support@hello-robot.com",
     description="Stretch Factory Tools",
@@ -19,7 +19,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/hello-robot/stretch_factory",
     scripts = stretch_scripts,
-    packages=setuptools.find_packages(),
+    packages=['stretch_factory'],
     classifiers=[
         "Programming Language :: Python :: 2",
         "Operating System :: OS Independent",
@@ -28,4 +28,5 @@ setuptools.setup(
     install_requires=['pyserial','pyusb','gitpython']
 )
 
-#,'hello-robot-stretch-body'
+
+

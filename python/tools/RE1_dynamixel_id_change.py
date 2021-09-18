@@ -18,7 +18,7 @@ if not m.do_ping():
     exit(0)
 
 
-print('Ready to change ID %d to %d. Hit enter to continu'%(args.id_from,args.id_to))
+print('Ready to change ID %d to %d. Hit enter to continue'%(args.id_from,args.id_to))
 raw_input()
 m.disable_torque()
 m.set_id(args.id_to)
