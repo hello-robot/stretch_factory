@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description='Upload Stretch firmware to microco
 
 group = parser.add_mutually_exclusive_group()
 parser.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
-parser.add_argument("--available", help="Display the availabel firmware versions", action="store_true")
+parser.add_argument("--available", help="Display the available firmware versions", action="store_true")
 parser.add_argument("--recommended", help="Display the recommended firmware to install", action="store_true")
 group.add_argument("--update", help="Update to recommended firmware", action="store_true")
 group.add_argument("--update_to", help="Update to a specific firmware version", action="store_true")
