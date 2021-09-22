@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
+from future.builtins import input
 import time
 import argparse as ap
 import stretch_body.robot as rb

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from future.builtins import input
 from stretch_body.dynamixel_XL430 import *
 import argparse
 
@@ -18,8 +19,7 @@ if not m.do_ping():
     exit(0)
 
 
-print('Ready to change ID %d to %d. Hit enter to continu'%(args.id_from,args.id_to))
-raw_input()
+input('Ready to change ID %d to %d. Hit enter to continu'%(args.id_from,args.id_to))
 m.disable_torque()
 m.set_id(args.id_to)
 
