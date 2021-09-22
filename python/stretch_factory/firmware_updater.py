@@ -10,7 +10,7 @@ import stretch_body.wacc
 import yaml
 import time
 import sys
-
+import stretch_body.device
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -171,15 +171,31 @@ class AvailableFirmware():
         self.__get_available_firmware_versions()
 
     def __clone_firmware_repo(self):
+        print('Collecting information...')
         self.repo_path = '/tmp/stretch_firmware_update'
         if not os.path.isdir(self.repo_path):
             #print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
             git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
+
+        sys.stdout.write('.')
+        sys.stdout.flush()
         self.repo = git.Repo(self.repo_path)
         os.chdir(self.repo_path)
+
+        sys.stdout.write('.')
+        sys.stdout.flush()
         os.system('git checkout master >/dev/null 2>&1')
+
+        sys.stdout.write('.')
+        sys.stdout.flush()
         os.system('git fetch --tags >/dev/null 2>&1 ')
+
+        sys.stdout.write('.')
+        sys.stdout.flush()
         os.system('git pull >/dev/null 2>&1 ')
+        sys.stdout.write('.')
+        sys.stdout.flush()
+        print('\n')
 
 
     def pretty_print(self):
@@ -224,9 +240,15 @@ class AvailableFirmware():
 
     def get_remote_branches(self):
         branches=[]
+        print('Collecting information...')
         for ref in self.repo.git.branch('-r').split('\n'):
+            sys.stdout.write('.')
+            sys.stdout.flush()
             branches.append(ref)
-        branches=[b for b in branches if b.find('HEAD')==-1]
+        print('\n')
+        branches=[b.strip(' ') for b in branches if b.find('HEAD')==-1]
+        branches.remove('origin/master') #Move master to position 0
+        branches=['origin/master']+branches
         return branches
 
 # #####################################################################################################
@@ -274,6 +296,14 @@ class RecommendedFirmware():
                         action_out = 'At most recent version'.ljust(25)
             print('%s | %s | %s | %s ' %(dev_out,installed_out,rec_out,action_out))
 # #####################################################################################################
+
+log_device=stretch_body.device.Device()
+
+def user_msg_log(msg,user_display=True,fg=None,bg=None,bold=False):
+    if user_display:
+        click.secho(msg,fg=fg, bg=bg,bold=bold)
+    log_device.logger.debug(msg)
+
 class FirmwareUpdater():
     def __init__(self,use_device):
         self.use_device=use_device
@@ -334,12 +364,13 @@ class FirmwareUpdater():
 
     def print_upload_warning(self):
         click.secho('------------------------------------------------', fg="yellow", bold=True)
-        click.secho('WARNING: Updating robot firmware should only be done by experienced users', fg="yellow", bold=True)
-        click.secho('WARNING: Do not have other robot processes running during update', fg="yellow", bold=True)
-        click.secho('WARNING: Leave robot powered on during update', fg="yellow", bold=True)
-        click.secho('WARNING: Ensure Lift has support clamp in place', fg="yellow", bold=True)
+        click.secho('WARNING: (1) Updating robot firmware should only be done by experienced users', fg="yellow", bold=True)
+        click.secho('WARNING: (2) Do not have other robot processes running during update', fg="yellow", bold=True)
+        click.secho('WARNING: (3) Leave robot powered on during update', fg="yellow", bold=True)
+        if self.use_device['hello-motor-lift']:
+            click.secho('WARNING: (4) Ensure Lift has support clamp in place', fg="yellow", bold=True)
+            click.secho('WARNING: (5) Lift may make a loud noise during programming. This is normal.', fg="yellow", bold=True)
         click.secho('------------------------------------------------', fg="yellow", bold=True)
-
 
 
     def do_update(self,no_prompts=False):
@@ -366,14 +397,14 @@ class FirmwareUpdater():
                 if self.target[device_name] is not None:
                     if not (self.target[device_name]==self.fw_installed.config_info[device_name]['version']):
                         self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string())
-            click.secho('---- Firmware Update Complete!', fg="green",bold=True)
+            click.secho('---- Firmware Update Complete!', fg="cyan",bold=True)
             success=self.post_firmware_update()
             return success
 
     def do_update_to(self):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
-        click.secho('######### Selecting target firmware versions ###########', fg="green", bold=True)
+        click.secho('######### Select target firmware versions ###########', fg="cyan", bold=True)
         for device_name in self.fw_recommended.recommended.keys():
             if self.use_device[device_name]:
                 vs=self.fw_available.versions[device_name]
@@ -402,7 +433,7 @@ class FirmwareUpdater():
     def do_update_to_branch(self):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
-        click.secho('######### Selecting target branch ###########', fg="green", bold=True)
+        click.secho('######### Select target branch ###########', fg="cyan", bold=True)
         branches=self.fw_available.get_remote_branches()
         for id in range(len(branches)):
             print('%d: %s' % (id, branches[id]))
@@ -415,8 +446,8 @@ class FirmwareUpdater():
             else:
                 click.secho('Invalid ID', fg="red")
         print('Selected branch %s'%branch_name )
-        print('')
-        print('')
+        #print('')
+        #print('')
 
         #Check that version of target branch is compatible
         for device_name in self.target.keys():
@@ -436,7 +467,7 @@ class FirmwareUpdater():
                         click.secho('Downgrade Stretch Body first...',fg="yellow")
                     return False
         #Burn the Head of the branch to each board regardless of what is currently installed
-        click.secho('############## Updating to branch %s <HEAD> ##############'%branch_name.upper(), fg="green", bold=True)
+        click.secho('>>> Flashing firmware from branch %s <HEAD>'%branch_name, fg="cyan", bold=True)
         self.print_upload_warning()
         self.fw_updated = {}
         if click.confirm('Proceed with update??'):
@@ -444,13 +475,13 @@ class FirmwareUpdater():
                 self.fw_updated[device_name] = False
                 if self.fw_installed.config_info[device_name] is not None:
                     self.fw_updated[device_name] = self.flash_firmware_update(device_name, branch_name)
-            click.secho('---- Firmware Update Complete!', fg="green", bold=True)
+            click.secho('---- Firmware flashing complete!', fg="green", bold=True)
             return self.post_firmware_update(from_branch=True)
         return False
 
     def flash_stepper_calibration(self,device_name):
         if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
-                click.secho('############## Flashing Stepper Calibration: %s ##############' % device_name, fg="green",bold=True)
+                click.secho('############## Flashing Stepper Calibration: %s ##############' % device_name, fg="cyan",bold=True)
                 time.sleep(1.0)
                 motor = stretch_body.stepper.Stepper('/dev/' + device_name)
                 motor.startup()
@@ -478,7 +509,7 @@ class FirmwareUpdater():
             if self.fw_updated[device_name]:
                 self.flash_stepper_calibration(device_name)
         print('')
-        click.secho('############## Confirming Firmware Updates ##############', fg="green", bold=True)
+        click.secho('############## Confirming Firmware Updates ##############', fg="cyan", bold=True)
         self.fw_installed = InstalledFirmware(self.use_device) #Pull the currently installed system from fw
         success=True
         for device_name in self.target.keys():
@@ -502,7 +533,7 @@ class FirmwareUpdater():
         #click.secho('---------------Git Checkout-------------------------', fg="green")
         os.chdir(self.fw_available.repo_path)
         os.system('git checkout ' + tag +' >/dev/null 2>&1')
-        print('Checked out out firmware %s from Git for %s' % (tag,sketch_name))
+        #print('Checked out out firmware %s from Git for %s' % (tag,sketch_name))
         file_path = self.fw_available.repo_path+'/arduino/'+sketch_name+'/Common.h'
         f=open(file_path,'r')
         lines=f.readlines()
@@ -576,7 +607,7 @@ class FirmwareUpdater():
             return None
 
     def flash_firmware_update(self,device_name, tag):
-        click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="green", bold=True)
+        click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="cyan", bold=True)
         config_file = self.fw_available.repo_path + '/arduino-cli.yaml'
         sketch_name=None
         if device_name == 'hello-motor-left-wheel' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift':
@@ -587,28 +618,29 @@ class FirmwareUpdater():
             sketch_name = 'hello_pimu'
         port_name = self.get_port_name(device_name)
         if port_name is not None and sketch_name is not None:
-            click.secho('---------------Git Checkout-------------------------', fg="green")
+            print('Starting programming. This will take about 5s...')
+            #click.secho('---------------Git Checkout-------------------------', fg="cyan")
             os.chdir(self.fw_available.repo_path)
             os.system('git checkout '+tag+'>/dev/null 2>&1')
-            print('Checkout out firmware %s from Git'%tag)
-            click.secho('---------------Compile-------------------------', fg="green")
+            #print('Checkout out firmware %s from Git'%tag)
+            #click.secho('---------------Compile-------------------------', fg="cyan")
             compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,self.fw_available.repo_path,sketch_name)
-            print(compile_command)
+            #print(compile_command)
             c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-            print(c)
-            click.secho('---------------Upload-------------------------', fg="green")
+            #print(c)
+            #click.secho('---------------Upload-------------------------', fg="cyan")
             upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, self.fw_available.repo_path,sketch_name)
-            print(upload_command)
+            #print(upload_command)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             uu = u.split(b'\n')
             # Pretty print the result
-            for l in uu:
-                k = l.split(b'\r')
-                if len(k) == 1:
-                    print(k[0].decode('utf-8'))
-                else:
-                    for m in k:
-                        print(m.decode('utf-8'))
+            # for l in uu:
+            #     k = l.split(b'\r')
+            #     if len(k) == 1:
+            #         print(k[0].decode('utf-8'))
+            #     else:
+            #         for m in k:
+            #             print(m.decode('utf-8'))
             success = uu[-1] == b'CPU reset.'
             if not success:
                 print('Firmware flash. Failed to upload to %s' % (port_name))
