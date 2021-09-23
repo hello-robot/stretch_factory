@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-
+from future.builtins import input
 import sys, tty, termios
 import time
 
@@ -659,8 +659,7 @@ if __name__ == '__main__':
                 if args.qc:
                     write_factory_params(cma_result)
                 else:
-                    print('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
-                    x=raw_input()
+                    x=input('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
                     if len(x)==0 or x=='y' or x=='Y':
                         print('Writing yaml...')
                         write_factory_params(cma_result)

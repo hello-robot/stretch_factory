@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-
+from future.builtins import input
 import sys
 import time
 import stretch_body.stepper as stepper
@@ -25,15 +25,13 @@ i=0
 while i<3 and not calibration_done:
     print('Doing step ',i)
     motor.menu_transaction('s')
-    print('Did motor step (y/n)[n]?')
-    yn=raw_input()
+    yn=input('Did motor step (y/n)[n]?')
     i=i+1
     if yn=='y':
         print('Starting encoder calibration')
         motor.menu_transaction('c')
         calibration_done=True
-        print('Hit enter when calibration done...')
-        raw_input()
+        input('Hit enter when calibration done...')
         break
 if calibration_done:
     print('Calibration success.')

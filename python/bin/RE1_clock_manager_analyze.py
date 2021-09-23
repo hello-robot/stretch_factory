@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from future.builtins import input
 import time
 import stretch_body.scope
 import stretch_body.pimu
@@ -24,7 +25,7 @@ elif args.wacc:
     p = stretch_body.wacc.Wacc()
     p.startup()
 else:
-    print 'Specify Wacc or Pimu from command line...'
+    print('Specify Wacc or Pimu from command line...')
     exit()
 
 if args.measure_skew:
@@ -54,10 +55,10 @@ if args.measure_kt:
         e=(dt_pc-dt_hw).to_usecs()
         kt_ppm = e / dt_pc.to_secs()  # uSecs of drift per second
 
-        print 'DT PC',dt_pc
-        print 'DT HW',dt_hw
-        print 'PC clock faster than HW clock by (usecs)',e
-        print 'Equivalent Kt (PPM): ',kt_ppm
+        print('DT PC',dt_pc)
+        print('DT HW',dt_hw)
+        print('PC clock faster than HW clock by (usecs)',e)
+        print('Equivalent Kt (PPM): ',kt_ppm)
 
         s.step_display(kt_ppm)
         time.sleep(0.1)
@@ -74,9 +75,6 @@ if args.measure_trs:
     import matplotlib.pyplot as plt
     import numpy as np
     n, bins, patches = plt.hist(x=rt_log, bins='auto', color='#0504aa',alpha=0.7, rwidth=0.85)
-    # print 'N',n
-    #print 'Bins',bins
-    #print 'Patches',patches
     max_bin=bins[np.where(n == n.max())]
     print('Maximum bin (us): '+str(max_bin))
     plt.grid(axis='y', alpha=0.75)
@@ -87,8 +85,8 @@ if args.measure_trs:
     maxfreq = n.max()
     plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
     plt.show()
-    print('Save TRS to YAML? [n]')
-    d = raw_input()
+    print()
+    d = input('Save TRS to YAML? [n]')
     if d == 'y' or d == 'Y':
         p.clock_manager.params['trs'] = float(max_bin)
         p.clock_manager.write_device_params(p.clock_manager.hw_device_name, p.clock_manager.params)

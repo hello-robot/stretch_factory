@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from future.builtins import input
 import stretch_body.stretch_gripper as gripper
 import time
 import argparse
@@ -14,15 +14,23 @@ g.startup()
 #Good starting point
 g.params['zero_t']=4000
 g.params['range_t']=[0,8500]
+#Reset soft motion limits as well
+if g.params['flip_encoder_polarity']:
+    wr_max = g.ticks_to_world_rad(g.params['range_t'][0])
+    wr_min = g.ticks_to_world_rad(g.params['range_t'][1])
+else:
+    wr_max = g.ticks_to_world_rad(g.params['range_t'][1])
+    wr_min = g.ticks_to_world_rad(g.params['range_t'][0])
+g.soft_motion_limits = {'collision': [None, None], 'user': [None, None], 'hard': [wr_min, wr_max],
+                           'current': [wr_min, wr_max]}
 
-print 'Hit enter to find zero'
-raw_input()
+input('Hit enter to find zero')
 g.home()
 print('---------------------------------------------------')
 print('Enter 1 to open fingers. Enter 2 to close fingers. Enter 3 when the fingertips are just barely not touching.')
 z_done=False
 while not z_done:
-    x = raw_input()
+    x = input()
     if x=='1':
         g.move_by(5.0)
     elif x=='2':
@@ -37,7 +45,7 @@ print('Enter 1 to open fingers. Enter 2 to close fingers. Enter 3 when the finge
 print('and no further opening motion is possible')
 z_done=False
 while not z_done:
-    x = raw_input()
+    x = input()
     if x == '1':
         g.move_by(5.0)
     elif x == '2':
@@ -48,21 +56,17 @@ while not z_done:
         g.params['range_t']=[0,g.status['pos_ticks']]
         z_done=True
 
-print('Hit enter to close')
-raw_input()
+
+input('Hit enter to close')
 g.move_to(-100)
-print('Hit enter to open')
-raw_input()
+input('Hit enter to open')
 g.move_to(50.0)
-print('Hit enter to go to zero')
-raw_input()
+input('Hit enter to go to zero')
 g.move_to(0.0)
 time.sleep(4.0)
 g.stop()
 
-
-print('Save calibration [y]?')
-x=raw_input()
+x=input('Save calibration [y]?')
 if x=='y' or x=='Y' or x=='':
     g.write_device_params('stretch_gripper',g.params)
 
