@@ -6,9 +6,9 @@ from stretch_factory.firmware_updater import *
 parser = argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
 group = parser.add_mutually_exclusive_group()
-parser.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
-parser.add_argument("--available", help="Display the available firmware versions", action="store_true")
-parser.add_argument("--recommended", help="Display the recommended firmware", action="store_true")
+group.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
+group.add_argument("--available", help="Display the available firmware versions", action="store_true")
+group.add_argument("--recommended", help="Display the recommended firmware", action="store_true")
 group.add_argument("--install", help="Install the recommended firmware", action="store_true")
 group.add_argument("--install_version", help="Install a specific firmware version", action="store_true")
 group.add_argument("--install_branch", help="Install the HEAD of a specific branch", action="store_true")
@@ -125,7 +125,7 @@ if args.install or args.install_version or args.install_branch or args.install_p
     elif args.install_branch:
         u.do_update_to_branch()
     elif args.install_path:
-        print('Installing',args.install_path)
+        u.do_update_to_path(args.install_path)
 else:
     parser.print_help()
 

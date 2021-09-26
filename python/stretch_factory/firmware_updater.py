@@ -112,8 +112,7 @@ class InstalledFirmware():
         {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
         """
         self.use_device=use_device
-
-        self.config_info={'hello-motor-lift': {},'hello-motor-arm':{},'hello-motor-left-wheel':{},'hello-motor-right-wheel':{},'hello-pimu':{},'hello-wacc':{}}
+        self.config_info={'hello-motor-lift': None,'hello-motor-arm':None,'hello-motor-left-wheel':None,'hello-motor-right-wheel':None,'hello-pimu':None,'hello-wacc':None}
         for device in self.config_info.keys():
             if self.use_device[device]:
                 if device=='hello-wacc':
@@ -124,6 +123,7 @@ class InstalledFirmware():
                     dd=stretch_body.stepper.Stepper('/dev/'+device)
                 dd.startup()
                 if dd.board_info['firmware_version'] is not None: #Was able to pull board info from device
+                    self.config_info[device]={}
                     self.config_info[device]['board_info'] = dd.board_info.copy()
                     self.config_info[device]['supported_protocols']=dd.supported_protocols.keys()
                     self.config_info[device]['installed_protocol_valid']=(dd.board_info['protocol_version']in self.config_info[device]['supported_protocols'])
@@ -132,18 +132,29 @@ class InstalledFirmware():
                 else:
                     self.config_info[device]=None
 
+    def get_supported_protocols(self,device_name):
+        if self.is_device_valid(device_name):
+            return self.config_info[device_name]['supported_protocols']
+        return None
+    def get_version(self,device_name):
+        if self.is_device_valid(device_name):
+            return self.config_info[device_name]['version']
+        return None
+    def is_device_valid(self,device_name):
+        return self.config_info[device_name] is not None
+
     def is_protocol_supported(self,device_name,p):
         """
         Provide 'p0', etc
         """
-        return p in self.config_info[device_name]['supported_protocols']
+        return self.is_device_valid(device_name) and p in self.config_info[device_name]['supported_protocols']
 
     def max_protocol_supported(self,device_name):
         x=[int(x[1:]) for x in self.config_info[device_name]['supported_protocols']]
         return 'p'+str(max(x))
 
     def pretty_print(self):
-        click.secho('############## Currently Installed Firmware ##############',fg="cyan", bold=True)
+        click.secho(' Currently Installed Firmware '.center(110,'#'),fg="cyan", bold=True)
         for device in self.config_info:
             if self.use_device[device]:
                 click.secho('------------ %s ------------'%device.upper(),fg="white", bold=True)
@@ -199,7 +210,7 @@ class AvailableFirmware():
 
 
     def pretty_print(self):
-        click.secho('######### Currently Tagged Versions of Stretch Firmware on Master Branch ##########',fg="cyan", bold=True)
+        click.secho(' Currently Tagged Versions of Stretch Firmware on Master Branch '.center(110,'#'),fg="cyan", bold=True)
         for device_name in self.versions.keys():
             click.secho('---- %s ----'%device_name.upper(), fg="white", bold=True)
             for v in self.versions[device_name]:
@@ -263,15 +274,14 @@ class RecommendedFirmware():
     def __get_recommend_updates(self):
         for device_name in self.use_device.keys():
             if self.use_device[device_name]:
-                    cfg=self.fw_installed.config_info[device_name] #Dictionary of installed configuration for this device
-                    if cfg is not None: #Len 0 if device not found
-                        self.recommended[device_name]=self.fw_available.get_most_recent_version(device_name, cfg['supported_protocols'])
-                    else:
-                        self.recommended[device_name]=None
-        #self.target=self.recommended.copy()
+                if self.fw_installed.is_device_valid(device_name): #Len 0 if device not found
+                    self.recommended[device_name]=self.fw_available.get_most_recent_version(device_name, self.fw_installed.get_supported_protocols(device_name))
+                else:
+                    self.recommended[device_name]=None
 
     def pretty_print(self):
-        click.secho('############## Recommended Firmware Updates ##############\n', fg="cyan",bold=True)
+        click.secho(' Recommended Firmware Updates '.center(110,'#'), fg="cyan",bold=True)
+        print('\n')
         click.secho('%s | %s | %s | %s ' % ('DEVICE'.ljust(25), 'INSTALLED'.ljust(25), 'RECOMMENDED'.ljust(25), 'ACTION'.ljust(25)), fg="cyan", bold=True)
         click.secho('-'*110,fg="cyan", bold=True)
         for device_name in self.recommended.keys():
@@ -279,18 +289,18 @@ class RecommendedFirmware():
             installed_out=''.ljust(25)
             rec_out = ''.ljust(25)
             action_out = ''.ljust(25)
-            if self.fw_installed.config_info[device_name] is None:
+            if not self.fw_installed.is_device_valid(device_name):
                 installed_out='No device available'.ljust(25)
             else:
-                cfg = self.fw_installed.config_info[device_name]
-                installed_out=str(cfg['version']).ljust(25)
+                version = self.fw_installed.get_version(device_name)
+                installed_out=str(version).ljust(25)
                 if self.recommended[device_name]==None:
                    rec_out='None (might be on dev branch)'.ljust(25)
                 else:
                     rec_out=str(self.recommended[device_name]).ljust(25)
-                    if self.recommended[device_name] > cfg['version']:
+                    if self.recommended[device_name] > version:
                         action_out='Upgrade recommended'.ljust(25)
-                    elif self.recommended[device_name] < cfg['version']:
+                    elif self.recommended[device_name] < version:
                         action_out='Downgrade recommended'.ljust(25)
                     else:
                         action_out = 'At most recent version'.ljust(25)
@@ -308,6 +318,8 @@ class FirmwareUpdater():
     def __init__(self,use_device):
         self.use_device=use_device
         self.fw_installed = InstalledFirmware(use_device)
+        for device_name in self.use_device.keys():
+            self.use_device[device_name]=self.use_device[device_name] and self.fw_installed.is_device_valid(device_name)
         self.fw_available= AvailableFirmware(use_device)
         self.fw_recommended=RecommendedFirmware(use_device,self.fw_installed,self.fw_available)
         self.target=self.fw_recommended.recommended.copy()
@@ -333,24 +345,35 @@ class FirmwareUpdater():
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_arduino_cli_install(self):
-        res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()[:11]
-        if not(res==b'arduino-cli'):
-            click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
-            click.secho('WARNING: Tool arduino_cli not installed. See stretch_install_dev.sh (Stretch Install repo)', fg="yellow", bold=True)
-            click.secho('WARNING:---------------------------------------------------------------------------------', fg="yellow", bold=True)
-            print('')
-            return False
+        target_version='0.18.3'
+        res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+        do_install=False
+        if not(res[:11]==b'arduino-cli'):
+            do_install=True
+        else:
+            version=res[res.find('Version:')+9:res.find(' Commit')]
+            if version!=target_version:
+                do_install=True
+        if do_install:
+            click.secho('WARNING:---------------------------------------------------------------------------------',fg="yellow", bold=True)
+            click.secho('WARNING: Compatible version of arduino_cli not installed. ',fg="yellow", bold=True)
+            if click.confirm('Install now?'):
+                os.system('curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s %s'%target_version)
+                os.system('arduino-cli config init')
+                os.system('arduino-cli core install arduino:samd@1.6.21')
+                return True
+            else:
+                return False
         return True
 
     def pretty_print_target(self):
-        click.secho('################# UPDATING FIRMWARE TO... #################', fg="cyan", bold=True)
+        click.secho(' UPDATING FIRMWARE TO... '.center(110,'#'), fg="cyan", bold=True)
         for device_name in self.target.keys():
             if self.use_device[device_name]:
-                if self.fw_installed.config_info[device_name] is None:
+                if not self.fw_installed.is_device_valid(device_name):
                     print('%s | No target available' % device_name.upper().ljust(25))
                 else:
-                    cfg = self.fw_installed.config_info[device_name]
-                    v_curr=FirmwareVersion(cfg['board_info']['firmware_version'])
+                    v_curr=self.fw_installed.get_version(device_name)
                     v_targ=self.target[device_name]
                     if v_targ is None:
                         rec = 'No target available'
@@ -380,8 +403,8 @@ class FirmwareUpdater():
 
         #Count how many updates doing
         for device_name in self.target.keys():
-            if self.fw_installed.config_info[device_name] and self.target[device_name] is not None:
-                if not (self.target[device_name]== self.fw_installed.config_info[device_name]['version']):
+            if self.fw_installed.is_device_valid(device_name) and self.target[device_name] is not None:
+                if not (self.target[device_name]== self.fw_installed.get_version(device_name)):
                     self.num_update=self.num_update+1
 
         self.pretty_print_target()
@@ -395,22 +418,23 @@ class FirmwareUpdater():
             for device_name in self.target.keys():
                 self.fw_updated[device_name]=False
                 if self.target[device_name] is not None:
-                    if not (self.target[device_name]==self.fw_installed.config_info[device_name]['version']):
+                    if not (self.target[device_name]==self.fw_installed.get_version(device_name)):
                         self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string())
             click.secho('---- Firmware Update Complete!', fg="cyan",bold=True)
             success=self.post_firmware_update()
             return success
+        return True
 
     def do_update_to(self):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
-        click.secho('######### Select target firmware versions ###########', fg="cyan", bold=True)
+        click.secho(' Select target firmware versions '.center(60,'#'), fg="cyan", bold=True)
         for device_name in self.fw_recommended.recommended.keys():
             if self.use_device[device_name]:
                 vs=self.fw_available.versions[device_name]
                 if len(vs) and self.fw_recommended.recommended[device_name] is not None:
                     print('')
-                    click.secho('---------- %s [%s]-----------'%(device_name.upper(),self.fw_installed.config_info[device_name]['board_info']['firmware_version']), fg="blue", bold=True)
+                    click.secho('---------- %s [%s]-----------'%(device_name.upper(),str(self.fw_installed.get_version(device_name))), fg="blue", bold=True)
                     default_id=0
                     for i in range(len(vs)):
                         if vs[i]==self.fw_recommended.recommended[device_name]:
@@ -430,10 +454,35 @@ class FirmwareUpdater():
         print('')
         return self.do_update()
 
+    def do_update_to_path(self,path_name):
+        # Burn the Head of the branch to each board regardless of what is currently installed
+        click.secho('>>> Flashing firmware from path %s ' % path_name, fg="cyan", bold=True)
+        # Check that version of target path is compatible
+        for device_name in self.target.keys():
+            if self.use_device[device_name]:
+                sketch_name = self.get_sketch_name(device_name)
+                target_version = self.get_firmware_version_from_path(sketch_name, path_name)
+                if target_version is None:
+                    return False
+                self.target[device_name] = target_version
+                path_protocol = 'p' + str(target_version.protocol)
+                if not self.fw_installed.is_protocol_supported(device_name, path_protocol):
+                    click.secho('---------------------------', fg="yellow")
+                    click.secho('Target firmware path of %s is incompatible with installed Stretch Body for device %s' % (path_name, device_name), fg="yellow")
+                    x = " , ".join(["{}"] * len(self.fw_installed.get_supported_protocols(device_name))).format(*self.fw_installed.get_supported_protocols(device_name))
+                    click.secho('Installed Stretch Body supports protocols %s' % x, fg="yellow")
+                    click.secho('Target path supports protocol %s' % path_protocol, fg="yellow")
+                    if path_protocol > self.fw_installed.max_protocol_supported(device_name):
+                        click.secho('Upgrade Stretch Body first...', fg="yellow")
+                    else:
+                        click.secho('Downgrade Stretch Body first...', fg="yellow")
+                    return False
+        return self.do_update()
+
     def do_update_to_branch(self):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
-        click.secho('######### Select target branch ###########', fg="cyan", bold=True)
+        click.secho(' Select target branch '.center(60,'#'), fg="cyan", bold=True)
         branches=self.fw_available.get_remote_branches()
         for id in range(len(branches)):
             print('%d: %s' % (id, branches[id]))
@@ -446,19 +495,17 @@ class FirmwareUpdater():
             else:
                 click.secho('Invalid ID', fg="red")
         print('Selected branch %s'%branch_name )
-        #print('')
-        #print('')
-
         #Check that version of target branch is compatible
         for device_name in self.target.keys():
             if self.use_device[device_name]:
                 sketch_name=self.get_sketch_name(device_name)
                 target_version=self.get_firmware_version_from_git(sketch_name, branch_name)
+                self.target[device_name]=target_version
                 git_protocol = 'p'+str(target_version.protocol)
                 if not self.fw_installed.is_protocol_supported(device_name,git_protocol):
                     click.secho('---------------------------', fg="yellow")
                     click.secho('Target firmware branch of %s is incompatible with installed Stretch Body for device %s'%(branch_name,device_name),fg="yellow")
-                    x = " , ".join(["{}"] * len(self.fw_installed.config_info[device_name]['supported_protocols'])).format(*self.config_info[device_name]['supported_protocols'])
+                    x = " , ".join(["{}"] * len(self.fw_installed.get_supported_protocols(device_name))).format(*self.fw_installed.get_supported_protocols(device_name))
                     click.secho('Installed Stretch Body supports protocols %s'%x,fg="yellow")
                     click.secho('Target branch supports protocol %s'%git_protocol,fg="yellow")
                     if git_protocol>self.fw_installed.max_protocol_supported(device_name):
@@ -466,22 +513,12 @@ class FirmwareUpdater():
                     else:
                         click.secho('Downgrade Stretch Body first...',fg="yellow")
                     return False
-        #Burn the Head of the branch to each board regardless of what is currently installed
-        click.secho('>>> Flashing firmware from branch %s <HEAD>'%branch_name, fg="cyan", bold=True)
-        self.print_upload_warning()
-        self.fw_updated = {}
-        if click.confirm('Proceed with update??'):
-            for device_name in self.target.keys():
-                self.fw_updated[device_name] = False
-                if self.fw_installed.config_info[device_name] is not None:
-                    self.fw_updated[device_name] = self.flash_firmware_update(device_name, branch_name)
-            click.secho('---- Firmware flashing complete!', fg="green", bold=True)
-            return self.post_firmware_update(from_branch=True)
-        return False
+        return self.do_update()
+
 
     def flash_stepper_calibration(self,device_name):
         if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
-                click.secho('############## Flashing Stepper Calibration: %s ##############' % device_name, fg="cyan",bold=True)
+                click.secho(' Flashing Stepper Calibration: %s '.center(110,'#') % device_name, fg="cyan",bold=True)
                 time.sleep(1.0)
                 motor = stretch_body.stepper.Stepper('/dev/' + device_name)
                 motor.startup()
@@ -503,31 +540,46 @@ class FirmwareUpdater():
 
 
 
-    def post_firmware_update(self,from_branch=False):
+    def post_firmware_update(self):
         #Return True if no errors
         for device_name in self.target.keys():
             if self.fw_updated[device_name]:
                 self.flash_stepper_calibration(device_name)
         print('')
-        click.secho('############## Confirming Firmware Updates ##############', fg="cyan", bold=True)
+        click.secho(' Confirming Firmware Updates '.center(110,'#'), fg="cyan", bold=True)
         self.fw_installed = InstalledFirmware(self.use_device) #Pull the currently installed system from fw
-        success=True
+        n_failure=0
         for device_name in self.target.keys():
             if self.use_device[device_name]:
-                if self.fw_installed.config_info[device_name] is None: #Device may not have come back on bus
+                if not self.fw_installed.is_device_valid(device_name): #Device may not have come back on bus
                     print('%s | No device available' % device_name.upper().ljust(25))
-                    success=False
+                    n_failure=n_failure+1
                 else:
-                    cfg = self.fw_installed.config_info[device_name]
-                    v_curr = FirmwareVersion(cfg['board_info']['firmware_version'])  # Version that is now on the board
-                    v_targ = self.target[device_name] if not from_branch else v_curr #Target version
-                    if v_curr == v_targ:
+                    v_curr =self.fw_installed.get_version(device_name)  # Version that is now on the board
+                    if v_curr ==  self.target[device_name]:
                         click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
                     else:
                         click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-                        success=False
-        return success
+                        n_failure=n_failure+1
+        if n_failure !=0:
+            click.secho('#'*110,fg="red", bold=True)
+            click.secho('Firmware update reported %d failures.\nTo remedy failures power down and the power up the robot and try again.'%n_failure,fg="red", bold=True)
+            return False
+        return True
 
+    def get_firmware_version_from_path(self,sketch_name,path):
+        file_path = path+'/'+sketch_name+'/Common.h'
+        try:
+            f=open(file_path,'r')
+        except IOError:
+            click.secho('Invalid path provided. Path should should have sketch directories under it',fg="red", bold=True)
+            return None
+        lines=f.readlines()
+        for l in lines:
+            if l.find('FIRMWARE_VERSION')>=0:
+                version=l[l.find('"')+1:-2] #Format of: '#define FIRMWARE_VERSION "Wacc.v0.0.1p1"\n'
+                return FirmwareVersion(version)
+        return None
 
     def get_firmware_version_from_git(self,sketch_name,tag):
         #click.secho('---------------Git Checkout-------------------------', fg="green")
@@ -606,7 +658,8 @@ class FirmwareUpdater():
         except IndexError:
             return None
 
-    def flash_firmware_update(self,device_name, tag):
+    def flash_firmware_update(self,device_name, tag,tag_is_path=False):
+        verbose = False  # Debug
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="cyan", bold=True)
         config_file = self.fw_available.repo_path + '/arduino-cli.yaml'
         sketch_name=None
@@ -619,28 +672,32 @@ class FirmwareUpdater():
         port_name = self.get_port_name(device_name)
         if port_name is not None and sketch_name is not None:
             print('Starting programming. This will take about 5s...')
-            #click.secho('---------------Git Checkout-------------------------', fg="cyan")
-            os.chdir(self.fw_available.repo_path)
-            os.system('git checkout '+tag+'>/dev/null 2>&1')
-            #print('Checkout out firmware %s from Git'%tag)
-            #click.secho('---------------Compile-------------------------', fg="cyan")
-            compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,self.fw_available.repo_path,sketch_name)
-            #print(compile_command)
+            if not tag_is_path:
+                os.chdir(self.fw_available.repo_path)
+                os.system('git checkout '+tag+'>/dev/null 2>&1')
+                src_path=self.fw_available.repo_path
+            else:
+                src_path=tag
+            compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,src_path,sketch_name)
+            if verbose:
+                print(compile_command)
             c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-            #print(c)
-            #click.secho('---------------Upload-------------------------', fg="cyan")
-            upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, self.fw_available.repo_path,sketch_name)
-            #print(upload_command)
+            upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, src_path,sketch_name)
+            if verbose:
+                print(upload_command)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             uu = u.split(b'\n')
-            # Pretty print the result
-            # for l in uu:
-            #     k = l.split(b'\r')
-            #     if len(k) == 1:
-            #         print(k[0].decode('utf-8'))
-            #     else:
-            #         for m in k:
-            #             print(m.decode('utf-8'))
+            if verbose:
+                print(upload_command)
+                # Pretty print the result
+                for l in uu:
+                    k = l.split(b'\r')
+                    if len(k) == 1:
+                        print(k[0].decode('utf-8'))
+                    else:
+                        for m in k:
+                            print(m.decode('utf-8'))
+
             success = uu[-1] == b'CPU reset.'
             if not success:
                 print('Firmware flash. Failed to upload to %s' % (port_name))
