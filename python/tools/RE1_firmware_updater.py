@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from stretch_factory.firmware_updater import *
-
+import os
 
 parser = argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
@@ -107,14 +107,10 @@ if args.available:
     exit()
 
 if args.install or args.install_version or args.install_branch or args.install_path:
+    cwd=os.getcwd()
     u = FirmwareUpdater(use_device)
     if not u.startup():
         exit()
-    #u.fw_installed.pretty_print()
-    #print('')
-    #u.fw_available.pretty_print()
-    #print('')
-
     if args.install:
         u.fw_recommended.pretty_print()
         print('')
@@ -125,7 +121,10 @@ if args.install or args.install_version or args.install_branch or args.install_p
     elif args.install_branch:
         u.do_update_to_branch()
     elif args.install_path:
-        u.do_update_to_path(args.install_path)
+        if args.install_path[0]!='/':
+            u.do_update_to_path(cwd+'/'+args.install_path)
+        else:
+            u.do_update_to_path(args.install_path)
 else:
     parser.print_help()
 
