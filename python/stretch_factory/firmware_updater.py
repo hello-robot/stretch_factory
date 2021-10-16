@@ -349,18 +349,20 @@ class FirmwareUpdater():
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_arduino_cli_install(self):
-        target_version='0.18.3'
+        target_version=b'0.18.3'
+        version='None'
         res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
         do_install=False
         if not(res[:11]==b'arduino-cli'):
             do_install=True
         else:
-            version=res[res.find('Version:')+9:res.find(' Commit')]
+            version=res[res.find(b'Version:')+9:res.find(b' Commit')]
             if version!=target_version:
                 do_install=True
         if do_install:
             click.secho('WARNING:---------------------------------------------------------------------------------',fg="yellow", bold=True)
             click.secho('WARNING: Compatible version of arduino_cli not installed. ',fg="yellow", bold=True)
+            click.secho('Requires version %s. Installed version of %s'%(target_version,version))
             if click.confirm('Install now?'):
                 os.system('curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s %s'%target_version)
                 os.system('arduino-cli config init')
