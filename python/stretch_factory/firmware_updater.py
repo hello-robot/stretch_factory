@@ -364,7 +364,7 @@ class FirmwareUpdater():
             click.secho('WARNING: Compatible version of arduino_cli not installed. ',fg="yellow", bold=True)
             click.secho('Requires version %s. Installed version of %s'%(target_version,version))
             if click.confirm('Install now?'):
-                os.system('curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s %s'%target_version)
+                os.system('curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s %s'%target_version.decode('utf-8'))
                 os.system('arduino-cli config init')
                 os.system('arduino-cli core install arduino:samd@1.6.21')
                 return True
