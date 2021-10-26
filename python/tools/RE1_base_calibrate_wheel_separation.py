@@ -25,7 +25,7 @@
 # Created 2021-05-18 by Joseph DelPreto
 # Last modified 2021-05-23 by Joseph DelPreto, based on forum discussion with Aaron Edsinger
 # See https://forum.hello-robot.com/t/172 for more information
-
+from future.builtins import input
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot
 from math import radians, degrees, atan2, sin, cos
@@ -62,7 +62,7 @@ def do_spin(robot, deg):
     print('')
     print('Manually rotate Stretch so the front of its base (the bottom metal edge)')
     print('is aligned with a starting line on the floor.')
-    raw_input('  Press Enter when done ')
+    input('  Press Enter when done ')
     runstop_reset()
 
     time.sleep(1) # let the reset take effect
@@ -86,7 +86,7 @@ def do_spin(robot, deg):
     print('Stretch thinks it is at the target angle!')
     print('Now manually rotate Stretch so the front of its base (the bottom metal edge)')
     print('is actually aligned with the target angle (%g degrees).' % degrees(turn_command_rad))
-    raw_input('  Press Enter when done ')
+    input('  Press Enter when done ')
     runstop_reset()
 
     # Get Stretch's estimate of the current position

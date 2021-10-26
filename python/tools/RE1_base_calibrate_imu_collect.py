@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
+from future.builtins import input
 import time
 import argparse as ap
 import stretch_body.robot as rb
@@ -37,7 +38,7 @@ if __name__ == '__main__':
     try:
         # make a little over one circle
         turn_angle_deg = 380.0 #180.0 #90.0 #10.0
-        turn_time = 15.0 #30.0
+        turn_time = 30.0
         angular_velocity_rad_per_s =hu.deg_to_rad( turn_angle_deg/ turn_time)
         turn_angle_rad = hu.deg_to_rad(turn_angle_deg)
         

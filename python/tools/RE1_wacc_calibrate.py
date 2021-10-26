@@ -1,12 +1,12 @@
 #!/usr/bin/env python
+from future.builtins import input
 import os, sys
 import math
 import time
 import stretch_body.wacc as wacc
 
 print('Calibrating Wacc. Ensure arm is retracted and level to ground')
-print('Hit enter when ready')
-raw_input()
+input('Hit enter when ready')
 
 
 w=wacc.Wacc()

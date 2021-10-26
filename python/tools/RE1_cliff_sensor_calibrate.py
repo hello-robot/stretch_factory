@@ -1,11 +1,11 @@
 #!/usr/bin/env python
+from future.builtins import input
 import stretch_body.pimu as pimu
 import time
 
 
 print('Ensure cliff sensors are not obstructed and base is on a flat surface')
-print('Hit enter when ready')
-raw_input()
+input('Hit enter when ready')
 
 p = pimu.Pimu()
 old_zero=p.config['cliff_zero'][:]

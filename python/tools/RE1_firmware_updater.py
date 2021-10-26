@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 import argparse
 from stretch_factory.firmware_updater import *
-
+import os
 
 parser = argparse.ArgumentParser(description='Upload Stretch firmware to microcontrollers')
 
 group = parser.add_mutually_exclusive_group()
-parser.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
-parser.add_argument("--available", help="Display the availabel firmware versions", action="store_true")
-parser.add_argument("--recommended", help="Display the recommended firmware to install", action="store_true")
-group.add_argument("--update", help="Update to recommended firmware", action="store_true")
-group.add_argument("--update_to", help="Update to a specific firmware version", action="store_true")
-group.add_argument("--update_to_branch", help="Update to HEAD of a specific branch", action="store_true")
+group.add_argument("--current", help="Display the currently installed firmware versions", action="store_true")
+group.add_argument("--available", help="Display the available firmware versions", action="store_true")
+group.add_argument("--recommended", help="Display the recommended firmware", action="store_true")
+group.add_argument("--install", help="Install the recommended firmware", action="store_true")
+group.add_argument("--install_version", help="Install a specific firmware version", action="store_true")
+group.add_argument("--install_branch", help="Install the HEAD of a specific branch", action="store_true")
+group.add_argument("--install_path", help="Install the firmware on the provided path (eg ./stretch_firmware/arduino)", type=str)
 group.add_argument("--mgmt", help="Display overview on firmware management", action="store_true")
 
 parser.add_argument("--pimu", help="Upload Pimu firmware", action="store_true")
@@ -105,23 +106,25 @@ if args.available:
     a.pretty_print()
     exit()
 
-if args.update or args.update_to or args.update_to_branch:
+if args.install or args.install_version or args.install_branch or args.install_path:
+    cwd=os.getcwd()
     u = FirmwareUpdater(use_device)
     if not u.startup():
         exit()
-    #u.fw_installed.pretty_print()
-    #print('')
-    #u.fw_available.pretty_print()
-    #print('')
-    u.fw_recommended.pretty_print()
-    print('')
-    print('')
-    if args.update:
+    if args.install:
+        u.fw_recommended.pretty_print()
+        print('')
+        print('')
         u.do_update()
-    elif args.update_to:
+    elif args.install_version:
         u.do_update_to()
-    elif args.update_to_branch:
+    elif args.install_branch:
         u.do_update_to_branch()
+    elif args.install_path:
+        if args.install_path[0]!='/':
+            u.do_update_to_path(cwd+'/'+args.install_path)
+        else:
+            u.do_update_to_path(args.install_path)
 else:
     parser.print_help()
 

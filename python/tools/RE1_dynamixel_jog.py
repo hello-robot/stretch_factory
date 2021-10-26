@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-
+from future.builtins import input
 import sys
 from stretch_body.dynamixel_XL430 import *
 import argparse
@@ -104,8 +104,7 @@ def step_interaction():
             m.set_pwm_limit(pp)
             m.enable_torque()
         if x[0] == 'i':
-            print('You will need to exit program and restart with new ID. Hit enter to continue')
-            raw_input()
+            input('You will need to exit program and restart with new ID. Hit enter to continue')
             q = int(x[2:])
             m.disable_torque()
             m.set_id(q)
