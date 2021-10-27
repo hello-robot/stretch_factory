@@ -11,6 +11,7 @@ import yaml
 import time
 import sys
 import stretch_body.device
+from stretch_factory.device_mgmt import StretchDeviceMgmt
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -424,6 +425,8 @@ class FirmwareUpdater():
                 self.fw_updated[device_name]=False
                 if self.target[device_name] is not None:
                     self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string(),repo_path=repo_path)
+                    if not self.fw_updated[device_name]:
+                        return False
             click.secho('---- Firmware Update Complete!', fg="cyan",bold=True)
             success=self.post_firmware_update()
             return success
@@ -553,6 +556,12 @@ class FirmwareUpdater():
         for device_name in self.target.keys():
             if self.fw_updated[device_name]:
                 self.flash_stepper_calibration(device_name)
+                time.sleep(2.0)  # Give time to get back on bus
+                s = StretchDeviceMgmt([device_name])
+                s.reset_all()
+                if not self.wait_on_device(device_name):
+                    print('Failed to return to bus')
+                    return False
         print('')
         click.secho(' Confirming Firmware Updates '.center(110,'#'), fg="cyan", bold=True)
         self.fw_installed = InstalledFirmware(self.use_device) #Pull the currently installed system from fw
@@ -675,8 +684,17 @@ class FirmwareUpdater():
             sketch_name = 'hello_wacc'
         if device_name == 'hello-pimu':
             sketch_name = 'hello_pimu'
+
+        s = StretchDeviceMgmt([device_name])
+        s.reset_all()
+
+        print('Looking for device %s on bus' % device_name)
+        if not self.wait_on_device(device_name, timeout=5.0):
+            print('Failure: Device not on bus.')
+            return False
         port_name = self.get_port_name(device_name)
         if port_name is not None and sketch_name is not None:
+
             print('Starting programming. This will take about 5s...')
             if repo_path is None:
                 os.chdir(self.fw_available.repo_path)
@@ -697,7 +715,8 @@ class FirmwareUpdater():
                 return False
             else:
                 print('Success in firmware compile')
-            upload_command = 'arduino-cli upload --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, src_path,sketch_name)
+
+            upload_command = 'arduino-cli upload  --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, src_path,sketch_name)
             if verbose:
                 print(upload_command)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
@@ -718,6 +737,9 @@ class FirmwareUpdater():
                 print('Firmware flash. Failed to upload to %s' % (port_name))
             else:
                 print('Success in firmware flash.')
+                time.sleep(2.0) #Give time to get back on bus
+                s = StretchDeviceMgmt([device_name])
+                s.reset_all()
                 if self.wait_on_device(device_name):
                     return True
             print('Failure for device %s to return to USB bus after upload'%device_name)
