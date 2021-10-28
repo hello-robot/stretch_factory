@@ -21,7 +21,7 @@ parser.add_argument("--arm", help="Upload Arm Stepper firmware", action="store_t
 parser.add_argument("--lift", help="Upload Lift Stepper firmware", action="store_true")
 parser.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware", action="store_true")
 parser.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware", action="store_true")
-
+parser.add_argument("--no_prompts", help="Proceed without prompts", action="store_true")
 args = parser.parse_args()
 
 mgmt = """
@@ -115,7 +115,7 @@ if args.install or args.install_version or args.install_branch or args.install_p
         u.fw_recommended.pretty_print()
         print('')
         print('')
-        u.do_update()
+        u.do_update(no_prompts=args.no_prompts)
     elif args.install_version:
         u.do_update_to()
     elif args.install_branch:

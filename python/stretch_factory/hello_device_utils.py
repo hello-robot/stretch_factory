@@ -287,6 +287,28 @@ def modify_bashrc(env_var,env_var_val):
     f.write(x_out)
     f.close()
 
+def add_arduino_udev_line_etc(device_name, serial_no):
+    f = open('/etc/udev/rules.d/95-hello-arduino.rules', 'r')
+    x = f.readlines()
+    x_out = ''
+    overwrite = False
+    uline = 'KERNEL=="ttyACM*", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="804d",MODE:="0666", ATTRS{serial}=="' + serial_no + '", SYMLINK+="' + device_name + '", ENV{ID_MM_DEVICE_IGNORE}="1"\n'
+    for xx in x:
+        if xx.find(device_name) > 0 and xx[0] != '#':
+            overwrite = True
+            x_out = x_out + uline
+            print('Overwriting existing entry...')
+        else:
+            x_out = x_out + xx
+    if not overwrite:
+        print('Creating new entry...')
+        x_out = x_out + uline
+    f.close()
+    f = open( '/tmp/95-hello-arduino.rules', 'w')
+    f.write(x_out)
+    f.close()
+    os.system('sudo cp /tmp/95-hello-arduino.rules /etc/udev/rules.d')
+
 def add_arduino_udev_line(device_name, serial_no,fleet_dir):
     f = open(fleet_dir+'udev/95-hello-arduino.rules', 'r')
     x = f.readlines()

@@ -80,15 +80,14 @@ class StretchDeviceMgmt:
                 print('Description: %s' % self.device_info[name]['info'].description)
                 print('Location: %s' % self.device_info[name]['info'].location)
 
-    def reset_all(self):
-        print('Resetting all Stretch USB devices')
-        print('---------------------------------')
+    def reset_all(self,verbose=True):
         for name in self.device_info.keys():
-            self.reset(name)
+            self.reset(name,verbose)
 
-    def reset(self,name):
+    def reset(self,name,verbose=True):
         if self.device_info[name]['core'] is not None:
-            print('Resetting %s' % name)
+            if verbose:
+                print('Resetting %s' % name)
             self.device_info[name]['core'].reset()
             return True
         else:
