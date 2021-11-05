@@ -17,7 +17,7 @@ First, configure the software:
 
 ## Test the Motor
 
-First power down the robot and power back on. Power the robot back on and check that the board is on the bus:
+First power down the robot. Power the robot back on and check that the board is on the bus:
 
 ```bash
 >>$ ls /dev/hello-motor-*wheel
