@@ -2,7 +2,7 @@
 
 ## **Background**
 
-This update configures the robot (stretch-re1-xxxx) to use a new wheel module.
+This update configures the robot (stretch-re1-1065) to use a new left wheel module.
 
 ## Clone the repo
 
@@ -17,11 +17,11 @@ First, configure the software:
 
 ## Test the Motor
 
-First power down the robot. Power the robot back on and check that the board is on the bus:
+Next power down the robot. Power the robot back on and check that the board is on the bus:
 
 ```bash
->>$ ls /dev/hello-motor-*wheel
-/dev/hello-motor-left-wheel  /dev/hello-motor-right-wheel
+>>$ ls /dev/hello-motor-left-wheel
+/dev/hello-motor-left-wheel  
 ```
 
 Finally, check that the base moves correctly. Use the `f` and `b` commands to jog the base forward and back.
