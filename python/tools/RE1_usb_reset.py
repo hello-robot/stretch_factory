@@ -20,7 +20,6 @@ if os.geteuid() == 0:
     parser.add_argument("--hello-dynamixel-head", help="Reset Head USB", action="store_true")
 
     args = parser.parse_args()
-    device_names = None
     if  any([args.hello_motor_lift, args.hello_motor_arm, args.hello_motor_left_wheel,args.hello_motor_right_wheel,args.hello_pimu,args.hello_wacc,args.hello_dynamixel_head,args.hello_wacc,args.hello_dynamixel_wrist]):
         devices_names = []
         if args.hello_motor_lift:
@@ -39,7 +38,9 @@ if os.geteuid() == 0:
             devices_names.append('hello-dynamixel-head')
         if args.hello_dynamixel_wrist:
             devices_names.append('hello-dynamixel-wrist')
-    s = StretchDeviceMgmt(device_names=devices_names)
+        s = StretchDeviceMgmt(device_names=devices_names)
+    else:
+        s=StretchDeviceMgmt()
     s.reset_all()
 else:
     subprocess.call(['sudo', 'python'] + sys.argv)

@@ -81,9 +81,10 @@ class StretchDeviceMgmt:
                 print('Location: %s' % self.device_info[name]['info'].location)
 
     def reset_all(self,verbose=True):
+        success=True
         for name in self.device_info.keys():
-            self.reset(name,verbose)
-
+            success=success and self.reset(name,verbose)
+        return success
     def reset(self,name,verbose=True):
         if self.device_info[name]['core'] is not None:
             if verbose:
@@ -92,4 +93,5 @@ class StretchDeviceMgmt:
             return True
         else:
             print('Not able to reset device %s'%name)
+            return False
 
