@@ -686,7 +686,8 @@ class FirmwareUpdater():
             sketch_name = 'hello_pimu'
 
         s = StretchDeviceMgmt([device_name])
-        s.reset_all()
+        if not s.reset(device_name):
+            return False
 
         print('Looking for device %s on bus' % device_name)
         if not self.wait_on_device(device_name, timeout=5.0):
