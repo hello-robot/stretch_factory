@@ -673,6 +673,10 @@ class FirmwareUpdater():
         except IndexError:
             return None
 
+    def does_stepper_have_encoder_calibration_YAML(self,device_name):
+        dd = stretch_body.stepper.Stepper('/dev/' + device_name)
+        return len(dd.read_encoder_calibration_from_YAML())!=0
+
     def flash_firmware_update(self,device_name, tag,repo_path=None):
         verbose = False  # Debug
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="cyan", bold=True)
@@ -684,6 +688,10 @@ class FirmwareUpdater():
             sketch_name = 'hello_wacc'
         if device_name == 'hello-pimu':
             sketch_name = 'hello_pimu'
+
+        if sketch_name=='hello_stepper' and not self.does_stepper_have_encoder_calibration_YAML(device_name):
+            print('Encoder data has not been stored for %s and may be lost. Aborting firmware flash.'%device_name)
+            return False
 
         s = StretchDeviceMgmt([device_name])
         if not s.reset(device_name):
