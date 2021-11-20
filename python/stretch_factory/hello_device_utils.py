@@ -12,6 +12,7 @@ from subprocess import Popen, PIPE
 import usb.core
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
+import stretch_body.device
 
 # ###################################
 class stream_tee(object):
@@ -91,6 +92,14 @@ def is_device_present(device):
         return True
     except RuntimeError as e:
         return False
+
+def find_steppers_on_bus():
+    s=[]
+    device_names=['/dev/hello-motor-arm', '/dev/hello-motor-lift', '/dev/hello-motor-right-wheel', '/dev/hello-motor-left-wheel']
+    for d in device_names:
+        if is_device_present(d):
+            s.append(d)
+    return s
 # ###################################
 def find_arduinos():
     devs = []

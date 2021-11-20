@@ -1,7 +1,8 @@
 import serial.tools.list_ports
 from subprocess import Popen, PIPE
 import usb.core
-
+import os
+import time
 
 class StretchDeviceMgmt:
     """
@@ -31,6 +32,8 @@ class StretchDeviceMgmt:
         for d in self.device_names:
             self.device_info[d]={'device':None,'info':None, 'core':None}
 
+        self.valid=True
+
         #Build mapping between symlink and device name
         n_match=0
         lsdev=Popen("ls -ltr /dev/hello*", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().split(b'\n')
@@ -49,25 +52,49 @@ class StretchDeviceMgmt:
                 if c.device[5:].encode()==self.device_info[name]['device']:
                     self.device_info[name]['info']=c
         devs = []
-        all = usb.core.find(find_all=True)
-        for dev in all:
-            if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
-                devs.append(dev)
-            if dev.idVendor == 0x0403 and dev.idProduct == 0x6001:
-                devs.append(dev)
-        n_match=0
-        for name in self.device_info.keys():
-            for d in devs:
-                if d is not None and self.device_info[name]['info'] is not None:
-                    try:
-                        if self.device_info[name]['info'].serial_number == d.serial_number:
-                            n_match=n_match+1
-                            self.device_info[name]['core']=d
-                    except ValueError:
-                        print('ValueError. %s on serial number - may not be running as sudo'%name)
+        if self.check_udev_rules():
+            all = usb.core.find(find_all=True)
+            for dev in all:
+                if dev.idVendor == 0x2341 and dev.idProduct == 0x804d:
+                    devs.append(dev)
+                if dev.idVendor == 0x0403 and dev.idProduct == 0x6001:
+                    devs.append(dev)
+            n_match=0
+            for name in self.device_info.keys():
+                for d in devs:
+                    if d is not None and self.device_info[name]['info'] is not None:
+                        try:
+                            if self.device_info[name]['info'].serial_number == d.serial_number:
+                                n_match=n_match+1
+                                self.device_info[name]['core']=d
+                        except ValueError:
+                            print('ValueError. %s on serial number read. Reboot machine and try again.'%name)
+                            self.valid=False
+                            break
+                if not self.valid:
+                    break
+        else:
+            print('Failed to set udev rules for StretchDeviceMgmt')
+            self.valid=False
         if not n_match==len(self.device_info.keys()):
             print('usb.core parse: Failed to match all devices for StretchSerialInfo')
-            print(self.device_info)
+            self.valid=False
+
+    def check_udev_rules(self):
+        if  os.path.exists('/etc/udev/rules.d/94-hello-usb.rules'):
+            return True
+        print('File 94-hello-usb.rules missing from UDEV. Installing now.')
+        f= open('/tmp/94-hello-usb.rules',"w+")
+        f.write("SUBSYSTEM==\"usb\", ENV{DEVTYPE}==\"usb_device\", MODE=\"0664\", GROUP=\"plugdev\"")
+        f.close()
+        if os.system('sudo mv /tmp/94-hello-usb.rules /etc/udev/rules.d')!=0:
+            return False
+        if os.system('sudo udevadm control --reload-rules')!=0:
+            return False
+        if os.system('sudo udevadm trigger')!=0:
+            return False
+        time.sleep(1.0) #Give time to reload
+        return True
 
 
     def pretty_print(self):
@@ -80,17 +107,22 @@ class StretchDeviceMgmt:
                 print('Description: %s' % self.device_info[name]['info'].description)
                 print('Location: %s' % self.device_info[name]['info'].location)
 
-    def reset_all(self):
-        print('Resetting all Stretch USB devices')
-        print('---------------------------------')
+    def reset_all(self,verbose=True):
+        if not self.valid:
+            return False
+        success=True
         for name in self.device_info.keys():
-            self.reset(name)
-
-    def reset(self,name):
+            success=success and self.reset(name,verbose)
+        return success
+    def reset(self,name,verbose=True):
+        if not self.valid:
+            return False
         if self.device_info[name]['core'] is not None:
-            print('Resetting %s' % name)
+            if verbose:
+                print('Resetting %s' % name)
             self.device_info[name]['core'].reset()
             return True
         else:
             print('Not able to reset device %s'%name)
+            return False
 
