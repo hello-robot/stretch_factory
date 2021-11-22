@@ -13,6 +13,7 @@ import sys
 import stretch_body.device
 from stretch_factory.device_mgmt import StretchDeviceMgmt
 
+
 # #####################################################################################################
 class FirmwareVersion():
     """
@@ -330,6 +331,8 @@ class FirmwareUpdater():
         self.target=self.fw_recommended.recommended.copy()
 
     def startup(self):
+        if not self.__check_ubuntu_version():
+            return False
         if self.__check_arduino_cli_install():
             self.__create_arduino_config_file()
             return True
@@ -349,6 +352,10 @@ class FirmwareUpdater():
         with open(self.fw_available.repo_path + '/arduino-cli.yaml', 'w') as yaml_file:
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
+    def __check_ubuntu_version(self):
+        res = Popen('cat /etc/lsb-release | grep DISTRIB_RELEASE', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip(b'\n')
+        return res==b'DISTRIB_RELEASE=18.04'
+        
     def __check_arduino_cli_install(self):
         target_version=b'0.18.3'
         version='None'
