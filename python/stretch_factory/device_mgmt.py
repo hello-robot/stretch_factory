@@ -4,6 +4,40 @@ import usb.core
 import os
 import time
 
+
+
+def reset_all_hello_dynamixel_devices(verbose=False):
+    nd=0
+    dev = usb.core.find(find_all=True, idVendor=0x0403 , idProduct=0x6001)
+    for d in dev:
+        d.reset()
+        nd+=1
+    if verbose:
+        print('Reset %d Dynamixel devices'%nd)
+
+def reset_all_hello_arduino_devices(verbose=False):
+    na = 0
+    dev = usb.core.find(find_all=True,idVendor=0x2341, idProduct=0x804d)
+    for d in dev:
+        d.reset()
+        na += 1
+    if verbose:
+        print('Reset %d Arduino devices.' % na)
+
+def reset_all_usb_devices(verbose=False):
+    na = 0
+    ne=0
+    dev = usb.core.find(find_all=True)
+    for d in dev:
+        try:
+            d.reset()
+            na += 1
+        except usb.core.USBError:
+            ne+=1
+    if 1:#verbose:
+        print('Reset %d USB devices. Unable to reset %d devices' % (na,ne))
+
+
 class StretchDeviceMgmt:
     """
     This class will collect the information for the Hello Robot connected USB devices into a single dictionary.
@@ -114,6 +148,7 @@ class StretchDeviceMgmt:
         for name in self.device_info.keys():
             success=success and self.reset(name,verbose)
         return success
+
     def reset(self,name,verbose=True):
         if not self.valid:
             return False

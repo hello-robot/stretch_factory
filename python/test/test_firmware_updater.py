@@ -8,11 +8,11 @@ class TestFirmwareUpdater(unittest.TestCase):
         Do N cycles of flashing full robot
         :return:
         """
-        use_device = {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True,
-                      'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
+        use_device = {'hello-motor-lift': False, 'hello-motor-arm': True, 'hello-motor-right-wheel': False,
+                      'hello-motor-left-wheel': False, 'hello-pimu': False, 'hello-wacc': False}
         u = FirmwareUpdater(use_device)
         self.assertTrue(u.startup())
-        ncycle = 10
+        ncycle = 1
         for i in range(ncycle):
             print('################# UPLOAD %d #############3' % i)
             self.assertTrue(u.do_update(no_prompts=True))

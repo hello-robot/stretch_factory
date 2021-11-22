@@ -11,7 +11,7 @@ import yaml
 import time
 import sys
 import stretch_body.device
-from stretch_factory.device_mgmt import StretchDeviceMgmt
+from stretch_factory.device_mgmt import reset_all_usb_devices
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -557,8 +557,7 @@ class FirmwareUpdater():
             if self.fw_updated[device_name]:
                 self.flash_stepper_calibration(device_name)
                 time.sleep(2.0)  # Give time to get back on bus
-                s = StretchDeviceMgmt([device_name])
-                s.reset_all()
+                reset_all_usb_devices(verbose=False)
                 if not self.wait_on_device(device_name):
                     print('Failed to return to bus')
                     return False
@@ -693,9 +692,7 @@ class FirmwareUpdater():
             print('Encoder data has not been stored for %s and may be lost. Aborting firmware flash.'%device_name)
             return False
 
-        s = StretchDeviceMgmt([device_name])
-        if not s.reset(device_name):
-            return False
+        reset_all_usb_devices(verbose=False)
 
         print('Looking for device %s on bus' % device_name)
         if not self.wait_on_device(device_name, timeout=5.0):
@@ -745,10 +742,10 @@ class FirmwareUpdater():
             if not success:
                 print('Firmware flash. Failed to upload to %s' % (port_name))
             else:
+
                 print('Success in firmware flash.')
-                time.sleep(2.0) #Give time to get back on bus
-                s = StretchDeviceMgmt([device_name])
-                s.reset_all()
+                time.sleep(2.0) #Give time to return to bus
+                reset_all_usb_devices(verbose=False)
                 if self.wait_on_device(device_name):
                     return True
             print('Failure for device %s to return to USB bus after upload'%device_name)
