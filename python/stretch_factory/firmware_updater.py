@@ -12,6 +12,7 @@ import time
 import sys
 import stretch_body.device
 from stretch_factory.device_mgmt import StretchDeviceMgmt
+import lsb_release
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -330,6 +331,8 @@ class FirmwareUpdater():
         self.target=self.fw_recommended.recommended.copy()
 
     def startup(self):
+        if not self.__check_ubuntu_version():
+            return False
         if self.__check_arduino_cli_install():
             self.__create_arduino_config_file()
             return True
@@ -348,6 +351,12 @@ class FirmwareUpdater():
                           'telemetry': {'addr': ':9090', 'enabled': True}}
         with open(self.fw_available.repo_path + '/arduino-cli.yaml', 'w') as yaml_file:
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
+
+    def __check_ubuntu_version(self):
+        if lsb_release.get_os_release()['RELEASE'][0:2] == '20':
+            print('Ubuntu version %s not yet support. Run this tool from 18.04'%lsb_release.get_os_release()['RELEASE'])
+            return False
+        return True
 
     def __check_arduino_cli_install(self):
         target_version=b'0.18.3'
