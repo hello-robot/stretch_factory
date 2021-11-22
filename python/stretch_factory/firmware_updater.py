@@ -12,7 +12,7 @@ import time
 import sys
 import stretch_body.device
 from stretch_factory.device_mgmt import StretchDeviceMgmt
-import lsb_release
+
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -353,11 +353,9 @@ class FirmwareUpdater():
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_ubuntu_version(self):
-        if lsb_release.get_os_release()['RELEASE'][0:2] == '20':
-            print('Ubuntu version %s not yet support. Run this tool from 18.04'%lsb_release.get_os_release()['RELEASE'])
-            return False
-        return True
-
+        res = Popen('cat /etc/lsb-release | grep DISTRIB_RELEASE', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip('\n')
+        return res=='DISTRIB_RELEASE=18.04'
+        
     def __check_arduino_cli_install(self):
         target_version=b'0.18.3'
         version='None'
