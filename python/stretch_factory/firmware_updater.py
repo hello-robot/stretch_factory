@@ -353,8 +353,8 @@ class FirmwareUpdater():
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_ubuntu_version(self):
-        res = Popen('cat /etc/lsb-release | grep DISTRIB_RELEASE', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip('\n')
-        return res=='DISTRIB_RELEASE=18.04'
+        res = Popen('cat /etc/lsb-release | grep DISTRIB_RELEASE', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip(b'\n')
+        return res==b'DISTRIB_RELEASE=18.04'
         
     def __check_arduino_cli_install(self):
         target_version=b'0.18.3'
