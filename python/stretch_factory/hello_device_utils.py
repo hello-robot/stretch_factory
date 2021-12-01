@@ -375,13 +375,13 @@ def assign_arduino_to_robot(device_name,is_stepper=False,robot_sn=None):
     if len(a) != 1:
         print('Error: Only one Arduino should be on the bus')
     else:
-        sn=a[0].serial_number
+        sn=str(a[0].serial_number)
         add_arduino_udev_line(device_name,sn,fleet_dir)
         if is_stepper:
             print('Setting serial number in YAML for %s to %s'%(device_name,sn))
             d = stretch_body.device.Device()
             d.robot_params[device_name]['serial_no'] = sn
-            d.write_device_params(device_name, d.robot_params[device_name])
+            d.write_device_params(device_name, d.robot_params[device_name],fleet_dir=fleet_dir)
         return  {'success': 1, 'sn': sn}
     return  {'success': 0, 'sn':None}
 
