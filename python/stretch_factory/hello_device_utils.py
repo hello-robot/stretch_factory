@@ -226,6 +226,7 @@ def burn_bootloader(sketch):
     return u==0
 
 # ##################################
+
 def reset_arduino_usb():
     USBDEVFS_RESET = 21780
     lsusb_out = Popen("lsusb | grep -i %s"%'Arduino', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()
@@ -239,6 +240,7 @@ def reset_arduino_usb():
         except Exception as msg:
             print("failed to reset device: %s"%msg)
         lsusb_out=lsusb_out[8:]
+
 # ##############################################################
 
 def run_firmware_flash(port,sketch,repo_path=''):
