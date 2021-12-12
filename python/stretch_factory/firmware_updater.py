@@ -332,6 +332,7 @@ class FirmwareUpdater():
 
     def startup(self):
         if not self.__check_ubuntu_version():
+            print('Firmware Updater does not work on Ubuntu 20.04 currently. Please try again in Ubuntu 18.04')
             return False
         if self.__check_arduino_cli_install():
             self.__create_arduino_config_file()
