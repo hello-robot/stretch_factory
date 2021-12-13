@@ -44,11 +44,10 @@ Firmware version: Stepper.v0.0.1p0
 
 ### Fix
 
-To fix the bug the stepper firmware must be updated to version `Stepper.v0.0.2p0` or later. The instructions to update firmware are provided [here](https://github.com/hello-robot/stretch_firmware). You will need to:
+To fix the bug, the stepper firmware must be updated to version `Stepper.v0.0.2p0` or later. **Note: Do not attempt to perform a firmware upgrade without contacting Hello Robot first.** You will need to:
 
-* Pull down the latest version of stretch_firmware from Git
-* Install the Arduino command line tools if not present
-* Follow the section on [Update the Steppers](https://github.com/hello-robot/stretch_firmware#update-the-steppers).
+* [Pull down the latest version](https://forum.hello-robot.com/t/updating-to-the-newest-software/303#updating-other-stretch-packages-6) of Stretch Factory from PyPi
+* Follow the firmware updater instructions provided [here](https://github.com/hello-robot/stretch_firmware/blob/master/tutorials/docs/updating_firmware.md).
 
 ### Verify
 
