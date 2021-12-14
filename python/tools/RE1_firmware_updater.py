@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 mgmt = """
 FIRMWARE MANAGEMENT
---------------------
+-------------------
 The Stretch Firmware is managed by Git tags. 
 
 The repo is tagged with versions as <Board>.v<Major>.<Minor>.<Bugfix><Protocol>
@@ -45,7 +45,7 @@ The updater will then query each device to determine what firmware is currently 
 recommend updates to the user.
 
 WHEN UPDATING FIRMWARE CODE
-----------------------
+---------------------------
 After updating the firmware
 * Increment the version / protocol in the device's Common.h', eg
   #define FIRMWARE_VERSION "Pimu.v0.0.5p0"
@@ -53,7 +53,7 @@ After updating the firmware
     Pimu.v0.0.5p0 --> Pimu.v0.1.0p1
 * Tag with the full version name that matches Common.h , eg
   git tag -a Pimu.v0.0.5p1 -m "Pimu bugfix of foo"
-*Push tag to remote
+* Push tag to remote
   git push origin --tags
 * Check the code in to stretch_firmware
 
@@ -61,7 +61,7 @@ If there was a change in protocol number, also update Stretch Body
 accordingly. For example in stepper.supported_protocols, add {'p1': Stepper_Protocol_P1}
 
 TAGGING
---------
+-------
 https://git-scm.com/book/en/v2/Git-Basics-Tagging
 
 To see available tags
@@ -76,16 +76,24 @@ Push tags
 Delete tags
   git tag -d Pimu.v0.0.5p1
   git push origin --delete  Pimu.v0.0.5p1
+
 USER EXPERIENCE
-----------------
+---------------
 The user may update Stetch Body version from time to time. After installing
 a new version of Stretch Body, this firmware updater tools should be run. 
 """
 
-if args.arm or args.lift or args.wacc or args.pimu or args.left_wheel or args.right_wheel:
-    use_device={'hello-motor-lift':args.lift,'hello-motor-arm':args.arm, 'hello-motor-right-wheel':args.right_wheel, 'hello-motor-left-wheel':args.left_wheel,'hello-pimu':args.pimu,'hello-wacc':args.wacc}
-else:
-    use_device = {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
+use_device = {
+    'hello-motor-lift': args.lift,
+    'hello-motor-arm': args.arm,
+    'hello-motor-right-wheel': args.right_wheel,
+    'hello-motor-left-wheel': args.left_wheel,
+    'hello-pimu': args.pimu,
+    'hello-wacc': args.wacc
+}
+# flash all if none selected
+if not any(use_device.values()):
+    use_device = dict.fromkeys(use_device, True)
 
 if args.mgmt:
     print(mgmt)
@@ -127,4 +135,3 @@ if args.install or args.install_version or args.install_branch or args.install_p
             u.do_update_to_path(args.install_path)
 else:
     parser.print_help()
-
