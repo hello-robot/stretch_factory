@@ -25,5 +25,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
     ],
-    install_requires=['pyserial','pyusb','gitpython','hello-robot-stretch-body']
+    install_requires=['future', 'pyserial','pyusb','gitpython','hello-robot-stretch-body']
 )
