@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 from __future__ import print_function
 from future.builtins import input
 import sys, tty, termios
@@ -617,8 +617,8 @@ if __name__ == '__main__':
             r = es.result
             best_parameters = r[0]
             rate_gyro_scale, gravity_scale = calibrator.post_fit_processing(best_parameters)
-            
-            calibrator.visualize_fit(best_parameters)
+            if not args.no_vis:
+            	calibrator.visualize_fit(best_parameters)
             
             no_numpy_cma_result = []
             for entry in es.result:
