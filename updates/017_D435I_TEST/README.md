@@ -1,51 +1,44 @@
-# 016_WHEEL_STEPPER
+# 017_D435I_TEST
 
 ## **Background**
 
-This update configures the robot (stretch-re1-1065) to use a new left wheel module.
+This update describes a series of tests to evaluate if the Stretch D435i camera is working properly.
 
-## Clone the repo
+## Check USB version
 
-First, configure the software:
-
-```bash
->>$ cd ~/repos
->>$ git clone https://github.com/hello-robot/stretch_factory
->>$ cd stretch_factory/updates/016_WHEEL_STEPPER
->>$ ./configure_new_stepper.py
-```
-
-## Test the Motor
-
-Next power down the robot. Power the robot back on and check that the board is on the bus:
+Reboot the robot. After reboot, check that the camera is detected as USB 3.2:
 
 ```bash
->>$ ls /dev/hello-motor-left-wheel
-/dev/hello-motor-left-wheel  
+>>$ rs-enumerate-devices | grep Usb
+    Usb Type Descriptor           :     3.2
 ```
 
-Finally, check that the base moves correctly. Use the `f` and `b` commands to jog the base forward and back.
+## Test data collection
 
-```bash
-stretch_base_jog.py 
-For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
-
---------------
-m: menu
-
-1: rate slow
-2: rate default
-3: rate fast
-4: rate max
-w: CW/CCW 90 deg
-x: forward-> back 0.5m
-y: spin at 22.5deg/s
-
-f / b / l / r : small forward / back / left / right
-F / B / L / R : large forward / back / left / right
-o: freewheel
-p: pretty print
-q: quit
-
-Input?
+Create a data collection configuration file:
 ```
+>>$ cd 
+>>$ nano data_collect.cfg
+```
+And add the following:
+
+```
+#Video streams
+DEPTH,1280,720,15,Z16,0
+INFRARED,640,480,15,Y8,1
+INFRARED,640,480,15,Y8,2
+COLOR,1280,720,15,RGB8,0
+# IMU streams will produce data in m/sec^2 & rad/sec
+ACCEL,1,1,63,MOTION_XYZ32F
+GYRO,1,1,200,MOTION_XYZ32F
+```
+
+Next clear the system log
+``` sudo dmesg -c```
+
+And collect 1000 frames from the camera
+
+```
+rs-data-collect -c ./data_collect.cfg -f ./log.csv -t 60 -m 1000
+```
+
