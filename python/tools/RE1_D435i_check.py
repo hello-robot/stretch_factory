@@ -92,6 +92,7 @@ def check_data_rate():
     data=data[10:] #drop preamble
     check_rate(data,target)
     
+    
 if args.usb:
     check_usb()
 
