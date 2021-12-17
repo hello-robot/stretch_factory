@@ -75,9 +75,9 @@ def get_frame_id_from_log_line(stream_type,line):
 
 def check_dmesg(data):
     msgs=data.split('\n')
-    known_msgs=[[0,1,'uvcvideo: Failed to query (GET_CUR) UVC control'],
-                [0,1,'Non-zero status (-71) in video completion handler'],
-                [0, 1, 'No report with id 0xffffffff found']]
+    known_msgs=[[0,12,'uvcvideo: Failed to query (GET_CUR) UVC control'],
+                [0,4,'Non-zero status (-71) in video completion handler'],
+                [0, 4, 'No report with id 0xffffffff found']]
     unknown_msgs=[]
     no_error=True
     for m in msgs:
