@@ -17,41 +17,70 @@ def check_usb():
     else:
         print(Fore.RED +'[Fail] Did not find USB 3.2 connection to device')
 
-def create_config_file():
+def create_config_target_hi_res():
     f = open('/tmp/d435i_confg.cfg', "w+")
     f.write("DEPTH,1280,720,15,Z16,0\n")
-    f.write("INFRARED,640,480,15,Y8,1\n")
-    f.write("INFRARED,640,480,15,Y8,2\n")
     f.write("COLOR,1280,720,15,RGB8,0\n")
     f.write("ACCEL,1,1,63,MOTION_XYZ32F\n")
     f.write("GYRO,1,1,200,MOTION_XYZ32F\n")
     f.close()
+    target = {'duration':31,
+              'nframe':450,
+              'margin':8,
+              'streams':{
+              'Color': {'target': 450, 'sampled': 0},
+              'Depth': {'target': 450, 'sampled': 0},
+              'Accel': {'target': 450, 'sampled': 0},
+              'Gyro': {'target': 450, 'sampled': 0}}}
+    return target
+
+
+def create_config_target_low_res():
+    f = open('/tmp/d435i_confg.cfg', "w+")
+    f.write("DEPTH,424,240,30,Z16,0\n")
+    f.write("COLOR,424,240,30,RGB8,0\n")
+    f.write("ACCEL,1,1,63,MOTION_XYZ32F\n")
+    f.write("GYRO,1,1,200,MOTION_XYZ32F\n")
+    target = {'duration': 31,
+              'nframe': 900,
+              'margin': 16,
+              'streams':{
+              'Color': {'target': 900, 'sampled': 0},
+              'Depth': {'target': 900, 'sampled': 0},
+              'Accel': {'target': 900, 'sampled': 0},
+              'Gyro': {'target': 900, 'sampled': 0}}}
+    f.close()
+
+def check_rate(data,target):
+    for ll in data:
+        for kk in target['streams'].keys():
+            id=get_frame_id_from_log_line(kk,ll)
+            if id is not None:
+                target['streams'][kk]['sampled']=max(id,target['streams'][kk]['sampled'])
+    for kk in target['streams'].keys():
+        sampled_frames=target['streams'][kk]['sampled']
+        min_frames=target['streams'][kk]['target']-target['margin']
+        if sampled_frames>=min_frames:
+            print(Fore.GREEN + '[Pass] Stream: %s with %d frames collected'%(kk,sampled_frames))
+        else:
+            print(Fore.RED + '[Fail] Stream: %s with %d frames of %d collected'%(kk,sampled_frames,min_frames))
 
 def get_frame_id_from_log_line(stream_type,line):
     if line.find(stream_type)!=0:
         return None
     return int(line.split(',')[2])
 
-
 def check_data_rate():
-    print('Checking data rates. This will take 30s...')
-    create_config_file()
-    num_frames=450
-    timeout=31
-    cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(timeout,num_frames)
+    # https://github.com/IntelRealSense/librealsense/tree/master/tools/data-collect
+    print('Checking high-res data rates. This will take 30s...')
+    target=create_config_target_hi_res()
+    cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
     out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
     ff=open('/tmp/d435i_log.csv')
     data=ff.readlines()
     data=data[10:] #drop preamble
-    result={'Color':{'target':num_frames-1,'sampled':0},'Depth':{'target':num_frames-1,'sampled':0},
-            'Gyro':{'target':num_frames-1,'sampled':0},'Accel':{'target':num_frames-1,'sampled':0},
-            'Infrared':{'target':num_frames-5,'sampled':0}}
-    for ll in data:
-        for kk in result.keys():
-            id=get_frame_id_from_log_line(kk,ll)
-            if id is not None:
-                result[kk]['sampled']=max(id,result[kk]['sampled'])
-    print(result)
+    check_rate(data,target)
+
 
 if args.usb:
     check_usb()
