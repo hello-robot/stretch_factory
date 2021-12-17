@@ -66,6 +66,7 @@ def check_rate(data,target):
             print(Fore.GREEN + '[Pass] Stream: %s with %d frames collected'%(kk,sampled_frames))
         else:
             print(Fore.RED + '[Fail] Stream: %s with %d frames of %d collected'%(kk,sampled_frames,min_frames))
+    print(Style.RESET_ALL)
 
 def get_frame_id_from_log_line(stream_type,line):
     if line.find(stream_type)!=0:
@@ -99,6 +100,7 @@ def check_dmesg(data):
             print(i)
     if no_error:
         print(Fore.GREEN+'[Pass] No unexpected dmesg warnings')
+    print(Style.RESET_ALL)
 
 
 def check_data_rate():
