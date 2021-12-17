@@ -3,6 +3,7 @@ import argparse
 import os
 from subprocess import Popen, PIPE
 from colorama import Fore, Back, Style
+import stretch_factory.hello_device_utils as hdu
 
 parser = argparse.ArgumentParser(description='Test the D435i basic function')
 parser.add_argument("--usb", help="Test USB version", action="store_true")
@@ -71,10 +72,40 @@ def get_frame_id_from_log_line(stream_type,line):
         return None
     return int(line.split(',')[2])
 
+def check_dmesg(data):
+    msgs=data.split('\n')
+    known_msgs=[[0,1,'uvcvideo: Failed to query (GET_CUR) UVC control'],
+                [0,1,'Non-zero status (-71) in video completion handler'],
+                [0, 1, 'No report with id 0xffffffff found']]
+    unknown_msgs=[]
+    no_error=True
+    for m in msgs:
+        if len(m):
+            found=False
+            for i in range(len(known_msgs)):
+                if m.find(known_msgs[i][2])!=-1:
+                    found=True
+                    known_msgs[i][0]=known_msgs[i][0]+1
+            if not found:
+                unknown_msgs.append(m)
+    for i in range(len(known_msgs)):
+        if known_msgs[i][0]>=known_msgs[i][1]:
+            print(Fore.RED+'[Fail] Excessive dmesg warnings (%d) of: %s'%(known_msgs[i][0],known_msgs[i][2]))
+            no_error=False
+    if len(unknown_msgs):
+        print(Fore.RED+'[Fail] Unexpected dmesg warnings (%d)'%len(unknown_msgs))
+        no_error=False
+        for i in unknown_msgs:
+            print(i)
+    if no_error:
+        print(Fore.GREEN+'[Pass] No unexpected dmesg warnings')
+
+
 def check_data_rate():
     # https://github.com/IntelRealSense/librealsense/tree/master/tools/data-collect
     print('---------- HIGH RES CHECK ----------')
     print('Checking high-res data rates. This will take 30s...')
+    hdu.exec_process(['sudo', 'dmesg', '-c'], True)
     target=create_config_target_hi_res()
     cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
     out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
@@ -82,6 +113,7 @@ def check_data_rate():
     data=ff.readlines()
     data=data[10:] #drop preamble
     check_rate(data,target)
+    check_dmesg(hdu.exec_process(['sudo', 'dmesg', '-c'], True))
 
     print('---------- LOW RES CHECK ----------')
     print('Checking low-res data rates. This will take 30s...')
@@ -92,6 +124,7 @@ def check_data_rate():
     data=ff.readlines()
     data=data[10:] #drop preamble
     check_rate(data,target)
+    check_dmesg(hdu.exec_process(['sudo', 'dmesg', '-c'], True))
 
     
 if args.usb:
