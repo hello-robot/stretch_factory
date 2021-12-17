@@ -72,6 +72,7 @@ def get_frame_id_from_log_line(stream_type,line):
 
 def check_data_rate():
     # https://github.com/IntelRealSense/librealsense/tree/master/tools/data-collect
+    print('---------- HIGH RES CHECK ----------')
     print('Checking high-res data rates. This will take 30s...')
     target=create_config_target_hi_res()
     cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
@@ -81,7 +82,16 @@ def check_data_rate():
     data=data[10:] #drop preamble
     check_rate(data,target)
 
-
+    print('---------- LOW RES CHECK ----------')
+    print('Checking low-res data rates. This will take 30s...')
+    target=create_config_target_low_res()
+    cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
+    out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+    ff=open('/tmp/d435i_log.csv')
+    data=ff.readlines()
+    data=data[10:] #drop preamble
+    check_rate(data,target)
+    
 if args.usb:
     check_usb()
 
