@@ -50,6 +50,7 @@ def create_config_target_low_res():
               'Accel': {'target': 900, 'sampled': 0},
               'Gyro': {'target': 900, 'sampled': 0}}}
     f.close()
+    return target
 
 def check_rate(data,target):
     for ll in data:
@@ -91,7 +92,7 @@ def check_data_rate():
     data=ff.readlines()
     data=data[10:] #drop preamble
     check_rate(data,target)
-    
+
     
 if args.usb:
     check_usb()
