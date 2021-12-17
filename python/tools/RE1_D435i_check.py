@@ -34,6 +34,7 @@ def get_frame_id_from_log_line(stream_type,line):
 
 
 def check_data_rate():
+    print('Checking data rates. This will take 30s...')
     create_config_file()
     num_frames=450
     timeout=31
@@ -41,6 +42,7 @@ def check_data_rate():
     out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
     ff=open('/tmp/d435i_log.csv')
     data=ff.readlines()
+    data=data[10:] #drop preamble
     result={'Color':{'target':num_frames-1,'sampled':0},'Depth':{'target':num_frames-1,'sampled':0},
             'Gyro':{'target':num_frames-1,'sampled':0},'Accel':{'target':num_frames-1,'sampled':0},
             'Infrared':{'target':num_frames-5,'sampled':0}}
