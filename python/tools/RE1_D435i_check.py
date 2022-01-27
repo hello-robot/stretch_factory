@@ -44,8 +44,11 @@ def get_usb_busID():
     """
     Search for Realsense D435i in the USB bus
     Gets the USB Bus number and device ID for monitoring
+    Execute it at Start
     """
     global usbtop_cmd, check_log
+    print('Starting D435i Check')
+    print('====================')
     print('Searching for Realsense D435i in USB Bus...')
     out = Popen("usb-devices | grep -B 5 -i 'RealSense' | grep -i 'Bus'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
     if(len(out)):
@@ -70,12 +73,14 @@ def get_usb_busID():
         sys.exit()         
 
 def check_usb():
-    get_usb_busID()
+    global check_log
     out = Popen("rs-enumerate-devices| grep Usb | grep 3.2", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
     if len(out):
-        print(Fore.GREEN +'[Pass] Confirmed USB 3.2 connection to device')
+        print(Fore.GREEN +'[Pass] Confirmed USB 3.2 connection to device'+Style.RESET_ALL)
+        check_log.append('[Pass] Confirmed USB 3.2 connection to device')
     else:
-        print(Fore.RED +'[Fail] Did not find USB 3.2 connection to device')
+        print(Fore.RED +'[Fail] Did not find USB 3.2 connection to device'+Style.RESET_ALL)
+        check_log.append('[Fail] Did not find USB 3.2 connection to device')
     
 def create_config_target_hi_res():
     f = open('/tmp/d435i_confg.cfg', "w+")
@@ -111,7 +116,7 @@ def create_config_target_low_res():
     f.close()
     return target
 
-def check_fps_rate(data,target):
+def check_frames_collected(data,target):
     global check_log
     check_log.append('\nRate Check Results......\n')
     for ll in data:
@@ -136,6 +141,7 @@ def get_frame_id_from_log_line(stream_type,line):
     return int(line.split(',')[2])
 
 def check_dmesg(msgs):
+    global known_msgs
     print('\nDMESG Issues.....')
     unknown_msgs=[]
     no_error=True
@@ -216,9 +222,9 @@ def check_throughput(usbrate_file,out_thresh):
         print(Fore.RED + '[Fail] Avg From Device Speed : %f Kib/s lower than %d Kib/s'%(avg_out_speed,out_thresh))
         print(Fore.RED + '[Fail] Max From Device Speed : %f Kib/s'%(max_out_speed))
 
-    print(Style.RESET_ALL)
-    print('Avg To Device Speed : %f Kib/s'%(avg_in_speed))
+    print(Style.RESET_ALL+'Avg To Device Speed : %f Kib/s'%(avg_in_speed))
     print('Max To Device Speed : %f Kib/s'%(max_in_speed))   
+    print('\n')
 
 def check_data_rate(target,robot=None):
     global check_log
@@ -237,7 +243,7 @@ def check_data_rate(target,robot=None):
     ff=open('/tmp/d435i_log.csv') 
     data=ff.readlines()
     data=data[10:] #drop preamble
-    check_fps_rate(data,target)
+    check_frames_collected(data,target)
 
     if robot:
         scan_head_thread.join()
@@ -306,8 +312,9 @@ def scan_head_check_rate():
     Check D435i rates with head moving to extremities
     """
     global thread_stop, dmesg_log
-    
+    check_install_usbtop()
     get_usb_busID()
+    check_usb()
     robot=stretch_body.robot.Robot()
     robot.startup()
 
@@ -330,7 +337,7 @@ def scan_head_check_rate():
 
     conf_type = '---------- LOW RES CHECK ----------'
     check_log.append('\n'+conf_type + '\n')
-    print('\n'+conf_type+'\n')
+    print(conf_type)
     print('Checking low-res data rates. This will take 30s...')
     target=create_config_target_low_res()
     check_data_rate(target,robot)
@@ -351,7 +358,9 @@ def check_rate_exec():
     Check D435i rates without head moving
     """
     global thread_stop, dmesg_log
+    check_install_usbtop()
     get_usb_busID()
+    check_usb()
     hdu.exec_process(['sudo', 'dmesg', '-c'], True)
     hdu.exec_process(['sudo', 'modprobe', 'usbmon'], True)
     
@@ -382,10 +391,43 @@ def check_rate_exec():
     check_dmesg(dmesg_log)
     save_collected_log(check_log)
 
+def check_install_usbtop():
+    """
+    Function to be executed at start. Checks for usbtop and if not prompts the user for installation.
+    """
+    out = Popen("which usbtop", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+    if len(out):
+        return None
+    else:
+        print('"usbtop" tool is required to be installed for running this test first time.')
+        x = raw_input('Enter "y" to proceed with Installation of "usbtop".\n')
+
+        if x=='y' or x=='Y':
+            script = 'cd ~/'
+            script = script+';git clone https://github.com/aguinet/usbtop.git'
+            script = script+';cd usbtop'
+            script = script+';sudo apt install libboost-dev libpcap-dev libboost-thread-dev libboost-system-dev cmake'
+            script = script+';mkdir _build && cd _build'
+            script = script+';cmake -DCMAKE_BUILD_TYPE=Release ..'
+            script = script+';make'
+            script = script+';sudo make install'
+            print('Installing usbtop tool.....')
+            os.system(script)
+            check = Popen("which usbtop", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+            if check:
+                print(Fore.GREEN +'[Pass] "usbtop" sucessfully installed'+Style.RESET_ALL+'\n\n')
+            else:
+                print(Fore.RED + '[Fail] "usbtop" did not install.'+Style.RESET_ALL)
+                sys.exit()
+        else:
+            print('Exiting...')
+            sys.exit()
+
 if args.f:
     log_file_path = args.f
     
 if args.usb:
+    get_usb_busID()
     check_usb()
 
 if args.rate:
