@@ -28,10 +28,11 @@ known_msgs=[[0,15,'uvcvideo: Failed to query (GET_CUR) UVC control'],
             [0,4,'Non-zero status (-71) in video completion handler'],
             [0,4,'No report with id 0xffffffff found'],
             [0,10,'uvcvideo: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435'],
-            [0,5,'uvcvideo: Unable to create debugfs 2-2 directory.'],
+            [0,5,'uvcvideo: Unable to create debugfs'],
             [0,4,'hid-sensor-hub'],
             [0,6,'input: Intel(R) RealSense(TM) Depth Ca'],
-            [0,1,'uvcvideo: Failed to resubmit video URB (-1).']]
+            [0,1,'uvcvideo: Failed to resubmit video URB (-1).'],
+            [0,1,'Netfilter messages via NETLINK v0.30.']]
 
 pan_tilt_pos = (None,None)
 usbtop_cmd = None
@@ -67,6 +68,13 @@ def get_usb_busID():
         check_log.append('[Pass] Realsense D435i found at USB Bus_No : %d | Device ID : %d'%(bus_no,dev_id))
 
         usbtop_cmd = "sudo usbtop --bus usbmon%d | grep 'Device ID %d' > /tmp/usbrate.txt"%(bus_no,dev_id)
+
+        fw_details = Popen("rs-fw-update -l | grep -i 'firmware'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+        fw_details = fw_details.split(',')[3]
+        fw_version = fw_details.split(' ')[-1]
+        print('Firmware version: %s'%(fw_version))
+        check_log.append('Firmware version: %s'%(fw_version))
+
     else:
         print(Fore.RED + '[Fail] Realsense D435i not found at USB Bus'+Style.RESET_ALL)
         check_log.append('[Fail] Realsense D435i not found at USB Bus')
@@ -171,9 +179,16 @@ def check_dmesg_thread():
     global thread_stop, check_log, pan_tilt_pos, dmesg_log
     print('\nMonitoring the DMESG Buffer for issues while collecting camera stream.\n\n')
     while thread_stop==False:
-        out = hdu.exec_process(['sudo', 'dmesg','-c'], True).split('\n')
-        if len(out)>0:
-            for mesg in out:
+        out = hdu.exec_process(['sudo', 'dmesg', '-c'], True).split('\n')
+        filtered_out = []
+        filters = ['uvc','usb','input','hid']
+        for o in out:
+            for f in filters:
+                if f in o:
+                    filtered_out.append(o)
+                    break
+        if len(filtered_out)>0:
+            for mesg in filtered_out:
                 if len(mesg)>0:
                     if pan_tilt_pos[0]:
                         check_log.append(mesg+'   (Pan, Tilt)='+str(pan_tilt_pos))
@@ -182,7 +197,7 @@ def check_dmesg_thread():
                         check_log.append(mesg)
                         dmesg_log.append(mesg)
 
-def check_throughput(usbrate_file,out_thresh):
+def check_throughput(usbrate_file):
     global check_log
     ff = open(usbrate_file)
     data = ff.readlines()
@@ -204,26 +219,24 @@ def check_throughput(usbrate_file,out_thresh):
                 out_speed_list.append(out_speed)
             except:
                 None
- 
-    avg_in_speed = sum(in_speed_list)/len(in_speed_list)
-    max_in_speed = max(in_speed_list)
-    avg_out_speed = sum(out_speed_list)/len(out_speed_list)
-    max_out_speed = max(out_speed_list)
+
+    if len(in_speed_list):
+        avg_in_speed = sum(in_speed_list)/len(in_speed_list)
+        max_in_speed = max(in_speed_list)
+    
+    if len(out_speed_list):
+        avg_out_speed = sum(out_speed_list)/len(out_speed_list)
+        max_out_speed = max(out_speed_list)
 
     check_log.append('Max From Device Speed : %f Kib/s'%(max_out_speed))
     check_log.append('Avg From Device Speed : %f Kib/s'%(avg_out_speed))
     check_log.append('Avg To Device Speed : %f Kib/s'%(avg_in_speed))
     check_log.append('Max To Device Speed : %f Kib/s'%(max_in_speed))
 
-    if out_thresh < avg_out_speed:
-        print(Fore.GREEN + '[Pass] Avg From Device Speed : %f Kib/s'%(avg_out_speed))
-        print(Fore.GREEN + '[Pass] Max From Device Speed : %f Kib/s'%(max_out_speed))
-    else:
-        print(Fore.RED + '[Fail] Avg From Device Speed : %f Kib/s lower than %d Kib/s'%(avg_out_speed,out_thresh))
-        print(Fore.RED + '[Fail] Max From Device Speed : %f Kib/s'%(max_out_speed))
-
-    print(Style.RESET_ALL+'Avg To Device Speed : %f Kib/s'%(avg_in_speed))
-    print('Max To Device Speed : %f Kib/s'%(max_in_speed))   
+    print('Max From Device Speed : %f Kib/s'%(max_out_speed))
+    print('Avg From Device Speed : %f Kib/s'%(avg_out_speed))
+    print('Avg To Device Speed : %f Kib/s'%(avg_in_speed))
+    print('Max To Device Speed : %f Kib/s'%(max_in_speed))
     print('\n')
 
 def check_data_rate(target,robot=None):
@@ -332,7 +345,7 @@ def scan_head_check_rate():
     print('Checking high-res data rates. This will take 30s...')
     target=create_config_target_hi_res()
     check_data_rate(target,robot)
-    check_throughput('/tmp/usbrate.txt',out_speed_thresh_high_res)
+    check_throughput('/tmp/usbrate.txt')
     time.sleep(1.5)
 
     conf_type = '---------- LOW RES CHECK ----------'
@@ -341,7 +354,7 @@ def scan_head_check_rate():
     print('Checking low-res data rates. This will take 30s...')
     target=create_config_target_low_res()
     check_data_rate(target,robot)
-    check_throughput('/tmp/usbrate.txt',out_speed_thresh_low_res)
+    check_throughput('/tmp/usbrate.txt')
     time.sleep(1.5)
 
     thread_stop = True
@@ -375,7 +388,7 @@ def check_rate_exec():
     print('Checking high-res data rates. This will take 30s...')
     target=create_config_target_hi_res()
     check_data_rate(target)
-    check_throughput('/tmp/usbrate.txt',out_speed_thresh_high_res)
+    check_throughput('/tmp/usbrate.txt')
 
     conf_type = '---------- LOW RES CHECK ----------'
     check_log.append('\n'+conf_type + '\n')
@@ -383,7 +396,7 @@ def check_rate_exec():
     print('Checking low-res data rates. This will take 30s...')
     target=create_config_target_low_res()
     check_data_rate(target)
-    check_throughput('/tmp/usbrate.txt',out_speed_thresh_low_res)
+    check_throughput('/tmp/usbrate.txt')
 
     thread_stop = True
     monitor_dmesg.join()
