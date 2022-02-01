@@ -11,11 +11,11 @@ import time
 import numpy as np
 import stretch_body.robot
 
-parser = argparse.ArgumentParser(description='Test the D435i basic function')
+parser = argparse.ArgumentParser(description='Tests the D435i stream and produces a check log that can be used for troubleshooting.')
 parser.add_argument("--usb", help="Test USB version", action="store_true")
 parser.add_argument("--rate", help="Test data capture rate", action="store_true")
 parser.add_argument("--scan_head", help="Test data capture rate with Head Pan and Tilt to extremity", action="store_true")
-parser.add_argument('-f', metavar='dmesg_path', type=str, help='The path to save D435i Check Log (default:/tmp/d435i_check_log.txt)')
+parser.add_argument('-f', metavar='check_log_path', type=str, help='The path to save D435i Check Log (default:/tmp/d435i_check_log.txt)')
 args = parser.parse_args()
 thread_stop = False
 check_log = []
@@ -90,6 +90,31 @@ def create_config_target_low_res():
               'Gyro': {'target': 900, 'sampled': 0}}}
     return target
 
+def check_install_v4l2():
+    global check_log
+    out = Popen("which v4l2-ctl", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+    if len(out):
+        out = Popen("v4l2-ctl --all | grep -A 3 -i 'uvcvideo'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+        check_log.append(out)
+        print(out)
+    else:
+        print('"v4l2-utils" tool is required to be installed for logging USB video driver info.')
+        x = raw_input('Enter "y" to proceed with Installation of "v4l2-utils".\n')
+        if x=='y' or x=='Y':
+            print('Installing v4l2-utils tool.....')
+            script = 'sudo apt-get install -y v4l-utils'
+            os.system(script)
+            check = Popen("which v4l2-ctl", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+            if check:
+                print(Fore.GREEN +'[Pass] "v4l2-utils" sucessfully installed'+Style.RESET_ALL+'\n\n')
+                out = Popen("v4l2-ctl --all | grep -A 3 -i 'uvcvideo'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+                check_log.append(out)
+                print(out)
+            else:
+                print(Fore.RED + '[Fail] "v4l2-utils" did not install.'+Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW+'[Warning] Skip logging USB Video Drivers.'+Style.RESET_ALL)
+
 def get_usb_busID():
     """
     Search for Realsense D435i in the USB bus
@@ -147,7 +172,7 @@ def get_driver_versions():
     baseboard_version = Popen("sudo dmidecode -s baseboard-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
     processor_version = Popen("sudo dmidecode -s processor-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
     kernel_version = Popen("uname -r", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
-    
+    check_install_v4l2()
     check_log.append('\nD435i Firmware version: %s\n'%(fw_version))
     check_log.append("Linux Kernel Version : %s"%(kernel_version))
     check_log.append("NUC Bios Version : %s"%(nuc_bios_version))
@@ -268,6 +293,10 @@ def check_throughput(usbrate_file):
     hdu.exec_process(['sudo', 'rm', '/tmp/usbrate.txt'], True)
     in_speed_list = []
     out_speed_list = []
+    avg_in_speed = 0.000
+    max_in_speed = 0.000
+    avg_out_speed = 0.000
+    max_out_speed = 0.000
     for ll in data:
         line = ll.split('\t')
         if(len(line)==5):
