@@ -3,7 +3,7 @@ import argparse
 from concurrent.futures import thread
 import os
 import sys
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from colorama import Fore, Back, Style
 import stretch_factory.hello_device_utils as hdu
 from threading import Thread
@@ -181,7 +181,11 @@ def get_driver_versions():
     check_log.append("Processor Version : %s"%(processor_version))
     
 def check_ros():
-    return None
+    global check_log
+    ros_out = Popen("rostopic list", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True,stderr=PIPE).stdout.read()
+    if ros_out:
+        print(Fore.YELLOW+'[Warning] roscore is running in background. Recommended to stop roscore.'+Style.RESET_ALL)
+        check_log.append('\nroscore is running in background')
 
 def get_frame_id_from_log_line(stream_type,line):
     if line.find(stream_type)!=0:
@@ -350,7 +354,7 @@ def check_data_rate(target,robot=None):
     data=data[10:] #drop preamble
     check_frames_collected(data,target)
     check_FPS(data)
-
+    ff.close()
 
     if robot:
         scan_head_thread.join()
@@ -424,6 +428,7 @@ def scan_head_check_rate():
     check_install_usbtop()
     get_usb_busID()
     check_usb()
+    check_ros()
     robot=stretch_body.robot.Robot()
     robot.startup()
 
@@ -470,6 +475,7 @@ def check_rate_exec():
     check_install_usbtop()
     get_usb_busID()
     check_usb()
+    check_ros()
     hdu.exec_process(['sudo', 'dmesg', '-c'], True)
     hdu.exec_process(['sudo', 'modprobe', 'usbmon'], True)
     
