@@ -34,12 +34,61 @@ known_msgs=[[0,15,'uvcvideo: Failed to query (GET_CUR) UVC control'],
             [0,1,'uvcvideo: Failed to resubmit video URB (-1).'],
             [0,1,'Netfilter messages via NETLINK v0.30.']]
 
+# Enter each stream's pass fps rate
+streams_assert = {'Depth':29,'Color':29,'Gyro':199,'Accel':62} # Refer create_config_target_*
+
 pan_tilt_pos = (None,None)
 usbtop_cmd = None
 
-# Avg Throughput threshold values based on tests 
-out_speed_thresh_high_res = 36000 # Kib/s
-out_speed_thresh_low_res = 10000 # Kib/s
+def create_config_target_hi_res():
+    global check_log
+    f = open('/tmp/d435i_confg.cfg', "w+")
+    config_script = ["DEPTH,1280,720,30,Z16,0",
+                     "COLOR,1920,1080,30,RGB8,0",
+                     "ACCEL,1,1,63,MOTION_XYZ32F",
+                     "GYRO,1,1,200,MOTION_XYZ32F"]
+
+    check_log.append("Camera Stream Config:")
+    for ll in config_script:
+        f.write(ll+"\n")
+        check_log.append(ll)
+    check_log.append("\n")
+
+    f.close()
+    target = {'duration': 31,
+              'nframe': 900,
+              'margin': 16,
+              'streams':{
+              'Color': {'target': 900, 'sampled': 0},
+              'Depth': {'target': 900, 'sampled': 0},
+              'Accel': {'target': 900, 'sampled': 0},
+              'Gyro': {'target': 900, 'sampled': 0}}}
+    return target
+
+def create_config_target_low_res():
+    global check_log
+    f = open('/tmp/d435i_confg.cfg', "w+")
+    config_script = ["DEPTH,424,240,30,Z16,0",
+                     "COLOR,424,240,30,RGB8,0",
+                     "ACCEL,1,1,63,MOTION_XYZ32F",
+                     "GYRO,1,1,200,MOTION_XYZ32F"]
+
+    check_log.append("Camera Stream Config:")
+    for ll in config_script:
+        f.write(ll+"\n")
+        check_log.append(ll)
+    check_log.append("\n")
+
+    f.close()
+    target = {'duration': 31,
+              'nframe': 900,
+              'margin': 16,
+              'streams':{
+              'Color': {'target': 900, 'sampled': 0},
+              'Depth': {'target': 900, 'sampled': 0},
+              'Accel': {'target': 900, 'sampled': 0},
+              'Gyro': {'target': 900, 'sampled': 0}}}
+    return target
 
 def get_usb_busID():
     """
@@ -68,12 +117,9 @@ def get_usb_busID():
         check_log.append('[Pass] Realsense D435i found at USB Bus_No : %d | Device ID : %d'%(bus_no,dev_id))
 
         usbtop_cmd = "sudo usbtop --bus usbmon%d | grep 'Device ID %d' > /tmp/usbrate.txt"%(bus_no,dev_id)
+        get_driver_versions()
 
-        fw_details = Popen("rs-fw-update -l | grep -i 'firmware'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
-        fw_details = fw_details.split(',')[3]
-        fw_version = fw_details.split(' ')[-1]
-        print('Firmware version: %s'%(fw_version))
-        check_log.append('Firmware version: %s'%(fw_version))
+
 
     else:
         print(Fore.RED + '[Fail] Realsense D435i not found at USB Bus'+Style.RESET_ALL)
@@ -89,40 +135,33 @@ def check_usb():
     else:
         print(Fore.RED +'[Fail] Did not find USB 3.2 connection to device'+Style.RESET_ALL)
         check_log.append('[Fail] Did not find USB 3.2 connection to device')
-    
-def create_config_target_hi_res():
-    f = open('/tmp/d435i_confg.cfg', "w+")
-    f.write("DEPTH,1280,720,15,Z16,0\n")
-    f.write("COLOR,1280,720,15,RGB8,0\n")
-    f.write("ACCEL,1,1,63,MOTION_XYZ32F\n")
-    f.write("GYRO,1,1,200,MOTION_XYZ32F\n")
-    f.close()
-    target = {'duration':31,
-              'nframe':450,
-              'margin':8,
-              'streams':{
-              'Color': {'target': 450, 'sampled': 0},
-              'Depth': {'target': 450, 'sampled': 0},
-              'Accel': {'target': 450, 'sampled': 0},
-              'Gyro': {'target': 450, 'sampled': 0}}}
-    return target
 
-def create_config_target_low_res():
-    f = open('/tmp/d435i_confg.cfg', "w+")
-    f.write("DEPTH,424,240,30,Z16,0\n")
-    f.write("COLOR,424,240,30,RGB8,0\n")
-    f.write("ACCEL,1,1,63,MOTION_XYZ32F\n")
-    f.write("GYRO,1,1,200,MOTION_XYZ32F\n")
-    target = {'duration': 31,
-              'nframe': 900,
-              'margin': 16,
-              'streams':{
-              'Color': {'target': 900, 'sampled': 0},
-              'Depth': {'target': 900, 'sampled': 0},
-              'Accel': {'target': 900, 'sampled': 0},
-              'Gyro': {'target': 900, 'sampled': 0}}}
-    f.close()
-    return target
+def get_driver_versions():
+    global check_log
+    fw_details = Popen("rs-fw-update -l | grep -i 'firmware'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    fw_details = fw_details.split(',')[3]
+    fw_version = fw_details.split(' ')[-1]
+    print('D435i Firmware version: %s'%(fw_version))
+    nuc_bios_version = Popen("sudo dmidecode -s bios-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    system_version = Popen("sudo dmidecode -s system-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    baseboard_version = Popen("sudo dmidecode -s baseboard-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    processor_version = Popen("sudo dmidecode -s processor-version", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    kernel_version = Popen("uname -r", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
+    
+    check_log.append('\nD435i Firmware version: %s\n'%(fw_version))
+    check_log.append("Linux Kernel Version : %s"%(kernel_version))
+    check_log.append("NUC Bios Version : %s"%(nuc_bios_version))
+    check_log.append("NUC System Version : %s"%(system_version))
+    check_log.append("NUC Baseboard Version : %s"%(baseboard_version))
+    check_log.append("Processor Version : %s"%(processor_version))
+    
+def check_ros():
+    return None
+
+def get_frame_id_from_log_line(stream_type,line):
+    if line.find(stream_type)!=0:
+        return None
+    return int(line.split(',')[2])
 
 def check_frames_collected(data,target):
     global check_log
@@ -143,10 +182,34 @@ def check_frames_collected(data,target):
             check_log.append('[Fail] Stream: %s with %d frames of %d collected'%(kk,sampled_frames,min_frames))
     print(Style.RESET_ALL)
 
-def get_frame_id_from_log_line(stream_type,line):
-    if line.find(stream_type)!=0:
-        return None
-    return int(line.split(',')[2])
+def check_FPS(data):
+    global check_log
+    for s in streams_assert.keys():
+        fps = get_fps(data,s,'0')
+        if fps>streams_assert[s]:
+            print(Fore.GREEN+'[Pass] %s Rate : %f FPS'%(s,fps)+Style.RESET_ALL)
+            check_log.append('[Pass] %s Rate : %f FPS'%(s,fps))
+        else:
+            print(Fore.RED+'[Fail] %s Rate : %f FPS < %d FPS'%(s,fps,streams_assert[s])+Style.RESET_ALL)
+            check_log.append('[Fail] %s Rate : %f FPS < %d FPS'%(s,fps,streams_assert[s]))
+    print('\n')
+
+def get_fps(data,stream,t):
+    timestamps = []
+    for ll in data:
+        tag = stream+','+t
+        if tag in ll:
+            l = ll.split(',')[-1].split('\n')[0]
+            if stream=='Accel' or stream=='Gyro':
+                l = ll.split(',')[-4].split('\n')[0]
+            timestamp = float(l)/1000
+            timestamps.append(timestamp)
+    if len(timestamps)>1:
+        duration = timestamps[-1]-timestamps[0]
+        avg_fps = len(timestamps)/duration
+        return avg_fps
+    else:
+        return 000.0
 
 def check_dmesg(msgs):
     global known_msgs
@@ -228,15 +291,15 @@ def check_throughput(usbrate_file):
         avg_out_speed = sum(out_speed_list)/len(out_speed_list)
         max_out_speed = max(out_speed_list)
 
-    check_log.append('Max From Device Speed : %f Kib/s'%(max_out_speed))
-    check_log.append('Avg From Device Speed : %f Kib/s'%(avg_out_speed))
-    check_log.append('Avg To Device Speed : %f Kib/s'%(avg_in_speed))
-    check_log.append('Max To Device Speed : %f Kib/s'%(max_in_speed))
+    check_log.append('Max From Device Speed : %f MB/s'%(max_out_speed/1000))
+    check_log.append('Avg From Device Speed : %f MB/s'%(avg_out_speed/1000))
+    check_log.append('Avg To Device Speed : %f MB/s'%(avg_in_speed/1000))
+    check_log.append('Max To Device Speed : %f MB/s'%(max_in_speed/1000))
 
-    print('Max From Device Speed : %f Kib/s'%(max_out_speed))
-    print('Avg From Device Speed : %f Kib/s'%(avg_out_speed))
-    print('Avg To Device Speed : %f Kib/s'%(avg_in_speed))
-    print('Max To Device Speed : %f Kib/s'%(max_in_speed))
+    print('Max From Device Speed : %f MB/s'%(max_out_speed/1000))
+    print('Avg From Device Speed : %f MB/s'%(avg_out_speed/1000))
+    print('Avg To Device Speed : %f MB/s'%(avg_in_speed/1000))
+    print('Max To Device Speed : %f MB/s'%(max_in_speed/1000))
     print('\n')
 
 def check_data_rate(target,robot=None):
@@ -257,6 +320,8 @@ def check_data_rate(target,robot=None):
     data=ff.readlines()
     data=data[10:] #drop preamble
     check_frames_collected(data,target)
+    check_FPS(data)
+
 
     if robot:
         scan_head_thread.join()
@@ -286,38 +351,40 @@ def scan_head_sequence(robot):
     robot.head.home()
     time.sleep(1)
 
-    n = 60
+    n = 15
     delay = 0.1
     tilt_moves = np.linspace(-1.57,0,n)
     pan_moves = np.linspace(1.57,-3.14,n)
 
-    for i in range(n):
-        robot.head.move_to('head_tilt',tilt_moves[i])
-        robot.head.move_to('head_pan',pan_moves[i])
-        time.sleep(delay)
-        pan_tilt_pos = get_head_pos(robot)
-    time.sleep(0.8)
+    for j in range(0,3):
+        for i in range(n):
+            robot.head.move_to('head_tilt',tilt_moves[i])
+            robot.head.move_to('head_pan',pan_moves[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
 
-    for i in range(n):
-        robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
-        robot.head.move_to('head_pan',np.flip(pan_moves)[i])
-        time.sleep(delay)
-        pan_tilt_pos = get_head_pos(robot)
-    time.sleep(0.8)
-        
-    for i in range(n):
-        robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
-        robot.head.move_to('head_pan',pan_moves[i])
-        time.sleep(delay)
-        pan_tilt_pos = get_head_pos(robot)
-    time.sleep(0.8)
+        for i in range(n):
+            robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
+            robot.head.move_to('head_pan',np.flip(pan_moves)[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+            
+        for i in range(n):
+            robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
+            robot.head.move_to('head_pan',pan_moves[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
 
-    for i in range(n):
-        robot.head.move_to('head_tilt',tilt_moves[i])
-        robot.head.move_to('head_pan',np.flip(pan_moves)[i])
-        time.sleep(delay)
-        pan_tilt_pos = get_head_pos(robot)
-    time.sleep(0.8)
+        for i in range(n):
+            robot.head.move_to('head_tilt',tilt_moves[i])
+            robot.head.move_to('head_pan',np.flip(pan_moves)[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+
     robot.head.home()
 
 def scan_head_check_rate():
