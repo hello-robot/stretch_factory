@@ -9,6 +9,7 @@ import stretch_factory.hello_device_utils as hdu
 from threading import Thread
 import time
 import numpy as np
+from tabulate import tabulate
 import stretch_body.robot
 
 parser = argparse.ArgumentParser(description='Tests the D435i stream and produces a check log that can be used for troubleshooting.')
@@ -48,11 +49,16 @@ def create_config_target_hi_res():
                      "ACCEL,1,1,63,MOTION_XYZ32F",
                      "GYRO,1,1,200,MOTION_XYZ32F"]
 
+    header = ["STREAM","WIDTH","HEIGHT","FPS","FORMAT","STREAM_INDEX"]
+    config_data = []
     check_log.append("Camera Stream Config:")
     for ll in config_script:
         f.write(ll+"\n")
+        config_data.append(ll.split(','))
+    config_table = str(tabulate(config_data,headers=header,tablefmt='github')).split('\n')
+    for ll in config_table:
         check_log.append(ll)
-    check_log.append("\n")
+    check_log.append('\n')
 
     f.close()
     target = {'duration': 31,
@@ -73,11 +79,16 @@ def create_config_target_low_res():
                      "ACCEL,1,1,63,MOTION_XYZ32F",
                      "GYRO,1,1,200,MOTION_XYZ32F"]
 
+    header = ["STREAM","WIDTH","HEIGHT","FPS","FORMAT","STREAM_INDEX"]
+    config_data = []
     check_log.append("Camera Stream Config:")
     for ll in config_script:
         f.write(ll+"\n")
+        config_data.append(ll.split(','))
+    config_table = str(tabulate(config_data,headers=header,tablefmt='github')).split('\n')
+    for ll in config_table:
         check_log.append(ll)
-    check_log.append("\n")
+    check_log.append('\n')
 
     f.close()
     target = {'duration': 31,
