@@ -4,6 +4,8 @@ from future.builtins import input
 import sys
 from stretch_body.dynamixel_XL430 import *
 import argparse
+import stretch_body.device
+d = stretch_body.device.Device(name='dummy_device') # to initialize logging config
 
 
 parser=argparse.ArgumentParser(description='Jog a Dynamixel servo from the command line')
@@ -13,12 +15,9 @@ parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600
 args = parser.parse_args()
 
 m = DynamixelXL430(args.id, args.usb,baud=args.baud)
-m.startup()
-
-
-if not m.do_ping():
+if not m.startup() or not m.do_ping():
+    print('Failed to start servo with given usb/id/baud info')
     exit(0)
-
 
 m.disable_torque()
 #If servo somehow has wrong drive mode it may appear to not respond to vel/accel profiles
