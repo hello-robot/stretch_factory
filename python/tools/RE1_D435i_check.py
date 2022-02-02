@@ -8,6 +8,7 @@ from colorama import Fore, Back, Style
 import stretch_factory.hello_device_utils as hdu
 from threading import Thread
 import time
+import signal
 import numpy as np
 from tabulate import tabulate
 import stretch_body.robot
@@ -350,15 +351,15 @@ def check_data_rate(target,robot=None):
     global check_log
     # https://github.com/IntelRealSense/librealsense/tree/master/tools/data-collect
 
-    usbtop_proc = Popen(usbtop_cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True)
+    usbtop_proc = Popen(usbtop_cmd,stdout=PIPE,shell=True)
 
     if robot:
         scan_head_thread = Thread(target=scan_head_sequence,args=[robot,])
         scan_head_thread.start()
 
     cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
-    out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
-    usbtop_proc.terminate()
+    out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()    
+    usbtop_proc.kill()
 
     ff=open('/tmp/d435i_log.csv') 
     data=ff.readlines()
@@ -369,6 +370,7 @@ def check_data_rate(target,robot=None):
 
     if robot:
         scan_head_thread.join()
+    os.system('sudo pkill usbtop')
 
 def get_head_pos(robot,Print=False):
     tilt_pos = robot.status['head']['head_tilt']['pos']
