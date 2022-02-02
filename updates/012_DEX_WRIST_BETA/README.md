@@ -1,54 +1,26 @@
-# 012_DEX_WRIST
+# 012_DEX_WRIST_BETA
 
 ## **Background**
 
-This update installs and configures the Beta unit of the Stretch Dex Wrist - Beta. The procedure involves
+This update installs and configures the Beta unit of the Stretch Dex Wrist - Beta. If your unit is not a Beta unit, please refer to the [Dex Wrist User Guide](https://docs.hello-robot.com/dex_wrist_user_guide/) instead. This guide covers:
 
 1. Install and configure the new Wacc board
-2. Install Stretch software packages
-3. Attach the Dexterous Wrist
+2. Attach the Dexterous Wrist
+3. Upgrade Stretch software packages
 4. Update the Dynamixel servo baud rates
 5. Update the robot YAML
-6. Test the wrist with the XBox controller
-7. Configure for use in ROS
+6. Configure for use in ROS
+7. Test the wrist with the XBox controller
+8. Test the wrist with RViz
+9. Using the Beta Stretch Dex Wrist
 
 ![](./images/dex_wrist_A.png)
 
 ## Install and configure the new Wacc board
 
-Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot.
+Robots prior to the 'Joplin' batch will need an upgraded Wacc board that will be provided by Hello Robot. You may use the `stretch_about.py` tool from the command line to determine the batch in which your robot was produced.
 
 See the update [013_WACC_INSTALL](../013_WACC_INSTALL/README.md) 
-
-## Install Stretch Body Software Packages
-
-You'll be installing a local beta version of relevant Stretch Body packages
-
-```bash
->>$ cd ~/repos
->>$ mkdir dex_wrist
->>$ cd dex_wrist
-
->>$ git clone --branch feature/pluggable_end_effectors  https://github.com/hello-robot/stretch_body
->>$ git clone --branch feature/pluggable_end_effectors https://github.com/hello-robot/stretch_tool_share
->>$ git clone  https://github.com/hello-robot/stretch_factory
->>
->>$ cd stretch_body/body
->>$ ./local_install.sh
->>$ cd ../tools
->>$ ./local_install.sh
->>$ pip2 install urdfpy
->>
-
->>$ pip2 install hello-robot-stretch-tool-share
->>$ cd ../../stretch_tool_share/python
->>$ ./local_install.sh
-
->>$ cd ~/repos/dex_wrist/stretch_factory/python
->> ./local_install.sh
-```
-
-
 
 ## Attach the Dexterous Wrist
 
@@ -62,8 +34,6 @@ Next, using a Philips screwdriver, attach the wrist mount bracket to the bottom 
 
 **NOTE: ensure that the forward direction of the bracket (also indicated by an alignment hole) matches the forward direction of the tool plate.**
 
-
-
 ![![]](./images/dex_wrist_B.png)
 
 Next, raise the wrist module up vertically into the mounting bracket, then sliding it over horizontally so that the bearing mates onto its post. Slide in the 3D printed spacer between the pitch servo and the mounting bracket.
@@ -75,6 +45,10 @@ Next, raise the wrist module up vertically into the mounting bracket, then slidi
 Finally, attach the body of the pitch servo to the mounting bracket using the 3 M2.5 screws provided. (**NOTE: Flat head screws provided, socket head screws shown below.)**
 
 ![](./images/dex_wrist_E.png)
+
+## Upgrade Stretch software packages
+
+Follow the instructions in this [post](https://forum.hello-robot.com/t/updating-to-the-newest-software/303) to upgrade your robot's software.
 
 ## Update the Dynamixel servo baud rates
 
@@ -103,8 +77,6 @@ Identified current baud of 57600. Changing baud to 115200
 Success at changing baud
 ```
 
-
-
 ## Update the robot YAML
 
 The new wrist requires a number of updates to the robot YAML
@@ -119,16 +91,16 @@ factory_params: stretch_re1_factory_params.yaml
 params:
   - stretch_tool_share.stretch_dex_wrist_beta.params
 
+robot:
+  use_collision_manager: 1
+  tool: tool_stretch_dex_wrist
+  #tool: tool_stretch_gripper
+
 head:
   baud: 115200
 
 end_of_arm:
   baud: 115200
-  tool: tool_stretch_dex_wrist
-  #tool: tool_stretch_gripper
-
-robot:
-  use_collision_manager: 1
 
 head_pan:
   baud: 115200
@@ -156,7 +128,7 @@ hello-motor-lift:
 
 ```
 
-Each user account on Stretch will need to update their YAML as well. It is recommended practice to stored a reference of the YAML in /etc so that it will be available to other (new) user  accounts.
+Each user account on Stretch will need to update their YAML as well. It is recommended practice to stored a reference of the YAML in `/etc/hello-robot/$HELLO_FLEET_ID` so that it will be available to other (new) user accounts.
 
 ```bash
 >>$ cd ~/stretch_user/$HELLO_FLEET_ID
@@ -168,9 +140,10 @@ Each user account on Stretch will need to update their YAML as well. It is recom
 First pull down the new stretch_ros branch and copy in the tool description:
 
 ```bash
->>$ cd ~/catkin_ws/src/stretch_ros/
+>>$ cd ~/repos
+>>$ git clone https://github.com/hello-robot/stretch_tool_share
+>>$ cd ~/repos/stretch_tool_share
 >>$ git pull
->>$ git checkout feature/pluggable_end_effector
 
 >>$ cd ~/repos/dex_wrist/stretch_tool_share/tool_share/stretch_dex_wrist_beta/stretch_description
 >>$ cp urdf/stretch_dex_wrist_beta.xacro ~/catkin_ws/src/stretch_ros/stretch_description/urdf
@@ -267,7 +240,7 @@ You can type 'q' then Ctrl-C to exit when done. The menu interface is:
 
 
 
-# Using the Stretch Dex Wrist
+# Using the Beta Stretch Dex Wrist
 
 Additional care should be taken when working with the Dex Wrist as it is now easier to accidentally collide the wrist and gripper with the robot, particularly during lift descent. 
 
