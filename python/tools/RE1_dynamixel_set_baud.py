@@ -2,6 +2,8 @@
 
 from stretch_body.dynamixel_XL430 import DynamixelXL430
 import argparse
+import stretch_body.device
+d = stretch_body.device.Device(name='dummy_device') # to initialize logging config
 
 
 parser=argparse.ArgumentParser(description='Change the baudrate of a servo')
