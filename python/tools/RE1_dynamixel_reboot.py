@@ -2,6 +2,8 @@
 from stretch_body.dynamixel_XL430 import *
 from stretch_body.hello_utils import *
 import argparse
+import stretch_body.device
+d = stretch_body.device.Device(name='dummy_device') # to initialize logging config
 
 
 parser=argparse.ArgumentParser(description='Reboot all of the Dynamixel servos on a bus')

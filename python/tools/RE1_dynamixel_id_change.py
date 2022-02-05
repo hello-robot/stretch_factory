@@ -2,6 +2,8 @@
 from future.builtins import input
 from stretch_body.dynamixel_XL430 import *
 import argparse
+import stretch_body.device
+d = stretch_body.device.Device(name='dummy_device') # to initialize logging config
 
 
 parser=argparse.ArgumentParser(description='Set the ID of a Dynamixel servo')
