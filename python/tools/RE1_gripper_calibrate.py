@@ -13,7 +13,7 @@ g.startup()
 
 #Good starting point
 g.params['zero_t']=4000
-g.params['range_t']=[0,8500]
+g.params['range_t']=[0,100000]
 #Reset soft motion limits as well
 if g.params['flip_encoder_polarity']:
     wr_max = g.ticks_to_world_rad(g.params['range_t'][0])
