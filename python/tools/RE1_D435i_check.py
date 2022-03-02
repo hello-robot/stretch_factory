@@ -372,6 +372,10 @@ def check_data_rate(target,robot=None,cycles=None):
     cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
     out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()    
     usbtop_proc.kill()
+    
+    if robot:
+        scan_head_thread.join()
+    os.system('sudo pkill usbtop')
 
     ff=open('/tmp/d435i_log.csv') 
     data=ff.readlines()
@@ -380,9 +384,7 @@ def check_data_rate(target,robot=None,cycles=None):
     check_FPS(data)
     ff.close()
 
-    if robot:
-        scan_head_thread.join()
-    os.system('sudo pkill usbtop')
+
 
 def get_head_pos(robot,Print=False):
     tilt_pos = robot.status['head_tilt']['pos']
@@ -395,9 +397,13 @@ def log_periodic_save(check_log):
     check_log_str = ''
     for ll in check_log:
         check_log_str = check_log_str + ll + '\n'
-    check_log_file = open(log_file_path,"a")
-    check_log_file.write(check_log_str)
-    check_log_file.close()
+    try:
+        check_log_file = open(log_file_path,"a")
+        check_log_file.write(check_log_str)
+        check_log_file.close()
+    except:
+        print('Periodic Log Save error.')
+
 
 def save_collected_log(check_log):
     print('---------- COLLECTED LOG ----------')
@@ -565,7 +571,7 @@ def scan_head_check_rate_cycles(cycles,mode=0):
     thread_stop = False
     monitor_dmesg = Thread(target=check_dmesg_thread)
     monitor_dmesg.start()
-
+    print('The Log file will be saved to:'+log_file_path+'\n')
     duration_per_cycle = 10 #s
     if mode==0:
         conf_type = '---------- HIGH RES CHECK ----------'
