@@ -11,18 +11,25 @@ import time
 import signal
 import numpy as np
 from tabulate import tabulate
-import stretch_body.robot
+import stretch_body.head
+import datetime
 
 parser = argparse.ArgumentParser(description='Tests the D435i stream and produces a check log that can be used for troubleshooting.')
 parser.add_argument("--usb", help="Test USB version", action="store_true")
 parser.add_argument("--rate", help="Test data capture rate", action="store_true")
 parser.add_argument("--scan_head", help="Test data capture rate with Head Pan and Tilt to extremity", action="store_true")
+parser.add_argument("--scan_head_cycles", help="Test data capture rate with Head Pan and Tilt to extremity for N cycles", action="store_true")
 parser.add_argument('-f', metavar='check_log_path', type=str, help='The path to save D435i Check Log (default:/tmp/d435i_check_log.txt)')
+parser.add_argument('-n_cycles', metavar='n_cycles', type=int, help='The number of cycles for scan_head_cycles test (Takes 10s per cycle)')
 args = parser.parse_args()
 thread_stop = False
 check_log = []
 dmesg_log = []
-log_file_path = "/tmp/d435i_check_log.txt"
+d = datetime.datetime.now()
+ts = d.strftime("%m%d%Y%H%M%S")
+capture_datetime = ts
+log_file_path = "/tmp/d435i_check_log_"+ts+".txt"
+n_cycles = 100
 
 # Include all the known kernel non problematic messages here
 # index     1:no.occured 2:no.Acceptable_Occurances 3:Message
@@ -42,7 +49,7 @@ streams_assert = {'Depth':29,'Color':29,'Gyro':199,'Accel':62} # Refer create_co
 pan_tilt_pos = (None,None)
 usbtop_cmd = None
 
-def create_config_target_hi_res():
+def create_config_target_hi_res(duration=30):
     global check_log
     f = open('/tmp/d435i_confg.cfg', "w+")
     config_script = ["DEPTH,1280,720,30,Z16,0",
@@ -62,17 +69,17 @@ def create_config_target_hi_res():
     check_log.append('\n')
 
     f.close()
-    target = {'duration': 31,
-              'nframe': 900,
+    target = {'duration': duration+1,
+              'nframe': duration*30,
               'margin': 16,
               'streams':{
-              'Color': {'target': 900, 'sampled': 0},
-              'Depth': {'target': 900, 'sampled': 0},
-              'Accel': {'target': 900, 'sampled': 0},
-              'Gyro': {'target': 900, 'sampled': 0}}}
+              'Color': {'target': duration*30, 'sampled': 0},
+              'Depth': {'target': duration*30, 'sampled': 0},
+              'Accel': {'target': duration*30, 'sampled': 0},
+              'Gyro': {'target': duration*30, 'sampled': 0}}}
     return target
 
-def create_config_target_low_res():
+def create_config_target_low_res(duration=30):
     global check_log
     f = open('/tmp/d435i_confg.cfg', "w+")
     config_script = ["DEPTH,424,240,30,Z16,0",
@@ -92,14 +99,14 @@ def create_config_target_low_res():
     check_log.append('\n')
 
     f.close()
-    target = {'duration': 31,
-              'nframe': 900,
+    target = {'duration': duration+1,
+              'nframe': duration*30,
               'margin': 16,
               'streams':{
-              'Color': {'target': 900, 'sampled': 0},
-              'Depth': {'target': 900, 'sampled': 0},
-              'Accel': {'target': 900, 'sampled': 0},
-              'Gyro': {'target': 900, 'sampled': 0}}}
+              'Color': {'target': duration*30, 'sampled': 0},
+              'Depth': {'target': duration*30, 'sampled': 0},
+              'Accel': {'target': duration*30, 'sampled': 0},
+              'Gyro': {'target': duration*30, 'sampled': 0}}}
     return target
 
 def check_install_v4l2():
@@ -294,12 +301,13 @@ def check_dmesg_thread():
         if len(filtered_out)>0:
             for mesg in filtered_out:
                 if len(mesg)>0:
-                    if pan_tilt_pos[0]:
-                        check_log.append(mesg+'   (Pan, Tilt)='+str(pan_tilt_pos))
-                        dmesg_log.append(mesg)
-                    else:
-                        check_log.append(mesg)
-                        dmesg_log.append(mesg)
+                    d = datetime.datetime.now()
+                    ts = d.strftime("%m/%d/%Y %H:%M:%S")
+                    check_log.append('['+ts+'] '+mesg)
+                    dmesg_log.append('['+ts+'] '+mesg)
+        log_periodic_save(check_log)
+
+        check_log = [] # Checklog Reset Point
 
 def check_throughput(usbrate_file):
     global check_log
@@ -347,15 +355,19 @@ def check_throughput(usbrate_file):
     print('Max To Device Speed : %f MB/s'%(max_in_speed/1000))
     print('\n')
 
-def check_data_rate(target,robot=None):
+def check_data_rate(target,robot=None,cycles=None):
     global check_log
     # https://github.com/IntelRealSense/librealsense/tree/master/tools/data-collect
 
     usbtop_proc = Popen(usbtop_cmd,stdout=PIPE,shell=True)
 
     if robot:
-        scan_head_thread = Thread(target=scan_head_sequence,args=[robot,])
-        scan_head_thread.start()
+        if cycles:
+            scan_head_thread = Thread(target=scan_head_sequence_cycles,args=[robot,cycles])
+            scan_head_thread.start()
+        else:
+            scan_head_thread = Thread(target=scan_head_sequence,args=[robot,])
+            scan_head_thread.start()
 
     cmd='rs-data-collect -c /tmp/d435i_confg.cfg -f /tmp/d435i_log.csv -t %d -m %d'%(target['duration'],target['nframe'])
     out = Popen(cmd, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()    
@@ -373,11 +385,19 @@ def check_data_rate(target,robot=None):
     os.system('sudo pkill usbtop')
 
 def get_head_pos(robot,Print=False):
-    tilt_pos = robot.status['head']['head_tilt']['pos']
-    pan_pos = robot.status['head']['head_pan']['pos']
+    tilt_pos = robot.status['head_tilt']['pos']
+    pan_pos = robot.status['head_pan']['pos']
     if Print:
         print('Head Tilt: %f | Pan: %f' % (tilt_pos,pan_pos))
     return (pan_pos,tilt_pos)
+
+def log_periodic_save(check_log):
+    check_log_str = ''
+    for ll in check_log:
+        check_log_str = check_log_str + ll + '\n'
+    check_log_file = open(log_file_path,"a")
+    check_log_file.write(check_log_str)
+    check_log_file.close()
 
 def save_collected_log(check_log):
     print('---------- COLLECTED LOG ----------')
@@ -385,16 +405,61 @@ def save_collected_log(check_log):
     for ll in check_log:
         check_log_str = check_log_str + ll + '\n'
     
-    check_log_file = open(log_file_path,"w")
+    check_log_file = open(log_file_path,"a")
     check_log_file.write(check_log_str)
     print('Collected D435i Check log saved at "'+log_file_path+'"')
 
-def scan_head_sequence(robot):
+def scan_head_sequence_cycles(robot,cycles):
     """
     Head Pan Tilt Sequence
     """
     global pan_tilt_pos
-    robot.head.home()
+    robot.home()
+    time.sleep(1)
+
+    n = 15
+    delay = 0.1
+    tilt_moves = np.linspace(np.radians(-90),np.radians(0),n)
+    pan_moves = np.linspace(np.radians(90),np.radians(-180),n)
+
+    for j in range(0,cycles):
+        print('Current Cycle : ',j)
+        for i in range(n):
+            robot.move_to('head_tilt',tilt_moves[i])
+            robot.move_to('head_pan',pan_moves[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+
+        for i in range(n):
+            robot.move_to('head_tilt',np.flip(tilt_moves[i]))
+            robot.move_to('head_pan',np.flip(pan_moves[i]))
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+
+        for i in range(n):
+            robot.move_to('head_tilt',np.flip(tilt_moves)[i])
+            robot.move_to('head_pan',pan_moves[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+
+        for i in range(n):
+            robot.move_to('head_tilt',tilt_moves[i])
+            robot.move_to('head_pan',np.flip(pan_moves)[i])
+            time.sleep(delay)
+            pan_tilt_pos = get_head_pos(robot)
+        time.sleep(0.8)
+
+    robot.home()
+
+def scan_head_sequence(robot,cycles=None):
+    """
+    Head Pan Tilt Sequence
+    """
+    global pan_tilt_pos
+    robot.home()
     time.sleep(1)
 
     n = 15
@@ -404,34 +469,34 @@ def scan_head_sequence(robot):
 
     for j in range(0,3):
         for i in range(n):
-            robot.head.move_to('head_tilt',tilt_moves[i])
-            robot.head.move_to('head_pan',pan_moves[i])
+            robot.move_to('head_tilt',tilt_moves[i])
+            robot.move_to('head_pan',pan_moves[i])
             time.sleep(delay)
             pan_tilt_pos = get_head_pos(robot)
         time.sleep(0.8)
 
         for i in range(n):
-            robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
-            robot.head.move_to('head_pan',np.flip(pan_moves)[i])
+            robot.move_to('head_tilt',np.flip(tilt_moves)[i])
+            robot.move_to('head_pan',np.flip(pan_moves)[i])
             time.sleep(delay)
             pan_tilt_pos = get_head_pos(robot)
         time.sleep(0.8)
             
         for i in range(n):
-            robot.head.move_to('head_tilt',np.flip(tilt_moves)[i])
-            robot.head.move_to('head_pan',pan_moves[i])
+            robot.move_to('head_tilt',np.flip(tilt_moves)[i])
+            robot.move_to('head_pan',pan_moves[i])
             time.sleep(delay)
             pan_tilt_pos = get_head_pos(robot)
         time.sleep(0.8)
 
         for i in range(n):
-            robot.head.move_to('head_tilt',tilt_moves[i])
-            robot.head.move_to('head_pan',np.flip(pan_moves)[i])
+            robot.move_to('head_tilt',tilt_moves[i])
+            robot.move_to('head_pan',np.flip(pan_moves)[i])
             time.sleep(delay)
             pan_tilt_pos = get_head_pos(robot)
         time.sleep(0.8)
 
-    robot.head.home()
+    robot.home()
 
 def scan_head_check_rate():
     """
@@ -442,7 +507,7 @@ def scan_head_check_rate():
     get_usb_busID()
     check_usb()
     check_ros()
-    robot=stretch_body.robot.Robot()
+    robot=stretch_body.head.Head()
     robot.startup()
 
     hdu.exec_process(['sudo', 'dmesg', '-c'], True)
@@ -478,6 +543,59 @@ def scan_head_check_rate():
     save_collected_log(check_log)
 
     
+    robot.stop()
+
+def scan_head_check_rate_cycles(cycles,mode=0):
+    """
+    Check D435i rates with head moving to extremities with a given amount of
+    cycles in High Res/Low Res Mode
+    mode=0 High Res (Default)
+    mode=1 Low Res
+    """
+    global thread_stop, dmesg_log
+    check_install_usbtop()
+    get_usb_busID()
+    check_usb()
+    check_ros()
+    robot = stretch_body.head.Head()
+    robot.startup()
+
+    hdu.exec_process(['sudo', 'dmesg', '-c'], True)
+    hdu.exec_process(['sudo', 'modprobe', 'usbmon'], True)
+    thread_stop = False
+    monitor_dmesg = Thread(target=check_dmesg_thread)
+    monitor_dmesg.start()
+
+    duration_per_cycle = 10 #s
+    if mode==0:
+        conf_type = '---------- HIGH RES CHECK ----------'
+        check_log.append('\n' + conf_type + '\n')
+
+        print(conf_type)
+        duration_s = cycles*duration_per_cycle 
+        print('Checking high-res data rates for {} cycles. This will take around {:.2f} minutes to complete...'.format(cycles,float(duration_s)/60))
+        target = create_config_target_hi_res(duration = duration_s)
+        check_data_rate(target, robot, cycles)
+        check_throughput('/tmp/usbrate.txt')
+        time.sleep(1.5)
+    else:
+
+        conf_type = '---------- LOW RES CHECK ----------'
+        check_log.append('\n' + conf_type + '\n')
+        print(conf_type)
+        duration_s = cycles*duration_per_cycle 
+        print('Checking low-res data rates for {} cycles. This will take around {:.2f} minutes to complete...'.format(cycles,float(duration_s)/60))
+        target = create_config_target_low_res(duration = duration_s)
+        check_data_rate(target, robot, cycles)
+        check_throughput('/tmp/usbrate.txt')
+        time.sleep(1.5)
+
+    thread_stop = True
+    monitor_dmesg.join()
+
+    check_dmesg(dmesg_log)
+    save_collected_log(check_log)
+
     robot.stop()
 
 def check_rate_exec():
@@ -553,7 +671,10 @@ def check_install_usbtop():
 
 if args.f:
     log_file_path = args.f
-    
+
+if args.n_cycles:
+    n_cycles = args.n_cycles
+
 if args.usb:
     get_usb_busID()
     check_usb()
@@ -563,5 +684,8 @@ if args.rate:
 
 if args.scan_head:
     scan_head_check_rate()
+
+if args.scan_head_cycles:
+    scan_head_check_rate_cycles(n_cycles,0)
 
 
