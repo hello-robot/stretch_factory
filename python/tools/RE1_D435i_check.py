@@ -147,6 +147,7 @@ def get_usb_busID():
     out = Popen("usb-devices | grep -B 5 -i 'RealSense' | grep -i 'Bus'", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()
     if(len(out)):
         out_list = out.split(' ')
+
         bus_no = None
         dev_id = None
         usb_found = False
@@ -155,7 +156,11 @@ def get_usb_busID():
                 bus_no = out_list[i].split('=')[1]
                 bus_no = int(bus_no)
             if out_list[i]=='Dev#=':
-                dev_id = int(out_list[i+2])
+                #print(out_list)
+                try:
+                    dev_id = int(out_list[i+1]) ##
+                except ValueError:
+                    dev_id = int(out_list[i+2]) ##
 
         print(Fore.GREEN + '[Pass] Realsense D435i found at USB Bus_No : %d | Device ID : %d'%(bus_no,dev_id)+Style.RESET_ALL)
         check_log.append('[Pass] Realsense D435i found at USB Bus_No : %d | Device ID : %d'%(bus_no,dev_id))
