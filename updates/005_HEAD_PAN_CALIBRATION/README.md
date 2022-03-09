@@ -28,7 +28,7 @@ head_pan:
 
 ### Recalibration
 
-First, move to the latest Stretch Body package (version >=0.0.17) and the lastest Stretch Factory  package (version >=0.0.14)
+First, move to the latest Stretch Body package (version >=0.0.17) and the latest Stretch Factory  package (version >=0.0.14)
 
 ```
 >>$ pip2 install hello-robot-stretch-body
