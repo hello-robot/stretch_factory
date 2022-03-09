@@ -55,7 +55,7 @@ and no further opening motion is possible
 ('Setting open at:', 8500)
 ```
 <img src="images/gripper_open_position.jpg" width="200"><br/>
-4. Finally, the script would move the gripper to close, open and zero positions. Verify that the gripper moves to the expected poses and save the calibration.
+4. Finally, the script will move the gripper to the closed, open, and zero positions. Verify that the gripper moves to the expected poses and save the calibration.
 ```bash
 Hit enter to close
 Hit enter to open
