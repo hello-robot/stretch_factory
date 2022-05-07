@@ -1,14 +1,14 @@
 import stretch_body.hello_utils as hello_utils
 import importlib
 
-def generate_user_params_from_template(variant_name, fleet_dir=None):
-    param_module_name = 'stretch_body.robot_params_' + variant_name
+def generate_user_params_from_template(model_name, fleet_dir=None):
+    param_module_name = 'stretch_body.robot_params_' + model_name
     user_params = getattr(importlib.import_module(param_module_name), 'user_params_template')
     user_header = getattr(importlib.import_module(param_module_name), 'user_params_header')
     hello_utils.write_fleet_yaml('stretch_user_params.yaml',user_params,fleet_dir,user_header)
 
-def generate_configuration_params_from_template(variant_name, batch_name, robot_serial_no, fleet_dir=None):
-    param_module_name = 'stretch_body.robot_params_' + variant_name
+def generate_configuration_params_from_template(model_name, batch_name, robot_serial_no, fleet_dir=None):
+    param_module_name = 'stretch_body.robot_params_' + model_name
     config_params = getattr(importlib.import_module(param_module_name), 'configuration_params_template')
     config_header = getattr(importlib.import_module(param_module_name), 'configuration_params_header')
     config_params['robot']['batch_name']=batch_name
@@ -33,36 +33,51 @@ def copy_over_params(dest_dict, src_dict,dest_dict_name='',src_dict_name=''):
         else:
             print('Migration error. Parameter %s not found during copy from %s to %s'%(k,src_dict_name,dest_dict_name))
 
-def param_change_check(new_dict,prior_dict,num_warnings,new_dict_name='',prior_dict_name=''):
+def param_change_check(new_dict,prior_dict,num_warnings,new_dict_name,prior_dict_name,whitelist=[]):
     for k in new_dict.keys():
         if k in prior_dict:
             if type(new_dict[k])==dict:
-                    num_warnings=param_change_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k)
+                    num_warnings=param_change_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k,whitelist)
             else:
                 if new_dict[k]!=prior_dict[k]:
-                    print('Warning. Value change in %s from %s to %s'%(new_dict_name+'.'+k,prior_dict[k],new_dict[k]))
-                    num_warnings=num_warnings+1
+                    whitelisted = False
+                    for w in whitelist:
+                        if w == k:
+                            whitelisted = True
+                    if not whitelisted:
+                        print('Warning. Value change in %s from %s to %s'%(new_dict_name+'.'+k,prior_dict[k],new_dict[k]))
+                        num_warnings=num_warnings+1
     return num_warnings
 
 
-def param_added_check(new_dict,prior_dict,num_warnings,new_dict_name='',prior_dict_name=''):
+def param_added_check(new_dict,prior_dict,num_warnings,new_dict_name,prior_dict_name,whitelist=[]):
     for k in new_dict.keys():
         if k in prior_dict:
             if type(new_dict[k])==dict:
-                    num_warnings=param_added_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k)
+                    num_warnings=param_added_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k,whitelist)
         else:
-            print('Warning. Parameter introduced: %s'%(new_dict_name+'.'+k))
-            num_warnings=num_warnings+1
+            whitelisted = False
+            for w in whitelist:
+                if w == k:
+                    whitelisted = True
+            if not whitelisted:
+                print('Warning. Parameter introduced: %s'%(new_dict_name+'.'+k))
+                num_warnings=num_warnings+1
     return num_warnings
 
-def param_dropped_check(new_dict,prior_dict,num_warnings,new_dict_name='',prior_dict_name=''):
+def param_dropped_check(new_dict,prior_dict,num_warnings,new_dict_name,prior_dict_name,whitelist=[]):
     for k in prior_dict.keys():
         if k in new_dict:
             if type(prior_dict[k])==dict:
-                    num_warnings=param_dropped_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k)
+                    num_warnings=param_dropped_check(new_dict[k],prior_dict[k],num_warnings,new_dict_name+'.'+k,prior_dict_name+'.'+k,whitelist)
         else:
-            print('Warning. Parameter %s dropped'%(prior_dict_name+'.'+k))
-            num_warnings=num_warnings+1
+            whitelisted=False
+            for w in whitelist:
+                if w==k:
+                    whitelisted=True
+            if not whitelisted:
+                print('Warning. Parameter %s dropped'%(prior_dict_name+'.'+k))
+                num_warnings=num_warnings+1
     return num_warnings
 
 #Todo: make generic for future migrations / parameter org changes. Do we version parameter orgs?
@@ -100,30 +115,27 @@ def migrate_params_RE1P0(fleet_path, fleet_id):
         hello_utils.overwrite_dict(O, getattr(importlib.import_module(external_params_module), 'params'))
 
     #Construct a new Configuration Params dictionary (C)
-    generate_configuration_params_from_template(variant_name='RE1P0', batch_name=O['robot']['batch_name'], robot_serial_no=O['robot']['serial_no'], fleet_dir=None)
+    generate_configuration_params_from_template(model_name='RE1P0', batch_name=O['robot']['batch_name'], robot_serial_no=O['robot']['serial_no'], fleet_dir=None)
     C = hello_utils.read_fleet_yaml('stretch_configuration_params.yaml')
     # Manually copy over special cases from )
-    O['robot']['variant_name'] = C['robot']['variant_name']
+    O['robot']['model_name'] = C['robot']['model_name']
     O['robot']['d435i_serial_no'] = C['robot']['d435i_serial_no']
     #Now copy over rest of O data to C
     copy_over_params(C,O,'NewParams','OldParams')
     hello_utils.write_fleet_yaml('stretch_configuration_params.yaml', C, None,stretch_body.robot_params_RE1P0.configuration_params_header)
 
+    #Construct the full prior param dict R
+    R=copy.deepcopy(O)
+    hello_utils.overwrite_dict(R,U)
+
     #Write user params to new yaml
     generate_user_params_from_template('RE1P0')
+    #Cleanup old user yaml
+    drop_params=['factory_params','tool_params']
+    for d in drop_params:
+        if U.has_key(d):
+            U.pop(d)
     hello_utils.write_fleet_yaml('stretch_user_params.yaml', U, None,stretch_body.robot_params_RE1P0.user_params_header)
 
-    #Now read in the new parameter data
+    return O,U,R #Return
 
-    import stretch_body.robot_params
-    (UU,R)=stretch_body.robot_params.RobotParams().get_params()
-
-    #Copy in user data to create the complete original parameter set to compare to
-    hello_utils.overwrite_dict(O,U)
-
-    #Now check for differences
-    added_warnings=param_added_check(R,O,0,'NewParams','OldParams')
-    dropped_warnings=param_dropped_check(R,O,0,'NewParams','OldParams')
-    change_warnings=param_change_check(R,O,0,'NewParams','OldParams')
-
-    print('Diff check: Added %d, Dropped %d, Changed %d'%(added_warnings,dropped_warnings,change_warnings))
