@@ -93,21 +93,30 @@ if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fle
             exit(ret)
         else:
             if click.confirm('Use new parameters for robot %s?'%fleet_id):
-                uf=hello_utils.get_fleet_directory()+'stretch_re1_user_params.migration_backup.%s.yaml'%(hello_utils.create_time_string())
-                os.system('mv %s %s' % (hello_utils.get_fleet_directory() + 'stretch_re1_user_params.yaml', uf))
-                print('Moving %s to %s' % (hello_utils.get_fleet_directory() + 'stretch_re1_user_params.yaml', uf))
-                ff = hello_utils.get_fleet_directory() + 'stretch_re1_factory_params.migration_backup.%s.yaml' % (hello_utils.create_time_string())
-                os.system('mv %s %s' % (hello_utils.get_fleet_directory() + 'stretch_re1_factory_params.yaml', ff))
-                print('Moving %s to %s' % (hello_utils.get_fleet_directory() + 'stretch_re1_factory_params.yaml', ff))
-                print("Robot %s now configured to use latest parameter format"%fleet_id)
-                #Now copy to /etc / git?
+                etc_dir='/etc/hello-robot/'+fleet_id+'/'
+
+                uf= hello_utils.get_fleet_directory() + 'stretch_re1_user_params.yaml'
+                uf_backup='stretch_re1_user_params.migration_backup.%s.yaml'%(hello_utils.create_time_string())
+                print('Backing up %s to %s' % (uf, uf_backup))
+                os.system('cp %s %s' % (uf, hello_utils.get_fleet_directory() + uf_backup))
+                os.system('sudo cp %s %s'%(uf, etc_dir+uf_backup))
+                os.system('rm %s'%uf)
+                os.system('sudo rm %s' % etc_dir + 'stretch_re1_user_params.yaml')
+                os.system('sudo cp %s %s'%(hello_utils.get_fleet_directory() + 'stretch_user_params.yaml', etc_dir))
+
+                ff = hello_utils.get_fleet_directory() + 'stretch_re1_factory_params.yaml'
+                ff_backup = 'stretch_re1_factory_params.migration_backup.%s.yaml' % (hello_utils.create_time_string())
+                print('Backing up %s to %s' % (ff, ff_backup))
+                os.system('cp %s %s' % (ff, hello_utils.get_fleet_directory() + ff_backup))
+                os.system('sudo cp %s %s' % (ff, etc_dir + ff_backup))
+                os.system('rm %s' % ff)
+                os.system('sudo rm %s' % etc_dir + 'stretch_re1_factory_params.yaml')
+                os.system('sudo cp %s %s' % (hello_utils.get_fleet_directory() + 'stretch_configuration_params.yaml', etc_dir))
+
+                click.secho("Robot %s now configured to use latest parameter format"%fleet_id,fg='green')
+
             else:
-                uf=fleet_path+'/log/stretch_user_params.migration_backup.%s.%s.yaml'%(fleet_id,hello_utils.create_time_string())
-                os.system('mv %s %s'% (hello_utils.get_fleet_directory()+'stretch_user_params.yaml',uf))
-                print('Moving %s to %s'%(hello_utils.get_fleet_directory()+'stretch_user_params.yaml',uf))
-                cf = fleet_path + '/log/stretch_configuration_params.migration_backup.%s.%s.yaml' % (fleet_id, hello_utils.create_time_string())
-                os.system('mv %s %s' % (hello_utils.get_fleet_directory() + 'stretch_configuration_params.yaml', uf))
-                print('Moving %s to %s' % (hello_utils.get_fleet_directory() + 'stretch_configuration_params.yaml', uf))
+                cleanup_generated_files()
             exit(0)
     # except:
     #     print('Exception. Cleaning up')
