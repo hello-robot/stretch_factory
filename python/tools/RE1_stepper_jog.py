@@ -106,10 +106,10 @@ def step_interaction():
             motor.set_command(stiffness=st)
         if x[0]=='i':
             ii=float(x[1:])
-            motor.set_command(i_des=ii)
+            motor.set_command(mode=motor.MODE_CURRENT,i_des=ii)
         if x[0]=='f':
             ff=float(x[1:])
-            motor.set_command(feedforward=ff)
+            motor.set_command(i_feedforward=ff)
         if x[0]=='p':
             ff=float(x[1:])
             motor.set_command(i_contact_pos=ff)
