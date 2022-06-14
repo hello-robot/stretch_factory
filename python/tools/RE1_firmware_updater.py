@@ -117,14 +117,14 @@ if args.install or args.install_version or args.install_branch or args.install_p
         print('')
         u.do_update(no_prompts=args.no_prompts)
     elif args.install_version:
-        u.do_update_to()
+        u.do_update_to(no_prompts=args.no_prompts)
     elif args.install_branch:
-        u.do_update_to_branch()
+        u.do_update_to_branch(no_prompts=args.no_prompts)
     elif args.install_path:
         if args.install_path[0]!='/':
-            u.do_update_to_path(cwd+'/'+args.install_path)
+            u.do_update_to_path(cwd+'/'+args.install_path,no_prompts=args.no_prompts)
         else:
-            u.do_update_to_path(args.install_path)
+            u.do_update_to_path(args.install_path,no_prompts=args.no_prompts)
 else:
     parser.print_help()
 
