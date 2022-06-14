@@ -50,7 +50,7 @@ if not exists(hello_utils.get_fleet_directory()+'stretch_re1_user_params.yaml') 
 if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fleet_id):
     if 1: #try:
         drop_user_params = []#['factory_params', 'tool_params']
-        O, U, R=param_mgmt.migrate_params_RE1P0(fleet_path, fleet_id,drop_user_params)
+        O, U, R=param_mgmt.migrate_params_RE1V0(fleet_path, fleet_id,drop_user_params)
         if O==None:#Failed
             click.secho('Robot paramters corrupted. Unable to migrate', fg="red")
             exit(1)

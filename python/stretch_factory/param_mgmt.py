@@ -90,9 +90,9 @@ def param_dropped_check(new_dict,prior_dict,num_warnings,new_dict_name,prior_dic
     return num_warnings
 
 #Todo: make generic for future migrations / parameter org changes. Do we version parameter orgs?
-def migrate_params_RE1P0(fleet_path, fleet_id, dropped_user_params):
+def migrate_params_RE1V0(fleet_path, fleet_id, dropped_user_params):
     """
-    The parameter organization has changed between RE1P0 and RE1P1 in the following ways
+    The parameter organization has changed between RE1P0 and RE1P5 in the following ways
     1. stretch_re1_user_params.yaml is now named stretch_user_params.yaml
     2. stretch_configuration_params.yaml is introduced
     3. stretch_factory_params.yaml is deprecated
@@ -117,28 +117,28 @@ def migrate_params_RE1P0(fleet_path, fleet_id, dropped_user_params):
     if (len(U)==0 or len(F)==0):#Empty file (corrupted)
         return None, None, None
     #Construct the original robot_params dictionary without user data (O)
-    import stretch_body.robot_params_RE1P0
+    import stretch_body.robot_params_RE1V0
     import copy
     O = copy.deepcopy(F)
-    hello_utils.overwrite_dict(O, stretch_body.robot_params_RE1P0.factory_params_deprecated)
+    hello_utils.overwrite_dict(O, stretch_body.robot_params_RE1V0.factory_params_deprecated)
     for external_params_module in U.get('params', []):
         hello_utils.overwrite_dict(O, getattr(importlib.import_module(external_params_module), 'params'))
     #Construct a new Configuration Params dictionary (C)
-    generate_configuration_params_from_template(model_name='RE1P0', batch_name=O['robot']['batch_name'], robot_serial_no=O['robot']['serial_no'], fleet_dir=None)
+    generate_configuration_params_from_template(model_name='RE1V0', batch_name=O['robot']['batch_name'], robot_serial_no=O['robot']['serial_no'], fleet_dir=None)
     C = hello_utils.read_fleet_yaml('stretch_configuration_params.yaml')
     # Manually copy over newly introduced params so doesn't generate an error )
     O['robot']['model_name'] = C['robot']['model_name']
     O['robot']['d435i_serial_no'] = C['robot']['d435i_serial_no']
     #Now copy over rest of O data to C
     copy_over_params(C,O,'NewParams','OldParams')
-    hello_utils.write_fleet_yaml('stretch_configuration_params.yaml', C, None,stretch_body.robot_params_RE1P0.configuration_params_header)
+    hello_utils.write_fleet_yaml('stretch_configuration_params.yaml', C, None,stretch_body.robot_params_RE1V0.configuration_params_header)
 
     #Construct the full prior param dict R
     R=copy.deepcopy(O)
     hello_utils.overwrite_dict(R,U)
 
     #Write user params to new yaml
-    generate_user_params_from_template('RE1P0')
+    generate_user_params_from_template('RE1V0')
     UU = hello_utils.read_fleet_yaml('stretch_user_params.yaml')
     #Cleanup old user yaml
     for d in dropped_user_params:
@@ -146,6 +146,6 @@ def migrate_params_RE1P0(fleet_path, fleet_id, dropped_user_params):
             U.pop(d)
     #Construct new user YAML where the old user yaml takes precendence
     hello_utils.overwrite_dict(overwritee_dict=UU, overwriter_dict=U)
-    hello_utils.write_fleet_yaml('stretch_user_params.yaml', UU, None,stretch_body.robot_params_RE1P0.user_params_header)
+    hello_utils.write_fleet_yaml('stretch_user_params.yaml', UU, None,stretch_body.robot_params_RE1V0.user_params_header)
     return O,UU,R #Return
 
