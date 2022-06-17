@@ -51,7 +51,7 @@ if pass_test:
     print('Calibration passed. Storing to YAML...')
     for i in range(4):
         p.params['config']['cliff_zero'][i]=cum[i]
-    p.write_device_params('pimu', p.params)
+    p.write_configuration_param_to_YAML('pimu.config.cliff_zero',cum)
     p.stop()
 else:
     print('Calibration failed...')

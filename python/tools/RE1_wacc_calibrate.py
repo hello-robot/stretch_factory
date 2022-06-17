@@ -29,10 +29,8 @@ accel_gravity_scale_max= 1.1
 accel_gravity_scale_min= 0.9
 if s>accel_gravity_scale_min and s<accel_gravity_scale_max:
     print('Gravity scalar of %f within bounds of %f to %f'%(s,accel_gravity_scale_min ,accel_gravity_scale_max ))
-    w.params['config']['accel_gravity_scale']=s
     print('Writing yaml...')
-    w.write_device_params('wacc', w.params)
-
+    w.write_configuration_param_to_YAML('wacc.config.accel_gravity_scale', s)
 else:
-    print('Gravity scalar of %f outside bounds of %f to %f' % (s, q.params['accel_gravity_scale_min'], q.params['accel_gravity_scale_max']))
+    print('Gravity scalar of %f outside bounds of %f to %f' % (s, accel_gravity_scale_min,accel_gravity_scale_max))
 w.stop()
