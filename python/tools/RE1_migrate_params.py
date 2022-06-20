@@ -44,7 +44,7 @@ if exists(hello_utils.get_fleet_directory()+'stretch_user_params.yaml') and exis
     click.secho('Parameter format is up to date. No migration is required.', fg="green")
     exit(0)
 if not exists(hello_utils.get_fleet_directory()+'stretch_re1_user_params.yaml') or not exists(hello_utils.get_fleet_directory()+'stretch_re1_factory_params.yaml'):
-    click.secho('Robot paramters not found. Unable to migrate', fg="red")
+    click.secho('Robot paramters not found. Unable to migrate. Please contact Hello Robot support for more information.', fg="red")
     exit(1)
 
 if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fleet_id):
@@ -52,7 +52,7 @@ if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fle
         drop_user_params = []#['factory_params', 'tool_params']
         O, U, R=param_mgmt.migrate_params_RE1V0(fleet_path, fleet_id,drop_user_params)
         if O==None:#Failed
-            click.secho('Robot paramters corrupted. Unable to migrate', fg="red")
+            click.secho('Robot paramters corrupted. Unable to migrate. Please contact Hello Robot support for more information.', fg="red")
             exit(1)
         print('Migration complete. Starting validation...')
 
