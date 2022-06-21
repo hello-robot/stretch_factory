@@ -91,7 +91,7 @@ def align_vectors(f,t):
          [h*vx*vz - vy, h*vy*vz + vx, c+h*vz**2]]
    return np.array(rot)
 
-def write_factory_params(cma_result):
+def write_configuration_params(cma_result):
     import stretch_body.pimu
     pimu = stretch_body.pimu.Pimu()
     params = cma_result['best_parameters']
@@ -99,28 +99,21 @@ def write_factory_params(cma_result):
     A=np.array(params[3:6])
     B = np.array([0.0, 0.0, 1.0])
     R=align_vectors(A,B)
+    pimu.write_configuration_param_to_YAML('pimu.mag_offsets',[params[0],params[1],params[2]])
+    pimu.write_configuration_param_to_YAML('pimu.mag_softiron_matrix',[
+        float(R[0][0]),
+        float(R[0][1]),
+        float(R[0][2]),
+        float(R[1][0]),
+        float(R[1][1]),
+        float(R[1][2]),
+        float(R[2][0]),
+        float(R[2][1]),
+        float(R[2][2])])
+    pimu.write_configuration_param_to_YAML('pimu.gyro_zero_offsets', [0,0,0])
+    pimu.write_configuration_param_to_YAML('pimu.rate_gyro_vector_scale', cma_result['rate_gyro_scale'])
+    pimu.write_configuration_param_to_YAML('pimu.gravity_vector_scale', cma_result['gravity_scale'])
 
-    pimu.config['mag_offsets'][0] = params[0]
-    pimu.config['mag_offsets'][1] = params[1]
-    pimu.config['mag_offsets'][2] = params[2]
-
-    pimu.config['mag_softiron_matrix'][0] = float(R[0][0])
-    pimu.config['mag_softiron_matrix'][1] = float(R[0][1])
-    pimu.config['mag_softiron_matrix'][2] = float(R[0][2])
-    pimu.config['mag_softiron_matrix'][3] = float(R[1][0])
-    pimu.config['mag_softiron_matrix'][4] = float(R[1][1])
-    pimu.config['mag_softiron_matrix'][5] = float(R[1][2])
-    pimu.config['mag_softiron_matrix'][6] = float(R[2][0])
-    pimu.config['mag_softiron_matrix'][7] = float(R[2][1])
-    pimu.config['mag_softiron_matrix'][8] = float(R[2][2])
-
-    pimu.config['gyro_zero_offsets'][0] = 0
-    pimu.config['gyro_zero_offsets'][1] = 0
-    pimu.config['gyro_zero_offsets'][2] = 0
-
-    pimu.config['rate_gyro_vector_scale'] = cma_result['rate_gyro_scale']
-    pimu.config['gravity_vector_scale'] = cma_result['gravity_scale']
-    pimu.write_device_params('pimu',pimu.params)
 # ################################################################
 
 class MobileBaseImuCalibrator:
@@ -657,12 +650,12 @@ if __name__ == '__main__':
                 print('Finished saving.')
                 fit_parameters = cma_result['best_parameters']
                 if args.qc:
-                    write_factory_params(cma_result)
+                    write_configuration_params(cma_result)
                 else:
                     x=input('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
                     if len(x)==0 or x=='y' or x=='Y':
                         print('Writing yaml...')
-                        write_factory_params(cma_result)
+                        write_configuration_params(cma_result)
             else:
                 print()
                 print('********************************************************')

@@ -68,5 +68,5 @@ g.stop()
 
 x=input('Save calibration [y]?')
 if x=='y' or x=='Y' or x=='':
-    g.write_device_params('stretch_gripper',g.params)
-
+    g.write_configuration_param_to_YAML('stretch_gripper.range_t', g.params['range_t'])
+    g.write_configuration_param_to_YAML('stretch_gripper.zero_t', g.params['zero_t'])

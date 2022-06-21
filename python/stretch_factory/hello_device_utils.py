@@ -382,8 +382,7 @@ def assign_arduino_to_robot(device_name,is_stepper=False,robot_sn=None):
         if is_stepper:
             print('Setting serial number in YAML for %s to %s'%(device_name,sn))
             d = stretch_body.device.Device()
-            d.robot_params[device_name]['serial_no'] = sn
-            d.write_device_params(device_name, d.robot_params[device_name],fleet_dir=fleet_dir)
+            d.write_configuration_param_to_YAML(device_name+'.serial_no', sn,fleet_dir=fleet_dir)
         return  {'success': 1, 'sn': sn}
     return  {'success': 0, 'sn':None}
 
