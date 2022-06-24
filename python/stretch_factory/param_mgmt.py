@@ -127,8 +127,10 @@ def migrate_params_RE1V0(fleet_path, fleet_id, dropped_user_params):
     generate_configuration_params_from_template(model_name='RE1V0', batch_name=O['robot']['batch_name'], robot_serial_no=O['robot']['serial_no'], fleet_dir=None)
     C = hello_utils.read_fleet_yaml('stretch_configuration_params.yaml')
     # Manually copy over newly introduced params so doesn't generate an error )
-    O['robot']['model_name'] = C['robot']['model_name']
-    O['robot']['d435i']['serial_no'] = C['robot']['d435i']['serial_no']
+    if 'model_name' not in O['robot']:
+        O['robot']['model_name'] = C['robot']['model_name']
+    if 'd435i' not in O['robot']:
+        O['robot']['d435i'] = C['robot']['d435i'].copy()
     #Now copy over rest of O data to C
     copy_over_params(C,O,'NewParams','OldParams')
     hello_utils.write_fleet_yaml('stretch_configuration_params.yaml', C, None,stretch_body.robot_params_RE1V0.configuration_params_header)
