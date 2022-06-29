@@ -317,8 +317,8 @@ log_device=stretch_body.device.Device()
 
 def user_msg_log(msg,user_display=True,fg=None,bg=None,bold=False):
     if user_display:
-        click.secho(msg,fg=fg, bg=bg,bold=bold)
-    log_device.logger.debug(msg)
+        click.secho(str(msg),fg=fg, bg=bg,bold=bold)
+    log_device.logger.debug(str(msg))
 
 class FirmwareUpdater():
     def __init__(self,use_device):
@@ -440,7 +440,7 @@ class FirmwareUpdater():
             return success
         return True
 
-    def do_update_to(self,verbose=False):
+    def do_update_to(self,verbose=False, no_prompts=False):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
         click.secho(' Select target firmware versions '.center(60,'#'), fg="cyan", bold=True)
@@ -467,9 +467,9 @@ class FirmwareUpdater():
                     self.target[device_name]=vt
         print('')
         print('')
-        return self.do_update(verbose=verbose)
+        return self.do_update(verbose=verbose, no_prompts=no_prompts)
 
-    def do_update_to_path(self,path_name,verbose=False):
+    def do_update_to_path(self,path_name,verbose=False, no_prompts=False):
         # Burn the Head of the branch to each board regardless of what is currently installed
         click.secho('>>> Flashing firmware from path %s ' % path_name, fg="cyan", bold=True)
         # Check that version of target path is compatible
@@ -493,9 +493,9 @@ class FirmwareUpdater():
                         click.secho('Downgrade Stretch Body first...', fg="yellow")
                     return False
         repo_path=path_name[:path_name.rfind('arduino')]
-        return self.do_update(repo_path=repo_path,verbose=verbose)
+        return self.do_update(repo_path=repo_path,verbose=verbose,no_prompts=no_prompts)
 
-    def do_update_to_branch(self,verbose=False):
+    def do_update_to_branch(self,verbose=False, no_prompts=False):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
         click.secho(' Select target branch '.center(60,'#'), fg="cyan", bold=True)
@@ -532,7 +532,7 @@ class FirmwareUpdater():
                     else:
                         click.secho('Downgrade Stretch Body first...',fg="yellow")
                     return False
-        return self.do_update(verbose=verbose)
+        return self.do_update(verbose=verbose,no_prompts=no_prompts)
 
 
     def flash_stepper_calibration(self,device_name):
@@ -688,6 +688,10 @@ class FirmwareUpdater():
     def flash_firmware_update(self,device_name, tag,repo_path=None,verbose=False):
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="cyan", bold=True)
         config_file = self.fw_available.repo_path + '/arduino-cli.yaml'
+
+        user_msg_log('Config: '+str(config_file), user_display=verbose)
+        user_msg_log('Repo: '+str(repo_path), user_display=verbose)
+
         sketch_name=None
         if device_name == 'hello-motor-left-wheel' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift':
             sketch_name = 'hello_stepper'
@@ -722,11 +726,13 @@ class FirmwareUpdater():
             compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,src_path,sketch_name)
             user_msg_log(compile_command,user_display=verbose)
             c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-            cc=c.split(b'\n')
+            cc = c.split(b'\n')
+            user_msg_log(c, user_display=verbose)
+
             # In version 0.18.x the last line after compile is: Sketch uses xxx bytes (58%) of program storage space. Maximum is yyy bytes.
-            #In version 0.24.x this is now on line -10.
+            #In version 0.24.x this is now on line 0.
             #Need a more robust way to determine successful compile. Works for now.
-            success=cc[-10][-6:]==b'bytes.'
+            success=str(cc[0]).find('Sketch uses')!=-1
             if not success:
                 print('Firmware failed to compile %s at %s' % (sketch_name,src_path))
                 return False
