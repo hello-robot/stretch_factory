@@ -22,6 +22,7 @@ parser.add_argument("--lift", help="Upload Lift Stepper firmware", action="store
 parser.add_argument("--left_wheel", help="Upload Left Wheel Stepper firmware", action="store_true")
 parser.add_argument("--right_wheel", help="Upload Right Wheel Stepper firmware", action="store_true")
 parser.add_argument("--no_prompts", help="Proceed without prompts", action="store_true")
+parser.add_argument("--verbose", help="Verbose output", action="store_true")
 args = parser.parse_args()
 
 mgmt = """
@@ -115,16 +116,16 @@ if args.install or args.install_version or args.install_branch or args.install_p
         u.fw_recommended.pretty_print()
         print('')
         print('')
-        u.do_update(no_prompts=args.no_prompts)
+        u.do_update(no_prompts=args.no_prompts,verbose=args.verbose)
     elif args.install_version:
-        u.do_update_to()
+        u.do_update_to(verbose=args.verbose)
     elif args.install_branch:
-        u.do_update_to_branch()
+        u.do_update_to_branch(verbose=args.verbose)
     elif args.install_path:
         if args.install_path[0]!='/':
-            u.do_update_to_path(cwd+'/'+args.install_path)
+            u.do_update_to_path(cwd+'/'+args.install_path,verbose=args.verbose)
         else:
-            u.do_update_to_path(args.install_path)
+            u.do_update_to_path(args.install_path,verbose=args.verbose)
 else:
     parser.print_help()
 

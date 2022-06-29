@@ -12,7 +12,7 @@ class TestFirmwareUpdater(unittest.TestCase):
                       'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
         u = FirmwareUpdater(use_device)
         self.assertTrue(u.startup())
-        ncycle = 10
+        ncycle = 100
         for i in range(ncycle):
             print('################# UPLOAD %d #############3' % i)
             self.assertTrue(u.do_update(no_prompts=True))

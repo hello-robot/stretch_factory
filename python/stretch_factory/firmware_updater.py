@@ -317,8 +317,8 @@ log_device=stretch_body.device.Device()
 
 def user_msg_log(msg,user_display=True,fg=None,bg=None,bold=False):
     if user_display:
-        click.secho(msg,fg=fg, bg=bg,bold=bold)
-    log_device.logger.debug(msg)
+        click.secho(str(msg),fg=fg, bg=bg,bold=bold)
+    log_device.logger.debug(str(msg))
 
 class FirmwareUpdater():
     def __init__(self,use_device):
@@ -331,9 +331,9 @@ class FirmwareUpdater():
         self.target=self.fw_recommended.recommended.copy()
 
     def startup(self):
-        if not self.__check_ubuntu_version():
-            print('Firmware Updater does not work on Ubuntu 20.04 currently. Please try again in Ubuntu 18.04')
-            return False
+        #if not self.__check_ubuntu_version():
+        #    print('Firmware Updater does not work on Ubuntu 20.04 currently. Please try again in Ubuntu 18.04')
+         #   return False
         if self.__check_arduino_cli_install():
             self.__create_arduino_config_file()
             return True
@@ -358,7 +358,7 @@ class FirmwareUpdater():
         return res==b'DISTRIB_RELEASE=18.04'
         
     def __check_arduino_cli_install(self):
-        target_version=b'0.18.3'
+        target_version=b'0.24.0'#0.18.3'
         version='None'
         res=Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
         do_install=False
@@ -411,7 +411,7 @@ class FirmwareUpdater():
         click.secho('------------------------------------------------', fg="yellow", bold=True)
 
 
-    def do_update(self,no_prompts=False,repo_path=None):
+    def do_update(self,no_prompts=False,repo_path=None,verbose=False):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
         self.num_update=0
@@ -432,7 +432,7 @@ class FirmwareUpdater():
             for device_name in self.target.keys():
                 self.fw_updated[device_name]=False
                 if self.target[device_name] is not None:
-                    self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string(),repo_path=repo_path)
+                    self.fw_updated[device_name]=self.flash_firmware_update(device_name,self.target[device_name].to_string(),repo_path=repo_path,verbose=verbose)
                     if not self.fw_updated[device_name]:
                         return False
             click.secho('---- Firmware Update Complete!', fg="cyan",bold=True)
@@ -440,7 +440,7 @@ class FirmwareUpdater():
             return success
         return True
 
-    def do_update_to(self):
+    def do_update_to(self,verbose=False, no_prompts=False):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
         click.secho(' Select target firmware versions '.center(60,'#'), fg="cyan", bold=True)
@@ -467,9 +467,9 @@ class FirmwareUpdater():
                     self.target[device_name]=vt
         print('')
         print('')
-        return self.do_update()
+        return self.do_update(verbose=verbose, no_prompts=no_prompts)
 
-    def do_update_to_path(self,path_name):
+    def do_update_to_path(self,path_name,verbose=False, no_prompts=False):
         # Burn the Head of the branch to each board regardless of what is currently installed
         click.secho('>>> Flashing firmware from path %s ' % path_name, fg="cyan", bold=True)
         # Check that version of target path is compatible
@@ -493,9 +493,9 @@ class FirmwareUpdater():
                         click.secho('Downgrade Stretch Body first...', fg="yellow")
                     return False
         repo_path=path_name[:path_name.rfind('arduino')]
-        return self.do_update(repo_path=repo_path)
+        return self.do_update(repo_path=repo_path,verbose=verbose,no_prompts=no_prompts)
 
-    def do_update_to_branch(self):
+    def do_update_to_branch(self,verbose=False, no_prompts=False):
         # Return True if system was upgraded
         # Return False if system was not upgraded / error happened
         click.secho(' Select target branch '.center(60,'#'), fg="cyan", bold=True)
@@ -532,7 +532,7 @@ class FirmwareUpdater():
                     else:
                         click.secho('Downgrade Stretch Body first...',fg="yellow")
                     return False
-        return self.do_update()
+        return self.do_update(verbose=verbose,no_prompts=no_prompts)
 
 
     def flash_stepper_calibration(self,device_name):
@@ -685,10 +685,13 @@ class FirmwareUpdater():
         dd = stretch_body.stepper.Stepper('/dev/' + device_name)
         return len(dd.read_encoder_calibration_from_YAML())!=0
 
-    def flash_firmware_update(self,device_name, tag,repo_path=None):
-        verbose = False  # Debug
+    def flash_firmware_update(self,device_name, tag,repo_path=None,verbose=False):
         click.secho('-------- FIRMWARE FLASH %s | %s ------------'%(device_name,tag), fg="cyan", bold=True)
         config_file = self.fw_available.repo_path + '/arduino-cli.yaml'
+
+        user_msg_log('Config: '+str(config_file), user_display=verbose)
+        user_msg_log('Repo: '+str(repo_path), user_display=verbose)
+
         sketch_name=None
         if device_name == 'hello-motor-left-wheel' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift':
             sketch_name = 'hello_stepper'
@@ -721,12 +724,15 @@ class FirmwareUpdater():
                 src_path=repo_path
 
             compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,src_path,sketch_name)
+            user_msg_log(compile_command,user_display=verbose)
             c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
-            cc=c.split(b'\n')
-            success=cc[-1][-6:]==b'bytes.'
-            if verbose:
-                print(compile_command)
-                print(c)
+            cc = c.split(b'\n')
+            user_msg_log(c, user_display=verbose)
+
+            # In version 0.18.x the last line after compile is: Sketch uses xxx bytes (58%) of program storage space. Maximum is yyy bytes.
+            #In version 0.24.x this is now on line 0.
+            #Need a more robust way to determine successful compile. Works for now.
+            success=str(cc[0]).find('Sketch uses')!=-1
             if not success:
                 print('Firmware failed to compile %s at %s' % (sketch_name,src_path))
                 return False
@@ -734,10 +740,10 @@ class FirmwareUpdater():
                 print('Success in firmware compile')
 
             upload_command = 'arduino-cli upload  --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, src_path,sketch_name)
-            if verbose:
-                print(upload_command)
+            user_msg_log(upload_command,user_display=verbose)
             u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             uu = u.split(b'\n')
+            user_msg_log(u, user_display=False)
             if verbose:
                 print(upload_command)
                 # Pretty print the result
