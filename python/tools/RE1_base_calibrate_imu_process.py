@@ -99,8 +99,8 @@ def write_configuration_params(cma_result):
     A=np.array(params[3:6])
     B = np.array([0.0, 0.0, 1.0])
     R=align_vectors(A,B)
-    pimu.write_configuration_param_to_YAML('pimu.mag_offsets',[params[0],params[1],params[2]])
-    pimu.write_configuration_param_to_YAML('pimu.mag_softiron_matrix',[
+    pimu.write_configuration_param_to_YAML('pimu.config.mag_offsets',[params[0],params[1],params[2]])
+    pimu.write_configuration_param_to_YAML('pimu.config.mag_softiron_matrix',[
         float(R[0][0]),
         float(R[0][1]),
         float(R[0][2]),
@@ -110,9 +110,9 @@ def write_configuration_params(cma_result):
         float(R[2][0]),
         float(R[2][1]),
         float(R[2][2])])
-    pimu.write_configuration_param_to_YAML('pimu.gyro_zero_offsets', [0,0,0])
-    pimu.write_configuration_param_to_YAML('pimu.rate_gyro_vector_scale', cma_result['rate_gyro_scale'])
-    pimu.write_configuration_param_to_YAML('pimu.gravity_vector_scale', cma_result['gravity_scale'])
+    pimu.write_configuration_param_to_YAML('pimu.config.gyro_zero_offsets', [0,0,0])
+    pimu.write_configuration_param_to_YAML('pimu.config.rate_gyro_vector_scale', cma_result['rate_gyro_scale'])
+    pimu.write_configuration_param_to_YAML('pimu.config.gravity_vector_scale', cma_result['gravity_scale'])
 
 # ################################################################
 
@@ -652,7 +652,7 @@ if __name__ == '__main__':
                 if args.qc:
                     write_configuration_params(cma_result)
                 else:
-                    x=input('Push parameters to stretch_re1_factory_params.yaml (y/n)? [y]')
+                    x=input('Push parameters to stretch_configuration_params.yaml (y/n)? [y]')
                     if len(x)==0 or x=='y' or x=='Y':
                         print('Writing yaml...')
                         write_configuration_params(cma_result)
