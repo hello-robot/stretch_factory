@@ -169,13 +169,13 @@ def get_torque_features(linear_features):
     return A
 
 """Get the torque from the input force"""
+#TODO where to get the pulley radius and gear ratio
 def calculate_torque(force):
     return force * pulley_rad * gear_ratio
 
 
-"""Calculate the expected torque given the speed, current, and acceleration (sometimes?)"""
+"""Calculate the expected torque given the speed, current, and acceleration (WRONG FILE)"""
 def calculate_expected_torque():
-    #TODO Where do torque coefficients come from and go to?
     assert torque_coefficients is not None
     motor.pull_status()
     current = motor.status['current']
@@ -206,8 +206,10 @@ if __name__ == "__main__":
 
         if mode == 0:
             current_coefficients = setup_current_model()
+            #TODO write current coefficients to yaml?
         elif mode == 1:
             torque_coefficients = setup_torque_model()
+            #TODO what to do with them now?
         else:
             raise Exception("mode must be 0 or 1")
 
