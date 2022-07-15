@@ -12,6 +12,11 @@ VELOCITY_FRICTION_CONST = 100
 # This should be full runs from top to bottom
 test_positions = [0, 50, 0, -50, 0]
 
+# TODO These should be data gathered from the yaml file (or elsewhere?)
+pulley_rad = 1
+gear_ratio = 1
+mass = 1
+
 # This is the arbitrary pause time (in clock cycles)
 pause_time = 2000
 
@@ -123,7 +128,7 @@ def get_torque_params():
             velocity_mg_values.append(vel)
             acc_values.append(acc)
 
-            force = (GRAVITY + acc) * self.mass + VELOCITY_FRICTION_CONST * np.sign(vel)
+            force = (GRAVITY + acc) * mass + VELOCITY_FRICTION_CONST * np.sign(vel)
             torque = calculate_torque(force)
             torque_values.append(torque)
 
@@ -138,7 +143,7 @@ def get_torque_params():
             velocity_mg_values.append(vel)
             acc_values.append(acc)
 
-            force = (GRAVITY + acc) * self.mass + VELOCITY_FRICTION_CONST * np.sign(vel)
+            force = (GRAVITY + acc) * mass + VELOCITY_FRICTION_CONST * np.sign(vel)
             torque = calculate_torque(force)
             torque_values.append(torque)
 
@@ -169,12 +174,14 @@ def get_torque_features(linear_features):
     return A
 
 """Get the torque from the input force"""
-#TODO where to get the pulley radius and gear ratio
+
 def calculate_torque(force):
     return force * pulley_rad * gear_ratio
 
 
 """Calculate the expected torque given the speed, current, and acceleration (WRONG FILE)"""
+#TODO put this function elsewhere where it would be used to calculate the expected torque (doesn't belong in the tool)
+#TODO needs to get the coefficients from YAML file (torque_coefficients needs to be a np array perhaps constructed from YAML params)
 def calculate_expected_torque():
     assert torque_coefficients is not None
     motor.pull_status()
