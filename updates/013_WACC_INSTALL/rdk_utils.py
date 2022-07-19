@@ -71,7 +71,7 @@ def exec_process(cmdline, silent, input=None, **kwargs):
         if not silent:
             sys.stdout.write(stdout)
             sys.stderr.write(stderr)
-    except OSError,e:
+    except OSError as e:
         if e.errno == 2:
             raise RuntimeError('"%s" is not present on this system' % cmdline[0])
         else:
