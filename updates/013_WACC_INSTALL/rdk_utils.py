@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 from subprocess import Popen, PIPE
 import fcntl
@@ -8,8 +8,8 @@ import sys
 def add_arduino_pcba(device_name,is_stepper=False):
     dev_found=False
     rdk_utils.exec_process(['sudo','dmesg','-c'],True)
-    print 'Plug / Reset in Arduino device now...'
-    print 'Press return when done'
+    print('Plug / Reset in Arduino device now...')
+    print('Press return when done')
     raw_input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
@@ -21,28 +21,28 @@ def add_arduino_pcba(device_name,is_stepper=False):
             pidx=2
         if line.find('SerialNumber') and pidx==1:
             sn=line[line.find('SerialNumber')+14:]
-            print '---------------------------'
-            print 'Found Arduino device with SerialNumber',sn
-            print 'Writing UDEV for ',device_name,sn
+            print('---------------------------')
+            print('Found Arduino device with SerialNumber',sn)
+            print('Writing UDEV for ',device_name,sn)
             rdk_utils.add_arduino_udev_line(device_name,sn)
             if is_stepper:
-                print 'Setting serial number in YAML for',device_name
+                print('Setting serial number in YAML for',device_name)
                 d = stretch_body.device.Device()
                 d.robot_params[device_name]['serial_no'] = sn
                 d.write_device_params(device_name, d.robot_params[device_name])
             dev_found=True
     if not dev_found:
-        print 'No Arduino device device found'
+        print('No Arduino device device found')
 
 def add_dynamixel_pcba(device_name):
     dev_found = False
     rdk_utils.exec_process(['sudo','dmesg','-c'],True)
-    print 'Plug / Reset Dynamixel device now...'
-    print 'Press return when done'
+    print('Plug / Reset Dynamixel device now...')
+    print('Press return when done')
     raw_input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
-    print dmesg_data
+    print(dmesg_data)
     pidx=0
     for line in dmesg_data.split('\n'):
         pidx=max(0,pidx-1)
@@ -51,13 +51,13 @@ def add_dynamixel_pcba(device_name):
             pidx=3
         if line.find('SerialNumber') and pidx==1:
             sn=line[line.find('SerialNumber')+14:]
-            print '---------------------------'
-            print 'Found Dynamixel device with SerialNumber',sn
-            print 'Writing UDEV for ',sn
+            print('---------------------------')
+            print('Found Dynamixel device with SerialNumber',sn)
+            print('Writing UDEV for ',sn)
             dev_found = True
             rdk_utils.add_ftdi_udev_line(device_name,sn)
     if not dev_found:
-        print 'No Dynamixel device found'
+        print('No Dynamixel device found')
 
 
 
@@ -135,13 +135,13 @@ def add_arduino_udev_line(device_name, serial_no):
         if xx.find(device_name) > 0 and xx[0]!='#':
             overwrite=True
             x_out = x_out + uline
-            print 'Overwriting existing entry...'
+            print('Overwriting existing entry...')
         else:
             x_out = x_out + xx
     if not overwrite:
-        print 'Creating new entry...'
+        print('Creating new entry...')
         x_out = x_out + uline
-    #print uline
+    #print(uline)
     f.close()
     f = open(get_fleet_directory()+'udev/95-hello-arduino.rules', 'w')
     f.write(x_out)
@@ -158,13 +158,13 @@ def add_ftdi_udev_line(device_name, serial_no):
         if xx.find(device_name) > 0 and xx[0]!='#':
             overwrite=True
             x_out = x_out + uline +'\n'
-            print 'Overwriting existing entry...'
+            print('Overwriting existing entry...')
         else:
             x_out = x_out + xx
     if not overwrite:
-        print 'Creating new entry...'
+        print('Creating new entry...')
         x_out = x_out + uline + '\n'
-    #print uline
+    #print(uline)
     f.close()
     f = open(get_fleet_directory()+'udev/99-hello-dynamixel.rules', 'w')
     f.write(x_out)
