@@ -16,6 +16,7 @@ def add_arduino(device_name,is_stepper=False):
     input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
+    dmesg_data = str(dmesg_data)
     pidx=0
     for line in dmesg_data.split('\n'):
         pidx=max(0,pidx-1)
@@ -45,7 +46,8 @@ def add_dynamixel(device_name):
     input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
-    print(dmesg_data)
+    dmesg_data = str(dmesg_data)
+    # print(dmesg_data)
     pidx=0
     for line in dmesg_data.split('\n'):
         pidx=max(0,pidx-1)
