@@ -13,7 +13,7 @@ def add_arduino(device_name,is_stepper=False):
     rdk_utils.exec_process(['sudo','dmesg','-c'],True)
     print('Plug / Reset in Arduino device now...')
     print('Press return when done')
-    raw_input()
+    input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
     pidx=0
@@ -42,7 +42,7 @@ def add_dynamixel(device_name):
     rdk_utils.exec_process(['sudo','dmesg','-c'],True)
     print('Plug / Reset Dynamixel device now...')
     print('Press return when done')
-    raw_input()
+    input()
     time.sleep(1.0)
     dmesg_data = rdk_utils.exec_process(['sudo','dmesg','-c'],True)
     print(dmesg_data)
