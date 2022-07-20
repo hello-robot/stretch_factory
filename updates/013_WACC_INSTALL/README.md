@@ -78,7 +78,7 @@ Overwriting existing entry...
 
 1. Power down the robot from Ubuntu and turn off the main power switch.
 
-2. Remove the standard Stretch Gripper if it is still attached [according to the Hardware User Guide](https://docs.hello-robot.com/hardware_user_guide/#gripper-removal). 
+2. Remove the standard Stretch Gripper if it is still attached [according to the Hardware User Guide](https://docs.hello-robot.com/0.1/hardware_user_guide/#gripper-removal). 
 
 3. Manually pose the lift height and arm such that the wrist can sit on a table top in order to support the wrist weight during disassembly
 
