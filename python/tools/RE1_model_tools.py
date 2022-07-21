@@ -88,8 +88,16 @@ def get_current_features(linear_features): ####NOTE THERE ARE FOUR FEATURES, SO 
     velocity = linear_features[0]
     acceleration = linear_features[1]
     A = np.vstack((np.ones((np.shape(velocity))), velocity,
-                   np.sign(velocity) * (np.minimum(velocity * np.sign(acceleration), 0)),
-                   np.sign(acceleration) * (np.minimum(acceleration * np.sign(velocity), 0))))
+                   np.sign(velocity) * (np.minimum(np.exp(velocity) * np.sign(acceleration), 0)),
+                   np.sign(acceleration) * (np.minimum(np.exp(acceleration) * np.sign(velocity), 0))))
+
+    """
+    A = np.vstack((np.ones((np.shape(velocity))), velocity,
+               np.sign(velocity) * (np.minimum(velocity * np.sign(acceleration), 0)),
+               np.sign(acceleration) * (np.minimum(acceleration * np.sign(velocity), 0))))
+    
+    """
+
     return A
 
 ######################END MOTOR MODEL CODE########################################
