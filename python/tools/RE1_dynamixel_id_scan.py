@@ -9,17 +9,9 @@ hu.print_stretch_re_use()
 import stretch_body.device
 d = stretch_body.device.Device(name='dummy_device',req_params=False) # to initialize logging config
 
-
 parser=argparse.ArgumentParser(description='Scan a dynamixel bus by ID for servos')
 parser.add_argument("usb_full_path", help="The full path to dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
-parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600]", type=int,default=0)
 args = parser.parse_args()
-
-
-if args.baud ==0:
-    bauds = [57600, 115200]
-else:
-    bauds=[args.baud]
 
 m=None
 nfind=0
