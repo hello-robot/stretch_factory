@@ -12,10 +12,15 @@ hu.print_stretch_re_use()
 parser=argparse.ArgumentParser(description='Jog a Dynamixel servo from the command line')
 parser.add_argument("usb_full_path", help="The full path to the dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
 parser.add_argument("id", help="The ID to jog", type=int)
-parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600]", type=int,default=57600)
+
 args = parser.parse_args()
 
-m = DynamixelXL430(args.id, args.usb_full_path,baud=args.baud)
+baud = DynamixelXL430.identify_baud_rate(dxl_id=args.id, usb=args.usb_full_path)
+if baud==-1:
+    print('Unable to identify servo. Exiting')
+    exit(1)
+
+m = DynamixelXL430(args.id, args.usb_full_path,baud=baud)
 if not m.startup() or not m.do_ping():
     print('Failed to start servo with given usb/id/baud info')
     exit(1)
@@ -41,6 +46,7 @@ def menu_top():
     print('z: zero position')
     print('h: show homing offset')
     print('o: zero homing offset')
+    print('s: set homing offset')
     print('q: got to position')
     print('p: ping')
     print('r: reboot')
@@ -77,6 +83,14 @@ def step_interaction():
             m.disable_torque()
             xn=m.get_homing_offset()
             print('Current homing offset is:',xn)
+        if x[0]=='s':
+            m.disable_torque()
+            xn = m.get_homing_offset()
+            print('Current homing offset is:', xn)
+
+            m.set_homing_offset(int(x[2:]))
+            xn = m.get_homing_offset()
+            print('New homing offset is:',xn)
         if x[0]=='o':
             m.disable_torque()
             xn=m.get_homing_offset()
