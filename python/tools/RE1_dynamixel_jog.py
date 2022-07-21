@@ -5,19 +5,20 @@ import sys
 from stretch_body.dynamixel_XL430 import *
 import argparse
 import stretch_body.device
-d = stretch_body.device.Device(name='dummy_device') # to initialize logging config
-
+d = stretch_body.device.Device(name='dummy_device',req_params=False) # to initialize logging config
+import stretch_body.hello_utils as hu
+hu.print_stretch_re_use()
 
 parser=argparse.ArgumentParser(description='Jog a Dynamixel servo from the command line')
-parser.add_argument("usb", help="The dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
+parser.add_argument("usb_full_path", help="The full path to the dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
 parser.add_argument("id", help="The ID to jog", type=int)
 parser.add_argument("--baud", help="Baud rate (57600, 115200, or 1000000) [57600]", type=int,default=57600)
 args = parser.parse_args()
 
-m = DynamixelXL430(args.id, args.usb,baud=args.baud)
+m = DynamixelXL430(args.id, args.usb_full_path,baud=args.baud)
 if not m.startup() or not m.do_ping():
     print('Failed to start servo with given usb/id/baud info')
-    exit(0)
+    exit(1)
 
 m.disable_torque()
 #If servo somehow has wrong drive mode it may appear to not respond to vel/accel profiles

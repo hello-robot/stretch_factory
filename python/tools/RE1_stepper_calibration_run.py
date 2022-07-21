@@ -4,14 +4,19 @@ from future.builtins import input
 import sys
 import time
 import stretch_body.stepper as stepper
+import stretch_body.hello_utils as hu
+import argparse
 
+hu.print_stretch_re_use()
 
+parser=argparse.ArgumentParser(description='Calibrate the encoder on a benchtop stepper')
+parser.add_argument('usb', metavar='full_usb_path', type=str, nargs=1,help='Provide full usb path e.g.: /dev/hello-motor-lift')
+args=parser.parse_args()
 
-if len(sys.argv) < 2:
-    raise Exception("Provide motor name e.g.: stepper_run_calibration.py hello-motor1")
-motor_name = sys.argv[1]
-motor = stepper.Stepper('/dev/'+motor_name)
-motor.startup()
+motor = stepper.Stepper(args.usb[0])
+if not motor.startup():
+    exit(1)
+
 motor.push_command()
 motor.turn_menu_interface_on()
 

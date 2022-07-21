@@ -19,6 +19,9 @@ import matplotlib
 import yaml
 
 
+import stretch_body.hello_utils as hu
+hu.print_stretch_re_use()
+
 def use_all_data(sample_number, sample):
     return True
 

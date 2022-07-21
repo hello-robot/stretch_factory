@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
-
-import sys
 import stretch_body.stepper as stepper
+import stretch_body.hello_utils as hu
+import argparse
 
+hu.print_stretch_re_use()
 
+parser=argparse.ArgumentParser(description='Push encoder calibration from YAML to stepper flash memory')
+parser.add_argument('stepper_name', metavar='stepper_name', type=str, nargs=1,help='Provide the stepper name e.g.: hello-motor-lift')
+args=parser.parse_args()
 
-if len(sys.argv) < 2:
-    raise Exception("Provide motor name e.g.: stepper_flash_calibration_from_YAML.py hello-motor1")
-motor_name = sys.argv[1]
-
-motor = stepper.Stepper('/dev/'+motor_name)
+motor = stepper.Stepper('/dev/'+args.stepper_name[0])
 if not motor.startup():
-    exit()
+    exit(1)
+
 
 print('Reading calibration data from YAML...')
 data=motor.read_encoder_calibration_from_YAML()

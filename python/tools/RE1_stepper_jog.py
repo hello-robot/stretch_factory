@@ -1,17 +1,19 @@
 #!/usr/bin/env python
-
-
 import sys
 import stretch_body.stepper as stepper
+import stretch_body.hello_utils as hu
+import argparse
 
+hu.print_stretch_re_use()
 
+parser=argparse.ArgumentParser(description='Menu interface to a Stepper controller')
+parser.add_argument('stepper_name', metavar='stepper_name', type=str, nargs=1,help='Provide the stepper name e.g.: hello-motor-lift')
+args=parser.parse_args()
 
-if len(sys.argv) < 2:
-    raise Exception("Provide motor name e.g.: stepper_jog.py hello-motor1")
-motor_name = sys.argv[1]
+motor = stepper.Stepper('/dev/'+args.stepper_name[0])
+if not motor.startup():
+    exit(1)
 
-motor = stepper.Stepper('/dev/'+motor_name)
-motor.startup()
 motor.disable_sync_mode()
 motor.disable_runstop()
 motor.push_command()

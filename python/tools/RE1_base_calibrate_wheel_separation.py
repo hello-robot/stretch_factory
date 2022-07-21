@@ -32,6 +32,8 @@ from math import radians, degrees, atan2, sin, cos
 import time
 import click
 
+hello_utils.print_stretch_re_use()
+
 import argparse
 
 parser=argparse.ArgumentParser(description='Calibrate the wheel_separation_m parameter for the base to ensure accurate rotations.')

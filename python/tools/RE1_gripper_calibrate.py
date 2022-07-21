@@ -2,14 +2,18 @@
 from future.builtins import input
 import stretch_body.stretch_gripper as gripper
 import time
+import stretch_body.hello_utils as hu
 import argparse
+
+hu.print_stretch_re_use()
 
 parser=argparse.ArgumentParser(description='Calibate the griper range and zero')
 args=parser.parse_args()
 
 
 g=gripper.StretchGripper()
-g.startup()
+if not g.startup():
+    exit(1)
 
 #Good starting point
 g.params['zero_t']=4000

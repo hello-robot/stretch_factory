@@ -1,18 +1,20 @@
 #!/usr/bin/env python
-
-
 import sys
 from stretch_body.dynamixel_hello_XL430 import *
 from stretch_body.hello_utils import *
+import stretch_body.hello_utils as hu
+import argparse
 
+hu.print_stretch_re_use()
 
-if len(sys.argv) < 2:
-    raise Exception("Provide joint name, eg: RE1_hello_dynamixel_jog.py head_pan")
-joint_name = sys.argv[1]
+parser=argparse.ArgumentParser(description='Menu interface to Dynamixel servo')
+parser.add_argument('joint_name', metavar='joint_name', type=str, nargs=1,help='Provide the joint name e.g.: hello_pan')
 
+args=parser.parse_args()
 
-m = DynamixelHelloXL430(joint_name)
-m.startup()
+m = DynamixelHelloXL430(args.joint_name[0])
+if not m.startup():
+    exit(1)
 
 
 def menu_top():
@@ -68,4 +70,4 @@ try:
         except (ValueError):
             print('Bad input...')
 except (KeyboardInterrupt, SystemExit):
-    m.shutdown()
+    m.stop()

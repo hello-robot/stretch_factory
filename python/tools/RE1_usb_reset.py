@@ -1,15 +1,15 @@
 #!/usr/bin/env python
-
 import argparse
+from stretch_factory.device_mgmt import StretchDeviceMgmt
+import stretch_body.hello_utils as hu
 import subprocess
 import os
 import sys
-from stretch_factory.device_mgmt import StretchDeviceMgmt
 
 
 if os.geteuid() == 0:
-
-    parser = argparse.ArgumentParser(description='Software reset of Stretch USB devices')
+    hu.print_stretch_re_use()
+    parser = argparse.ArgumentParser(description='Software reset of Stretch USB devices (all by default)')
     parser.add_argument("--hello-motor-lift", help="Reset Lift USB", action="store_true")
     parser.add_argument("--hello-motor-right-wheel", help="Reset Right Wheel USB", action="store_true")
     parser.add_argument("--hello-motor-left-wheel", help="Reset Left Wheel USB", action="store_true")
@@ -43,4 +43,4 @@ if os.geteuid() == 0:
         s=StretchDeviceMgmt()
     s.reset_all()
 else:
-    subprocess.call(['sudo', 'python'] + sys.argv)
+    subprocess.call(['sudo', '-E','python'] + sys.argv)
