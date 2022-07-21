@@ -2,7 +2,13 @@
 from future.builtins import input
 import stretch_body.pimu as pimu
 import time
+import argparse
 
+import stretch_body.hello_utils as hu
+hu.print_stretch_re_use()
+
+parser=argparse.ArgumentParser(description='Zero the cliff sensors to the floor surface')
+args = parser.parse_args()
 
 print('Ensure cliff sensors are not obstructed and base is on a flat surface')
 input('Hit enter when ready')
@@ -13,6 +19,7 @@ p.config['cliff_zero'][0]=0
 p.config['cliff_zero'][1]=0
 p.config['cliff_zero'][2]=0
 p.config['cliff_zero'][3]=0
+
 p.startup()
 p.pull_status()
 
@@ -30,7 +37,7 @@ cum=[cum[0]/100.0,cum[1]/100.0,cum[2]/100.0,cum[3]/100.0]
 
 #Taken from Hank QC
 cliff_zero_min= 450
-cliff_zero_max= 650
+cliff_zero_max= 700
 pass_test=1
 print('Got cliff zeros of: ',cum)
 

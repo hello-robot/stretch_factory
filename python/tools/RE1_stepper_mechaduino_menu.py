@@ -1,19 +1,25 @@
 #!/usr/bin/env python
-
+from __future__ import print_function
 
 import sys
-import time
 import stretch_body.stepper as stepper
+import time
+import argparse
+import stretch_body.hello_utils as hu
 
 
-if len(sys.argv) < 2:
-    raise Exception("Provide usb path e.g.: RE1_stepper_mechaduino_menu.py /dev/hello-motor-lift")
-usb = sys.argv[1]
-motor_name = usb[5:]
-motor = stepper.Stepper(usb)
-motor.startup()
+hu.print_stretch_re_use()
+
+parser=argparse.ArgumentParser(description='Use the Mechanduino menu interface to the stepper (advanced users)')
+parser.add_argument('usb', metavar='full_usb_path', type=str, nargs=1,help='Provide full usb path e.g.: /dev/hello-motor-lift')
+args=parser.parse_args()
+
+
+motor = stepper.Stepper(args.usb[0])
+if not motor.startup():
+    exit(1)
+
 motor.push_command()
-
 motor.turn_menu_interface_on()
 time.sleep(0.5)
 motor.print_menu()

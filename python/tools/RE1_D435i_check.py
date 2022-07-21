@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-from concurrent.futures import thread
+#from concurrent.futures import thread
 import os
 import sys
 from subprocess import Popen, PIPE, STDOUT
@@ -13,11 +13,17 @@ import numpy as np
 from tabulate import tabulate
 import stretch_body.robot
 
+import stretch_body.hello_utils as hu
+hu.print_stretch_re_use()
+
 parser = argparse.ArgumentParser(description='Tests the D435i stream and produces a check log that can be used for troubleshooting.')
-parser.add_argument("--usb", help="Test USB version", action="store_true")
-parser.add_argument("--rate", help="Test data capture rate", action="store_true")
-parser.add_argument("--scan_head", help="Test data capture rate with Head Pan and Tilt to extremity", action="store_true")
 parser.add_argument('-f', metavar='check_log_path', type=str, help='The path to save D435i Check Log (default:/tmp/d435i_check_log.txt)')
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("--usb", help="Test USB version", action="store_true")
+group.add_argument("--rate", help="Test data capture rate", action="store_true")
+group.add_argument("--scan_head", help="Test data capture rate with Head Pan and Tilt to extremity", action="store_true")
+
+
 args = parser.parse_args()
 thread_stop = False
 check_log = []
