@@ -313,7 +313,7 @@ class RecommendedFirmware():
             print('%s | %s | %s | %s ' %(dev_out,installed_out,rec_out,action_out))
 # #####################################################################################################
 
-log_device=stretch_body.device.Device()
+log_device=stretch_body.device.Device(req_params=False)
 
 def user_msg_log(msg,user_display=True,fg=None,bg=None,bold=False):
     if user_display:

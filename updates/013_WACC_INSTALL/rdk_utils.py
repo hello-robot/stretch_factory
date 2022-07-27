@@ -27,7 +27,7 @@ def add_arduino_pcba(device_name,is_stepper=False):
             rdk_utils.add_arduino_udev_line(device_name,sn)
             if is_stepper:
                 print 'Setting serial number in YAML for',device_name
-                d = stretch_body.device.Device()
+                d = stretch_body.device.Device(req_params=False)
                 d.robot_params[device_name]['serial_no'] = sn
                 d.write_device_params(device_name, d.robot_params[device_name])
             dev_found=True
