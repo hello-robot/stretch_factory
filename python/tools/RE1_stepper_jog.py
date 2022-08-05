@@ -34,6 +34,7 @@ def menu_top():
     print('a <val>: set a_des')
     print('s <val>: set stiffness')
     print('f <val>: set feedforward')
+    print('y <val>: set safety_feedforward')
     print('p <val>: set i_contact_pos')
     print('n <val>: set i_contact_neg')
     print('i <val>: set current')
@@ -112,6 +113,10 @@ def step_interaction():
         if x[0]=='f':
             ff=float(x[1:])
             motor.set_command(i_feedforward=ff)
+        if x[0]=='y':
+            ff=float(x[1:])
+            motor.gains['i_safety_feedforward']=(max(0,min(5.0,ff)))
+            motor.set_gains(motor.gains)
         if x[0]=='p':
             ff=float(x[1:])
             motor.set_command(i_contact_pos=ff)

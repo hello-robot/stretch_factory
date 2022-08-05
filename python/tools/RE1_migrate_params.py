@@ -64,7 +64,8 @@ if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fle
         #of all robots up to an including Louis
 
         #Parameters that have been introduced since the customer yaml was generated
-        added_whitelist=['head_pan.stall_backoff']
+        #Disable this. It is OK to introduce new parameters over time.
+        #added_whitelist=['head_pan.stall_backoff']
 
         #These are parameters that have been deperecated so we're OK dropping them from the new yaml
         dropped_whitelist=['factory_params','tool_params', 'robot.use_arm', 'robot.use_wacc', 'robot.use_lift', 'robot.use_end_of_arm', 'robot.use_head', 'robot.use_pimu','robot.use_base' ]
@@ -75,18 +76,18 @@ if args.diff or click.confirm('Migration is required for robot %s. Proceed?'%fle
 
         # Now check for differences
 
-        added_warnings = param_mgmt.param_added_check(RR, R, 0, 'NewParams', 'OldParams',whitelist=added_whitelist)
+        #added_warnings = param_mgmt.param_added_check(RR, R, 0, 'NewParams', 'OldParams',whitelist=added_whitelist)
         dropped_warnings = param_mgmt.param_dropped_check(RR, R, 0, 'NewParams', 'OldParams',whitelist=dropped_whitelist)
         change_warnings = param_mgmt.param_change_check(RR, R, 0, 'NewParams', 'OldParams',whitelist=change_whitelist)
 
-        if added_warnings+dropped_warnings+change_warnings>0:
+        if dropped_warnings+change_warnings>0:
             color='red'
             ret=1
         else:
             color='green'
             ret=0
-        click.secho('Validation check: Added %d, Dropped %d, Changed %d' % (added_warnings, dropped_warnings, change_warnings),fg=color)
-        click.secho('Validation check should report 0 warnings. Reported total of %d' % (added_warnings+dropped_warnings+change_warnings),fg=color)
+        click.secho('Validation check: Dropped %d, Changed %d' % (dropped_warnings, change_warnings),fg=color)
+        click.secho('Validation check should report 0 warnings. Reported total of %d' % (dropped_warnings+change_warnings),fg=color)
 
         if args.diff:
             cleanup_generated_files()
