@@ -26,5 +26,5 @@ h.params['req_calibration']=1
 if not h.startup():
     exit(1)
 h.home(single_stop=False,move_to_zero=True,delay_at_stop=1.0,save_calibration=True, set_homing_offset=False)
-print('Recalibration done.)
+print('Recalibration done.')
 h.stop()
