@@ -8,6 +8,7 @@ hu.print_stretch_re_use()
 
 parser=argparse.ArgumentParser(description='Pull encoder calibration from stepper flash and write to YAML')
 parser.add_argument('stepper_name', metavar='stepper_name', type=str, nargs=1,help='Provide the stepper name e.g.: hello-motor-lift')
+parser.add_argument('stepper_name', metavar='stepper_name', type=str, nargs=1,help='Provide the stepper name e.g.: hello-motor-lift')
 args=parser.parse_args()
 
 motor = stepper.Stepper('/dev/'+args.stepper_name[0])
