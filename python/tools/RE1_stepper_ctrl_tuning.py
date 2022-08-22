@@ -416,6 +416,7 @@ def sense_trajectory():
             err=rad_to_deg(j.motor.status['err'])
             ii = j.motor.status['current']
             ef=j.motor.status['effort_pct']
+            dbg = j.motor.status['debug']
         dt = time.time() - motion_ts
         print('Current: %f  Effort: %f Error (deg) %f Debug %f'%(ii,ef,err,dbg))
 
@@ -485,6 +486,6 @@ def stop_trajectory():
 if args.base_translate or args.base_rotate:
     s = StepperCtrlTuningGui(setpoints_x, setpoints_y,gains,[j.left_wheel, j.right_wheel],yrange=j_yrange,sense_frequency=20,title=j_title, ylabel=j_label)
 else:
-    s = StepperCtrlTuningGui(setpoints_x, setpoints_y,gains,j.motor,yrange=j_yrange,sense_frequency=20,title=j_title, ylabel=j_label)
+    s = StepperCtrlTuningGui(setpoints_x, setpoints_y,gains,[j.motor],yrange=j_yrange,sense_frequency=20,title=j_title, ylabel=j_label)
 
 s.start(start_trajectory, sense_trajectory, update_trajectory, stop_trajectory)

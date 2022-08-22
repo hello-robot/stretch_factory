@@ -32,7 +32,6 @@ if args.head_pan or args.head_tilt or args.wrist_yaw:
     h.stop()
 
 if args.arm or args.lift:
-
     if args.arm:
         import stretch_body.arm
         j= stretch_body.arm.Arm()
@@ -59,8 +58,8 @@ if args.arm or args.lift:
         if measured_rom is not None:
             if (measured_rom>=j.params['calibration_range_bounds'][0] and measured_rom<=j.params['calibration_range_bounds'][1]):
                 click.secho('%s measured range-of-motion: %f . Within acceptable range of %f to %f' %(j.name.capitalize(), measured_rom,j.params['calibration_range_bounds'][0], j.params['calibration_range_bounds'][1]),fg='green')
-                print('Saving calibrated range-of-motion')
-                j.write_configuration_param_to_YAML('arm.range_m', [0,measured_rom])
+                if click.confirm('Save calibrated range of motion?'):
+                    j.write_configuration_param_to_YAML('%s.range_m'%j.name, [0,measured_rom])
             else:
                 click.secho('%s measured range-of-motion: %f . Outside acceptable range of %f to %f' %
                            (j.name.capitalize(), measured_rom, j.params['calibration_range_bounds'][0],j.params['calibration_range_bounds'][1]), fg='yellow')
