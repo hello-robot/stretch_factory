@@ -125,9 +125,5 @@ d3=do_spin(robot,-720)
 
 d_avg=(d0+d1+d2+d3)/4.0
 print('Final result: wheel_separation_m of %6.4f'%d_avg)
-if click.confirm('Would you like to save the result to user YAML?'):
-    user_yaml=hello_utils.read_fleet_yaml('stretch_re1_user_params.yaml')
-    if not 'base'in user_yaml:
-        user_yaml['base']={}
-    user_yaml['base']['wheel_separation_m']=d_avg
-    hello_utils.write_fleet_yaml('stretch_re1_user_params.yaml',user_yaml)
+if click.confirm('Would you like to save the result to configuration YAML?'):
+    robot.write_configuration_param_to_YAML('base.wheel_separation_m', d_avg)
