@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 import argparse
 from stretch_factory.device_mgmt import StretchDeviceMgmt
 import stretch_body.hello_utils as hu
@@ -43,4 +43,7 @@ if os.geteuid() == 0:
         s=StretchDeviceMgmt()
     s.reset_all()
 else:
-    subprocess.call(['sudo', '-E','python'] + sys.argv)
+    if sys.version_info[0]==3:
+       subprocess.call(['sudo', '-E','python3'] + sys.argv)
+    else:
+       subprocess.call(['sudo', '-E','python'] + sys.argv)
