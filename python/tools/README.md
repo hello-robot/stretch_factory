@@ -1,31 +1,29 @@
 # Stretch Factory Tools
 
-The list of tools can be found by tab completion of 'RE1' at the command line:
+The list of tools can be found by tab completion of 'RE' at the command line:
 
 ```bash
->>$ RE1_
-RE1_arm_calibrate_force.py                RE1_base_calibrate_imu_process.py         RE1_lift_calibrate_force.py               RE1_stepper_calibration_YAML_to_flash.py
-RE1_arm_calibrate_guarded_contact.py      RE1_base_tune_ctrl.py                     RE1_lift_calibrate_guarded_contact.py     RE1_stepper_jog.py
-RE1_arm_calibrate_range.py                RE1_dynamixel_id_change.py                RE1_lift_calibrate_range.py               RE1_stepper_load_test.py
-RE1_arm_tune_ctrl.py                      RE1_dynamixel_id_scan.py                  RE1_lift_tune_ctrl.py                     RE1_stepper_mechaduino_menu.py
-RE1_base_calibrate_cliff.py               RE1_dynamixel_jog.py                      RE1_stepper_board_reset.py                RE1_stepper_tune_ctrl.py
-RE1_base_calibrate_force.py               RE1_dynamixel_reboot.py                   RE1_stepper_calibration_flash_to_YAML.py  RE1_wacc_calibrate_gravity.py
-RE1_base_calibrate_imu_collect.py         RE1_gripper_calibrate.py                  RE1_stepper_calibration_run.py  
+>>$ RE
+
+RE1_base_calibrate_imu_collect.py         RE1_D435i_check.py                        RE1_dynamixel_jog.py                      RE1_gamepad_configure.py                  RE1_stepper_calibration_flash_to_YAML.py  RE1_stepper_mechaduino_menu.py
+RE1_base_calibrate_imu_process.py         RE1_dynamixel_calibrate_range.py          RE1_dynamixel_reboot.py                   RE1_gripper_calibrate.py                  RE1_stepper_calibration_run.py            RE1_usb_reset.py
+RE1_base_calibrate_wheel_separation.py    RE1_dynamixel_id_change.py                RE1_dynamixel_set_baud.py                 RE1_hello_dynamixel_jog.py                RE1_stepper_calibration_YAML_to_flash.py  RE1_wacc_calibrate.py
+RE1_cliff_sensor_calibrate.py             RE1_dynamixel_id_scan.py                  RE1_firmware_updater.py                   RE1_migrate_params.py                     RE1_stepper_jog.py                        README.md
 ```
 
 These tools are used during the factory system 'bringup' of the robot. They are organized by subsystem:
 
-* RE1_arm*
-* RE1_base*
-* RE1_dynamixel*
-* RE1_lift*
-* RE1_stepper*
-* RE1_wacc*
+* REx_arm*
+* REx_base*
+* REx_dynamixel*
+* REx_lift*
+* REx_stepper*
+* REx_wacc*
 
 The tools will generally interact with the lowest level interface of the hardware, make measurements, and write calibration data to the robot's YAML or devices EEPROM. For example, the following script calibrates the wrist accelerometer such that the gravity term is 9.8m/s^2.
 
 ```bash
->>$ RE1_wacc_calibrate_gravity.py
+>>$ REx_wacc_calibrate_gravity.py
 Ensure base is level and arm is retracted. Hit enter when ready
 
 Itr 0 Val 9.32055700006
