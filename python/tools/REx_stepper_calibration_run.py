@@ -29,12 +29,12 @@ calibration_done=False
 i=0
 while i<3 and not calibration_done:
     print('Doing step ',i)
-    motor.menu_transaction('s')
+    motor.menu_transaction(b's')
     yn=input('Did motor step (y/n)[n]?')
     i=i+1
     if yn=='y':
         print('Starting encoder calibration')
-        motor.menu_transaction('c')
+        motor.menu_transaction(b'c')
         calibration_done=True
         input('Hit enter when calibration done...')
         break
