@@ -1,4 +1,4 @@
-![](./images/banner.png)
+![](./docs/images/banner.png)
 # Overview
 
 The Stretch Factory package provides low-level Python tools for debug, testing,  and calibration of the Hello Robot Stretch RE1. 
