@@ -40,6 +40,8 @@ def menu_top():
     print('i <val>: set current')
     print('z <val>: mark position')
     print('g: set gain')
+    print('e: enable motor driver')
+    print('d: disable motor driver')
     print('r: reset board')
 
 def menu_gains():
@@ -126,6 +128,10 @@ def step_interaction():
         if x[0]=='g':
             menu_gains()
             set_gains()
+        if x[0]=='e':
+            motor._trigger_enable_motor_drivers()
+        if x[0]=='d':
+            motor._trigger_disable_motor_drivers()
         if x[0]=='r':
             print('Resetting Board. Restart process...')
             motor.board_reset()
