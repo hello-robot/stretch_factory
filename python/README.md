@@ -7,6 +7,6 @@ The Stretch Factory package provides Python tools for testing and calibration of
 This package can be installed by:
 
 ```
-python -m pip install  hello-robot-stretch-factory
+python -m pip install  -U hello-robot-stretch-factory
 ```
 
