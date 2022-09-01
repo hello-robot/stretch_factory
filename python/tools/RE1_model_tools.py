@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 import sys
 import stretch_body.stepper as stepper
 import numpy as np
@@ -10,7 +10,7 @@ GRAVITY = 9.81
 VELOCITY_FRICTION_CONST = 100
 
 # This should be full runs from top to bottom
-test_positions = [0, 50, 0, -50, 0]
+test_positions = [0, 50, 0, 100, 50, 0, 25, 0]
 
 # TODO These should be data gathered from the yaml file (or elsewhere?)
 pulley_rad = 1
@@ -87,6 +87,7 @@ def get_current_params():
 def get_current_features(linear_features): ####NOTE THERE ARE FOUR FEATURES, SO STORE AS FOUR FLOATS################
     velocity = linear_features[0]
     acceleration = linear_features[1]
+    """
     A = np.vstack((np.ones((np.shape(velocity))), velocity,
                    np.sign(velocity) * (np.minimum(np.exp(velocity) * np.sign(acceleration), 0)),
                    np.sign(acceleration) * (np.minimum(np.exp(acceleration) * np.sign(velocity), 0))))
@@ -96,7 +97,7 @@ def get_current_features(linear_features): ####NOTE THERE ARE FOUR FEATURES, SO 
                np.sign(velocity) * (np.minimum(velocity * np.sign(acceleration), 0)),
                np.sign(acceleration) * (np.minimum(acceleration * np.sign(velocity), 0))))
     
-    """
+
 
     return A
 
@@ -205,15 +206,20 @@ def calculate_expected_torque():
 
 
 
-
 """Input arguments are the motor name (just this for now, change?)"""
 if __name__ == "__main__":
-    motor_name = sys.argv[0]
+
+
+    if len(sys.argv) < 2:
+        raise Exception("Provide motor name e.g.: stepper_jog.py hello-motor1")
+    motor_name = sys.argv[1]
+    print(motor_name)
     # '/dev/hello-motor-lift' in testing
-    mode = int(sys.argv[1])
+
+    mode = int(sys.argv[2])
     # 0 for current model setup, 1 for torque model setup
 
-    motor = stepper.Stepper(motor_name)
+    motor = stepper.Stepper('/dev/'+motor_name)
 
 
     try:
@@ -221,6 +227,7 @@ if __name__ == "__main__":
 
         if mode == 0:
             current_coefficients = setup_current_model()
+            print(current_coefficients)
             #TODO write current coefficients to yaml?
         elif mode == 1:
             torque_coefficients = setup_torque_model()
