@@ -544,6 +544,11 @@ class FirmwareUpdater():
                 if not motor.hw_valid:
                     click.secho('Failed to startup stepper %s' % device_name, fg="red", bold=True)
                 else:
+                    print('Writing gains to flash...')
+                    motor.write_gains_to_flash()
+                    motor.push_command()
+                    print('Gains written to flash')
+                    print('')
                     print('Reading calibration data from YAML...')
                     data = motor.read_encoder_calibration_from_YAML()
                     print('Writing calibration data to flash...')
@@ -556,6 +561,7 @@ class FirmwareUpdater():
                     time.sleep(2.0)
                     self.wait_on_device(device_name)
                     print('Successful return of device to bus.')
+
 
 
 

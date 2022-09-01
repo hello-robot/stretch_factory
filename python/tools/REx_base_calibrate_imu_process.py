@@ -290,7 +290,8 @@ class MobileBaseImuCalibrator:
         #print('rotate =', rotate)
         #torus.rotate(rotate, center=True, type=op.geometry.RotationType.AxisAngle)
         rotation_matrix = op.geometry.get_rotation_matrix_from_axis_angle(rotate)
-        torus.rotate(rotation_matrix, center=True)
+        #torus.rotate(rotation_matrix, center=True)
+        torus.rotate(rotation_matrix)
         
         #circle_points = circle_of_points(center, normal, radius)
         #circle_point_cloud = op.geometry.PointCloud()
