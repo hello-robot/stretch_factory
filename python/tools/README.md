@@ -1,14 +1,16 @@
 # Stretch Factory Tools
 
-The list of tools can be found by tab completion of 'RE' at the command line:
+The list of tools can be found by tab completion of 'REx' at the command line:
 
 ```bash
->>$ RE
+>>$ REx
 
-RE1_base_calibrate_imu_collect.py         RE1_D435i_check.py                        RE1_dynamixel_jog.py                      RE1_gamepad_configure.py                  RE1_stepper_calibration_flash_to_YAML.py  RE1_stepper_mechaduino_menu.py
-RE1_base_calibrate_imu_process.py         RE1_dynamixel_calibrate_range.py          RE1_dynamixel_reboot.py                   RE1_gripper_calibrate.py                  RE1_stepper_calibration_run.py            RE1_usb_reset.py
-RE1_base_calibrate_wheel_separation.py    RE1_dynamixel_id_change.py                RE1_dynamixel_set_baud.py                 RE1_hello_dynamixel_jog.py                RE1_stepper_calibration_YAML_to_flash.py  RE1_wacc_calibrate.py
-RE1_cliff_sensor_calibrate.py             RE1_dynamixel_id_scan.py                  RE1_firmware_updater.py                   RE1_migrate_params.py                     RE1_stepper_jog.py                        README.md
+REx_base_calibrate_imu_collect.py         REx_cliff_sensor_calibrate.py             REx_dynamixel_reboot.py                   REx_hello_dynamixel_jog.py                REx_stepper_gains.py
+REx_base_calibrate_imu_process.py         REx_D435i_check.py                        REx_dynamixel_set_baud.py                 REx_stepper_calibration_flash_to_YAML.py  REx_stepper_jog.py
+REx_base_calibrate_wheel_separation.py    REx_dynamixel_id_change.py                REx_firmware_updater.py                   REx_stepper_calibration_run.py            REx_stepper_mechaduino_menu.py
+REx_calibrate_guarded_contact.py          REx_dynamixel_id_scan.py                  REx_gamepad_configure.py                  REx_stepper_calibration_YAML_to_flash.p   REx_usb_reset.py
+REx_calibrate_range.py                    REx_dynamixel_jog.py                      REx_gripper_calibrate.py                  REx_stepper_ctrl_tuning.py                REx_wacc_calibrate.py
+
 ```
 
 These tools are used during the factory system 'bringup' of the robot. They are organized by subsystem:

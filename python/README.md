@@ -1,6 +1,6 @@
 # Overview
 
-The Stretch Factory package provides Python tools for testing and calibration of the Hello Robot Stretch RE1. 
+The Stretch Factory package provides Python tools for testing and calibration of the Hello Robot Stretch RE1 and RE2. 
 
 **These tools are provided for reference only and are intended to be used by qualified Hello Robot production engineers.** 
 
