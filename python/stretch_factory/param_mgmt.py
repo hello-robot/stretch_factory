@@ -95,7 +95,7 @@ def param_dropped_check(new_dict,prior_dict,num_warnings,new_dict_name,prior_dic
 
 def contacts_pseudo_N_to_effort_pct(force_N_per_A, iMax_pos, iMax_neg,contacts_pseudo_N ):
     contacts_A = [contacts_pseudo_N[0]/force_N_per_A, contacts_pseudo_N[1]/force_N_per_A]
-    return [contacts_A[0]/abs(iMax_neg), contacts_A[1]/iMax_pos]
+    return [100*contacts_A[0]/abs(iMax_neg), 100*contacts_A[1]/iMax_pos]
 
 def convert_joint_contact_thresh(stepper_name, joint_name, N, D):
     # Convert arm configuration data
