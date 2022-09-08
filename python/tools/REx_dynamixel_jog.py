@@ -58,6 +58,7 @@ def menu_top():
     print('x: put in multi-turn mode')
     print('y: put in position mode')
     print('w: put in pwm mode')
+    print('f: put in vel mode')
     print('-------------------')
 
 def step_interaction():
@@ -147,6 +148,10 @@ def step_interaction():
         if x[0] == 'w':
             m.disable_torque()
             m.enable_pwm()
+            m.enable_torque()
+        if x[0] == 'f':
+            m.disable_torque()
+            m.enable_vel()
             m.enable_torque()
     else:
         m.pretty_print()
