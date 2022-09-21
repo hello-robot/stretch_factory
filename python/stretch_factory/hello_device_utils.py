@@ -362,6 +362,16 @@ def add_ftdi_udev_line(device_name, serial_no,fleet_dir):
     f.write(x_out)
     f.close()
 
+def get_ftdi_udev_lines(device_name,udev_dir):
+    f = open(udev_dir+'/99-hello-dynamixel.rules', 'r')
+    x = f.readlines()
+    f.close()
+    lines=[]
+    for xx in x:
+        if xx.find(device_name) > 0 and xx[0]!='#':
+            lines.append(xx)
+    return lines
+
 def assign_arduino_to_robot(device_name,is_stepper=False,robot_sn=None):
     """
     This expects only a single arduino device on the bus
