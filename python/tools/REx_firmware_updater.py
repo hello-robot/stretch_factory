@@ -100,6 +100,7 @@ if args.current:
 if args.recommended:
     r = RecommendedFirmware(use_device)
     r.pretty_print()
+    r.print_recommended_args()
     exit()
 
 if args.available:
