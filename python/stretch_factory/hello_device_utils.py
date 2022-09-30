@@ -86,6 +86,27 @@ def exec_process(cmdline, silent, input=None, **kwargs):
     return stdout
 
 # ###################################
+def get_device_ttyACMx(device):
+    #Return the ACMx of a symlinked device, eg 'ttyACM0' given /dev/hello-motor-arm
+    try:
+        ACMx = Popen("ls -l %s"%device, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
+        ACMx=ACMx.decode("utf-8")
+        return ACMx
+    except IndexError:
+        return None
+
+def get_all_ttyACMx():
+    #Return list of ACMx names eg ['ttyACM0','ttyACM1']
+    ACMx_all = Popen("ls -l /dev/ttyACM*", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()
+    ret=[]
+    for line in ACMx_all:
+        l=line.decode("utf-8")
+        if l.find('ttyACM')!=-1:
+            ret.append(l[5:])
+    return ret
+
+
+
 def is_device_present(device):
     try:
         exec_process(['ls',device],True)
