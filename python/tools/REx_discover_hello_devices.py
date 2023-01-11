@@ -13,16 +13,16 @@ import sys
 
 hu.print_stretch_re_use()
 
-parser = argparse.ArgumentParser(description="Find and map all the robot specific USB devices (Lift, Arm, Left and Righ wheels, Head, Wrist/End-of-arm) and assign it to a robot.\nThis script is to be run everytime a PCBA hardware or a motor assembly is replaced.")
+parser = argparse.ArgumentParser(
+    description="Find and map all the robot specific USB devices (Lift, Arm, Left and Right wheels, Head, "
+                "Wrist/End-of-arm) and assign it to a robot which is necesssary.\nThis script is to be run everytime "
+                "a PCBA or a motor assembly is replaced.")
 args = parser.parse_args()
 
 
 class DiscoverHelloDevices:
-    def __int__(self):
+    def __init__(self):
         self.all_tty_devices = hdu.find_tty_devices()
-        if len(list(self.all_tty_devices.keys())) == 0:
-            print(click.style("None ttyACM* or ttyUSB* devices were found in the bus.", fg="red"))
-            sys.exit()
         self.hello_arduino_devices = {}
         self.hello_dxl_devices = {}
 
@@ -158,9 +158,9 @@ class DiscoverHelloDevices:
             if moved_motors[k]:
                 lift_sn = self.all_tty_devices[k]['serial']
                 self.hello_usb_alias[k] = "/dev/hello-motor-lift"
-        self.assertIsNotNone(lift_sn, "Unable to get Lift Serial")
+        if self.assertIsNotNone(lift_sn, "Unable to find Lift Serial"):
+            print(click.style("Found hello-motor-lift serial: {}".format(lift_sn), fg='green'))
         self.hello_stepper_sns['hello-motor-lift'] = lift_sn
-        print(click.style("Found hello-motor-lift serial: {}".format(lift_sn), fg='green'))
 
     def get_arm_sn(self):
         """
@@ -177,51 +177,50 @@ class DiscoverHelloDevices:
             if moved_motors[k]:
                 arm_sn = self.all_tty_devices[k]['serial']
                 self.hello_usb_alias[k] = "/dev/hello-motor-arm"
-        self.assertIsNotNone(arm_sn, "Unable to get Lift Serial")
         self.hello_stepper_sns['hello-motor-arm'] = arm_sn
-        print(click.style("Found hello-motor-arm serial: {}".format(arm_sn), fg='green'))
+        if self.assertIsNotNone(arm_sn, "Unable to find Arm Serial"):
+            print(click.style("Found hello-motor-arm serial: {}".format(arm_sn), fg='green'))
 
     def get_wheels_sn(self):
         """
         Find the Serial number of the wheel motors serial by detecting a manual movement
         """
         start_pose = self.get_all_stepper_poses()
-        print('START', start_pose)
         input(click.style("Move the Base backward manually and hit ENTER", fg="blue", bold=True))
         end_pose = self.get_all_stepper_poses()
-        print('END', end_pose)
         moved_motors = self.get_moved_motor(start_pose, end_pose)
         cnt = list(moved_motors.values()).count(True)
-        self.assertEqual(cnt, 2, "More than two motor or none moved")
-        wheel_motors = [k for k in list(moved_motors.keys()) if moved_motors[k]]
+        if self.assertEqual(cnt, 2, "More than two motor or none moved"):
+            wheel_motors = [k for k in list(moved_motors.keys()) if moved_motors[k]]
 
-        """Both the unknown sides wheel motor poses are pulled in 'hello-motor-left' wheel configuration. When the 
-        robot is manually back driven forward, the wheel pose difference is -ve and +ve for the left and right wheel 
-        respectively. This logic is used to differentiate left wheel from right wheel"""
+            """Both the unknown sides wheel motor poses are pulled in 'hello-motor-left' wheel configuration. When the 
+            robot is manually back driven forward, the wheel pose difference is -ve and +ve for the left and right wheel 
+            respectively. This logic is used to differentiate left wheel from right wheel"""
 
-        start_pos1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
-        input(click.style("Move the base forward manually and hit ENTER", fg="blue", bold=True))
-        end_pose1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
-        assumed_left_diff = start_pos1['left_wheel'] - end_pose1['left_wheel']
-        assumed_right_diff = start_pos1['right_wheel'] - end_pose1['right_wheel']
-        left_sn = None
-        right_sn = None
-        if assumed_left_diff < 0 < assumed_right_diff:
-            left_sn = self.all_tty_devices[wheel_motors[0]]['serial']
-            right_sn = self.all_tty_devices[wheel_motors[1]]['serial']
-            self.hello_usb_alias[wheel_motors[0]] = "/dev/hello-motor-left-wheel"
-            self.hello_usb_alias[wheel_motors[1]] = "/dev/hello-motor-right-wheel"
-        else:
-            left_sn = self.all_tty_devices[wheel_motors[1]]['serial']
-            right_sn = self.all_tty_devices[wheel_motors[0]]['serial']
-            self.hello_usb_alias[wheel_motors[1]] = "/dev/hello-motor-left-wheel"
-            self.hello_usb_alias[wheel_motors[0]] = "/dev/hello-motor-right-wheel"
-        self.assertIsNotNone(left_sn, "Unable to find left wheel serial.")
-        self.assertIsNotNone(right_sn, "Unable to find left wheel serial.")
-        self.hello_stepper_sns['hello-motor-left-wheel'] = left_sn
-        self.hello_stepper_sns['hello-motor-right-wheel'] = right_sn
-        print(click.style("Found hello-motor-left-wheel serial: {}".format(left_sn), fg='green'))
-        print(click.style("Found hello-motor-right-wheel serial: {}".format(right_sn), fg='green'))
+            start_pos1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
+            input(click.style("Move the base forward manually and hit ENTER", fg="blue", bold=True))
+            end_pose1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
+            assumed_left_diff = start_pos1['left_wheel'] - end_pose1['left_wheel']
+            assumed_right_diff = start_pos1['right_wheel'] - end_pose1['right_wheel']
+            left_sn = None
+            right_sn = None
+            if assumed_left_diff < 0 < assumed_right_diff:
+                left_sn = self.all_tty_devices[wheel_motors[0]]['serial']
+                right_sn = self.all_tty_devices[wheel_motors[1]]['serial']
+                self.hello_usb_alias[wheel_motors[0]] = "/dev/hello-motor-left-wheel"
+                self.hello_usb_alias[wheel_motors[1]] = "/dev/hello-motor-right-wheel"
+            else:
+                left_sn = self.all_tty_devices[wheel_motors[1]]['serial']
+                right_sn = self.all_tty_devices[wheel_motors[0]]['serial']
+                self.hello_usb_alias[wheel_motors[1]] = "/dev/hello-motor-left-wheel"
+                self.hello_usb_alias[wheel_motors[0]] = "/dev/hello-motor-right-wheel"
+
+            self.hello_stepper_sns['hello-motor-left-wheel'] = left_sn
+            self.hello_stepper_sns['hello-motor-right-wheel'] = right_sn
+            if self.assertIsNotNone(left_sn, "Unable to find left wheel serial."):
+                print(click.style("Found hello-motor-left-wheel serial: {}".format(left_sn), fg='green'))
+            if self.assertIsNotNone(right_sn, "Unable to find right wheel serial."):
+                print(click.style("Found hello-motor-right-wheel serial: {}".format(right_sn), fg='green'))
 
     def get_servo_ids(self, port, baud_to=115200):
         found_ids = []
@@ -264,13 +263,13 @@ class DiscoverHelloDevices:
                 if found_ids[k] == [13, 14]:
                     wrist_sn = self.all_tty_devices[k]['serial']
                     self.hello_usb_alias[k] = "/dev/hello-dynamixel-wrist"
-        self.assertIsNotNone(head_sn)
-        self.assertIsNotNone(wrist_sn)
         self.hello_dxl_sns["hello-dynamixel-head"] = head_sn
         self.hello_dxl_sns["hello-dynamixel-wrist"] = wrist_sn
         print("\n")
-        print("Found hello-dynamixel-head serial: {}".format(head_sn))
-        print("Found hello-dynamixel-wrist serial: {}".format(wrist_sn))
+        if self.assertIsNotNone(head_sn, "Unable to find Head Serial"):
+            print("Found hello-dynamixel-head serial: {}".format(head_sn))
+        if self.assertIsNotNone(wrist_sn, "Unable to find Wrist Serial"):
+            print("Found hello-dynamixel-wrist serial: {}".format(wrist_sn))
 
     def push_sns_to_udev_rules(self):
         """
@@ -279,31 +278,44 @@ class DiscoverHelloDevices:
 
         os.system("chmod -R 777 ~/stretch_user")
         print("Assigning Stepper motor SN to robot....")
-        for k in list(self.hello_stepper_sns.keys()):
-            hdu.add_arduino_udev_line(device_name=k, serial_no=self.hello_stepper_sns[k],
-                                      fleet_dir=hu.get_fleet_directory())
-            dev = Device(k)
-            dev.write_configuration_param_to_YAML("{}.serial_no".format(k), self.hello_stepper_sns[k],
-                                                  hu.get_fleet_directory())
+        try:
+            for k in list(self.hello_stepper_sns.keys()):
+                hdu.add_arduino_udev_line(device_name=k, serial_no=self.hello_stepper_sns[k],
+                                          fleet_dir=hu.get_fleet_directory())
+                dev = Device(k)
+                dev.write_configuration_param_to_YAML("{}.serial_no".format(k), self.hello_stepper_sns[k],
+                                                      hu.get_fleet_directory())
+        except Exception as err:
+            print('ERROR: ' + str(err))
 
         print("Assigning Pimu and Wacc SN to robot....")
-        hdu.add_arduino_udev_line(device_name="hello-pimu", serial_no=self.hello_pimu_sn['hello-pimu'],
-                                  fleet_dir=hu.get_fleet_directory())
-        hdu.add_arduino_udev_line(device_name="hello-wacc", serial_no=self.hello_wacc_sn['hello-wacc'],
-                                  fleet_dir=hu.get_fleet_directory())
+        try:
+            hdu.add_arduino_udev_line(device_name="hello-pimu", serial_no=self.hello_pimu_sn['hello-pimu'],
+                                      fleet_dir=hu.get_fleet_directory())
+            hdu.add_arduino_udev_line(device_name="hello-wacc", serial_no=self.hello_wacc_sn['hello-wacc'],
+                                      fleet_dir=hu.get_fleet_directory())
+        except Exception as err:
+            print('ERROR: ' + str(err))
 
         print("Assigning FTDI devices SN to robot....")
-        for k in list(self.hello_dxl_sns.keys()):
-            hdu.add_ftdi_udev_line(device_name=k, serial_no=self.hello_dxl_sns[k], fleet_dir=hu.get_fleet_directory())
+        try:
+            for k in list(self.hello_dxl_sns.keys()):
+                hdu.add_ftdi_udev_line(device_name=k, serial_no=self.hello_dxl_sns[k],
+                                       fleet_dir=hu.get_fleet_directory())
 
-        print("Pushing Udev files to /etc/udev/rules.d/....")
-        os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-        os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-        os.system("sudo udevadm control --reload; sudo udevadm trigger")
+            print("Pushing Udev files to /etc/udev/rules.d/....")
+            os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+            os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+            os.system("sudo udevadm control --reload; sudo udevadm trigger")
 
-        print(click.style('### UDEV RULES UPDATED ###', fg='green', bold=True))
+            print(click.style('### UDEV RULES UPDATED ###', fg='green', bold=True))
+        except Exception as err:
+            print('ERROR: ' + str(err))
 
     def run(self):
+        if len(list(self.all_tty_devices.keys())) == 0:
+            print(click.style("None ttyACM* or ttyUSB* devices were found in the bus.", fg="red"))
+            sys.exit()
         self.get_arduino_devices()
         self.get_dxl_devices()
         self.get_lift_sn()
@@ -313,5 +325,6 @@ class DiscoverHelloDevices:
         self.push_sns_to_udev_rules()
 
 
-discover_hello_devices = DiscoverHelloDevices()
-discover_hello_devices.run()
+if __name__ == "__main__":
+    discover_hello_devices = DiscoverHelloDevices()
+    discover_hello_devices.run()

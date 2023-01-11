@@ -523,7 +523,7 @@ def extract_udevadm_info(usb_port, ID_NAME=None):
     """
     value = None
     dname = bytes(usb_port[5:], 'utf-8')
-    out = hdu.exec_process([b'udevadm', b'info', b'-n', dname], True)
+    out = exec_process([b'udevadm', b'info', b'-n', dname], True)
     if ID_NAME is None:
         value = out.decode(encoding='UTF-8')
     else:
