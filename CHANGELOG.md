@@ -2,6 +2,16 @@
 
 The changes between releases of Stretch Factory is documented here.
 
+## [0.3.10](https://github.com/hello-robot/stretch_factory/compare/09d11fbef1972e08db8ae1599478fd4e399e4efa...f788900d89ba67d0e2f7aab342c1350b3736f3d0) - January 16, 2023
+This release (and previous releases since 0.3.0) makes a number of small improvements to the following tools:
+
+ - `REx_dynamixel_jog.py` - Jog tool can put dxl in multi-turn, position, pwm, and velocity modes
+ - `REx_calibrate_range.py` - Add error checking for failed homing
+ - `REx_calibrate_guarded_contact.py` - Support RE1 robots
+ - `REx_base_calibrate_imu_collect.py` - Fix bug
+
+There are also organization changes to the docs and READMEs.
+
 ## [0.3.0](https://github.com/hello-robot/stretch_factory/pull/52) - September 1, 2022
 This release moves Stretch Factory to use a new naming scheme for its tools. The prefix `REx` is now used instead of `RE1`. This semantic change is in anticipation of the release of future versions of Stretch (e.g. RE2).
 
