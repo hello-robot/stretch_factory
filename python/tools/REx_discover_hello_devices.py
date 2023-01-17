@@ -14,9 +14,10 @@ import sys
 hu.print_stretch_re_use()
 
 parser = argparse.ArgumentParser(
-    description="Find and map all the robot specific USB devices (Lift, Arm, Left and Right wheels, Head, "
-                "Wrist/End-of-arm) and assign it to the robot.\nThis tool can be utilized everytime "
-                "a PCBA, motor assembly is replaced or /dev/hello-* devices goes missing from the  USB bus.")
+    description="Find and map all the robot-specific USB devices (i.e. Lift, Arm, Left wheel, Right wheel, Head, "
+                "Wrist/End-of-arm) and assign them to the robot by updating the UDEV rules and stretch configuration "
+                "files.This tool can be utilized everytime a PCBA, motor assembly is replaced or if any /dev/hello-* "
+                "devices go missing from the  USB bus.")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--discover", help="Discover the devices by set of user instructions and re-assign them to the robot",
