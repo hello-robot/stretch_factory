@@ -15,8 +15,14 @@ hu.print_stretch_re_use()
 
 parser = argparse.ArgumentParser(
     description="Find and map all the robot specific USB devices (Lift, Arm, Left and Right wheels, Head, "
-                "Wrist/End-of-arm) and assign it to a robot which is necesssary.\nThis script is to be run everytime "
-                "a PCBA or a motor assembly is replaced.")
+                "Wrist/End-of-arm) and assign it to the robot.\nThis tool can be utilized everytime "
+                "a PCBA, motor assembly is replaced or /dev/hello-* devices goes missing from the  USB bus.")
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--discover", help="Discover the devices by set of user instructions and re-assign them to the robot",
+                   action="store_true")
+group.add_argument("--list_tty", help="Display the currently available devices info(model,path,serial,vendor) in the paths /dev/ttyACM* and /dev/ttyUSB*",
+                   action="store_true")
 args = parser.parse_args()
 
 
@@ -119,14 +125,14 @@ class DiscoverHelloDevices:
         pprint.pprint(self.hello_arduino_devices)
         print("\n")
         print("Found {} hello_stepper devices.".format(len(self.hello_stepper_devices.keys())))
-        print("Found hello-pimu serial: {}".format(self.hello_pimu_sn['hello-pimu']))
-        print("Found hello-wacc serial: {}".format(self.hello_wacc_sn['hello-wacc']))
-
         self.assertEqual(len(self.hello_arduino_devices.keys()), 6, "Unable to find the correct no. arduino devices.")
-        self.assertEqual(len(self.hello_stepper_devices.keys()), 4,
-                         "Unable to find the correct no. hello_stepper devices.")
-        self.assertIsNotNone(self.hello_pimu_sn, "Unable to find PIMU Serial")
-        self.assertIsNotNone(self.hello_wacc_sn, "Unable to find WACC Serial")
+        self.assertEqual(len(self.hello_stepper_devices.keys()), 4, "Unable to find the correct no. hello_stepper devices.")
+
+        if self.assertIsNotNone(self.hello_pimu_sn['hello-pimu'], "Unable to find PIMU Serial"):
+            print(click.style("Found hello-pimu serial: {}".format(self.hello_pimu_sn['hello-pimu']), fg='green'))
+
+        if self.assertIsNotNone(self.hello_wacc_sn['hello-wacc'], "Unable to find WACC Serial"):
+            print(click.style("Found hello-wacc serial: {}".format(self.hello_wacc_sn['hello-wacc']), fg='green'))
 
     def get_dxl_devices(self):
         """
@@ -145,9 +151,9 @@ class DiscoverHelloDevices:
         Find the Serial number of the Lift motor serial by detecting a manual movement
         """
         input(click.style("WARNING: The Lift would drop, make sure the clamp is underneath lift. Then hit ENTER",
-                          fg="blue", bold=True))
+                          fg="yellow", bold=True))
         start_pose = self.get_all_stepper_poses()
-        input(click.style("Move the Lift joint manually, placing clamp underneath when done. Then hit ENTER", fg="blue",
+        input(click.style("Move the Lift joint manually and place the clamp underneath when done. Then hit ENTER", fg="blue",
                           bold=True))
         end_pose = self.get_all_stepper_poses()
         moved_motors = self.get_moved_motor(start_pose, end_pose)
@@ -267,9 +273,9 @@ class DiscoverHelloDevices:
         self.hello_dxl_sns["hello-dynamixel-wrist"] = wrist_sn
         print("\n")
         if self.assertIsNotNone(head_sn, "Unable to find Head Serial"):
-            print("Found hello-dynamixel-head serial: {}".format(head_sn))
+            print(click.style("Found hello-dynamixel-head serial: {}".format(head_sn), fg='green'))
         if self.assertIsNotNone(wrist_sn, "Unable to find Wrist Serial"):
-            print("Found hello-dynamixel-wrist serial: {}".format(wrist_sn))
+            print(click.style("Found hello-dynamixel-wrist serial: {}".format(wrist_sn), fg='green'))
 
     def push_sns_to_udev_rules(self):
         """
@@ -278,43 +284,46 @@ class DiscoverHelloDevices:
 
         os.system("chmod -R 777 ~/stretch_user")
         print("Assigning Stepper motor SN to robot....")
-        try:
-            for k in list(self.hello_stepper_sns.keys()):
+
+        for k in list(self.hello_stepper_sns.keys()):
+            try:
                 hdu.add_arduino_udev_line(device_name=k, serial_no=self.hello_stepper_sns[k],
                                           fleet_dir=hu.get_fleet_directory())
                 dev = Device(k)
                 dev.write_configuration_param_to_YAML("{}.serial_no".format(k), self.hello_stepper_sns[k],
                                                       hu.get_fleet_directory())
-        except Exception as err:
-            print('ERROR: ' + str(err))
+            except Exception as err:
+                print(click.style('ERROR [{}]: {}'.format(k, str(err)), fg='red'))
 
         print("Assigning Pimu and Wacc SN to robot....")
         try:
             hdu.add_arduino_udev_line(device_name="hello-pimu", serial_no=self.hello_pimu_sn['hello-pimu'],
                                       fleet_dir=hu.get_fleet_directory())
+        except Exception as err:
+            print(click.style('ERROR [{}]: {}'.format("hello-pimu", str(err)), fg='red'))
+        try:
             hdu.add_arduino_udev_line(device_name="hello-wacc", serial_no=self.hello_wacc_sn['hello-wacc'],
                                       fleet_dir=hu.get_fleet_directory())
         except Exception as err:
-            print('ERROR: ' + str(err))
+            print(click.style('ERROR [{}]: {}'.format("hello-wacc", str(err)), fg='red'))
 
         print("Assigning FTDI devices SN to robot....")
-        try:
-            for k in list(self.hello_dxl_sns.keys()):
+        for k in list(self.hello_dxl_sns.keys()):
+            try:
                 hdu.add_ftdi_udev_line(device_name=k, serial_no=self.hello_dxl_sns[k],
                                        fleet_dir=hu.get_fleet_directory())
 
-            print("Pushing Udev files to /etc/udev/rules.d/....")
-            os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-            os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-            os.system("sudo udevadm control --reload; sudo udevadm trigger")
-
-            print(click.style('### UDEV RULES UPDATED ###', fg='green', bold=True))
-        except Exception as err:
-            print('ERROR: ' + str(err))
+                print("Pushing Udev files to /etc/udev/rules.d/....")
+                os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+                os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+                os.system("sudo udevadm control --reload; sudo udevadm trigger")
+            except Exception as err:
+                print(click.style('ERROR [{}]: {}'.format(k, str(err)), fg='red'))
+        print(click.style('UDEV rules and stretch configuration files updated', fg='green', bold=True))
 
     def run(self):
         if len(list(self.all_tty_devices.keys())) == 0:
-            print(click.style("None ttyACM* or ttyUSB* devices were found in the bus.", fg="red"))
+            print(click.style("No ttyACM* or ttyUSB* devices were found in the USB bus.", fg="red"))
             sys.exit()
         self.get_arduino_devices()
         self.get_dxl_devices()
@@ -325,6 +334,11 @@ class DiscoverHelloDevices:
         self.push_sns_to_udev_rules()
 
 
-if __name__ == "__main__":
+if args.list_tty:
+    discover_hello_devices = DiscoverHelloDevices()
+    pprint.pprint(discover_hello_devices.all_tty_devices)
+elif args.discover:
     discover_hello_devices = DiscoverHelloDevices()
     discover_hello_devices.run()
+else:
+    parser.print_help()
