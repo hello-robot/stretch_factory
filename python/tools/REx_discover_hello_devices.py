@@ -26,7 +26,7 @@ group.add_argument("--discover",
 group.add_argument("--list_tty",
                    help="Display the currently available devices's info(model,path,serial,vendor) present in /dev/ttyACM* and /dev/ttyUSB*",
                    action="store_true")
-parser.add_argument("--stepper", help="Discover Stepper motor devices only.", action="store_true")
+parser.add_argument("--arduino", help="Discover arduino/stepper devices only.", action="store_true")
 parser.add_argument("--dynamixel", help="Discover Dynamixel servo motor devices only.", action="store_true")
 args = parser.parse_args()
 
@@ -288,8 +288,8 @@ class DiscoverHelloDevices:
         """
         Update the Udev files with the found Serial numbers for hello* devices
         """
-        self.push_stepper_sns_to_udev_rules()
-        self.push_stepper_sns_to_udev_rules()
+        self.push_arduino_sns_to_udev_rules()
+        self.push_dynamixel_sns_to_udev_rules()
         # print(click.style('UDEV rules and stretch configuration files updated', fg='green', bold=True))
 
     def push_dynamixel_sns_to_udev_rules(self):
@@ -306,9 +306,10 @@ class DiscoverHelloDevices:
                 os.system("sudo udevadm control --reload; sudo udevadm trigger")
             except Exception as err:
                 print(click.style('ERROR [{}]: {}'.format(k, str(err)), fg='red'))
-        print(click.style('UDEV rules and stretch configuration files specific to Dynamixels updated', fg='green', bold=True))
+        print(click.style('UDEV rules and stretch configuration files specific to Dynamixels updated', fg='green',
+                          bold=True))
 
-    def push_stepper_sns_to_udev_rules(self):
+    def push_arduino_sns_to_udev_rules(self):
         os.system("chmod -R 777 ~/stretch_user")
         print("Assigning Stepper motor SN to robot....")
 
@@ -333,7 +334,8 @@ class DiscoverHelloDevices:
                                       fleet_dir=hu.get_fleet_directory())
         except Exception as err:
             print(click.style('ERROR [{}]: {}'.format("hello-wacc", str(err)), fg='red'))
-        print(click.style('UDEV rules and stretch configuration files specific to Stepper motors updated', fg='green', bold=True))
+        print(click.style('UDEV rules and stretch configuration files specific to arduino devices updated', fg='green',
+                          bold=True))
 
     def run(self):
         if len(list(self.all_tty_devices.keys())) == 0:
@@ -355,7 +357,7 @@ class DiscoverHelloDevices:
         self.get_dynamixel_sns()
         self.push_dynamixel_sns_to_udev_rules()
 
-    def run_stepper(self):
+    def run_arduino(self):
         if len(list(self.all_tty_devices.keys())) == 0:
             print(click.style("No ttyACM* or ttyUSB* devices were found in the USB bus.", fg="red"))
             sys.exit()
@@ -363,15 +365,15 @@ class DiscoverHelloDevices:
         self.get_lift_sn()
         self.get_arm_sn()
         self.get_wheels_sn()
-        self.push_stepper_sns_to_udev_rules()
+        self.push_arduino_sns_to_udev_rules()
 
 
 if args.list_tty:
     discover_hello_devices = DiscoverHelloDevices()
     pprint.pprint(discover_hello_devices.all_tty_devices)
-elif args.discover and args.stepper:
+elif args.discover and args.arduino:
     discover_hello_devices = DiscoverHelloDevices()
-    discover_hello_devices.run_stepper()
+    discover_hello_devices.run_arduino()
 elif args.discover and args.dynamixel:
     discover_hello_devices = DiscoverHelloDevices()
     discover_hello_devices.run_dynamixel()
