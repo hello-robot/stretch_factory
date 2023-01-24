@@ -14,7 +14,7 @@ First, move to the latest Stretch Factory package (version >=0.0.14)
 Now run the gripper calibration script. This script will take you through the step-by-step process of calibration.
 1. First, the script automatically finds the gripper closed position.
 ```bash
->>$ RE1_gripper_calibrate.py 
+>>$ REx_gripper_calibrate.py 
 Hit enter to find zero
 Moving to first hardstop...
 Contact at position: 0
