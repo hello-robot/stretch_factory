@@ -193,7 +193,14 @@ class AvailableFirmware():
         self.repo_path = '/tmp/stretch_firmware_update'
         if not os.path.isdir(self.repo_path):
             #print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
-            git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
+            try:
+                git.Repo.clone_from('https://github.com/hello-robot/stretch_firmware',  self.repo_path)
+            except git.GitCommandError as e:
+                if "could not resolve host" in e.stderr.lower():
+                    print("ERROR: Unable to connect to Github. Check internet connection?", file=sys.stderr)
+                else:
+                    print("ERROR: Unable to clone stretch_firmware from Github into /tmp/stretch_firmware_update.", file=sys.stderr)
+                sys.exit(1)
 
         sys.stdout.write('.')
         sys.stdout.flush()
