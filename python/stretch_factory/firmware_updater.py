@@ -14,6 +14,7 @@ import sys
 import stretch_body.device
 from stretch_factory.device_mgmt import StretchDeviceMgmt
 import stretch_body.hello_utils
+import stretch_factory.hello_device_utils as hdu
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -564,45 +565,55 @@ class FirmwareUpdater():
 
     def flash_stepper_calibration(self,device_name):
         if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
-                click.secho(' Flashing Stepper Calibration: %s '.center(110,'#') % device_name, fg="cyan",bold=True)
-                if not self.wait_on_device(device_name):
-                    click.secho('Device %s failed to return to bus' % device_name, fg="red",bold=True)
-                    return False
-                time.sleep(1.0)
-                motor = stretch_body.stepper.Stepper('/dev/' + device_name)
-                motor.startup()
-                if not motor.hw_valid:
-                    click.secho('Failed to startup stepper %s' % device_name, fg="red", bold=True)
-                    return False
-                else:
-                    print('Writing gains to flash...')
-                    motor.write_gains_to_flash()
-                    motor.push_command()
-                    print('Gains written to flash')
-                    print('')
-                    print('Reading calibration data from YAML...')
-                    data = motor.read_encoder_calibration_from_YAML()
-                    print('Writing calibration data to flash...')
-                    motor.write_encoder_calibration_to_flash(data)
-                    print('Successful write of FLASH.')
-                    self.wait_on_device(device_name)
-                    motor.board_reset()
-                    motor.push_command()
-                    motor.transport.ser.close()
-                    time.sleep(2.0)
-                    self.wait_on_device(device_name)
-                    print('Successful return of device to bus.')
+            click.secho(' Flashing Stepper Calibration: %s '.center(110,'#') % device_name, fg="cyan",bold=True)
+            if not self.wait_on_device(device_name):
+                click.secho('Device %s failed to return to bus' % device_name, fg="red",bold=True)
+                return False
+            time.sleep(1.0)
+            motor = stretch_body.stepper.Stepper('/dev/' + device_name)
+            motor.startup()
+            if not motor.hw_valid:
+                click.secho('Failed to startup stepper %s' % device_name, fg="red", bold=True)
+                return False
+            else:
+                print('Writing gains to flash...')
+                motor.write_gains_to_flash()
+                motor.push_command()
+                print('Gains written to flash')
+                print('')
+                print('Reading calibration data from YAML...')
+                data = motor.read_encoder_calibration_from_YAML()
+                print('Writing calibration data to flash...')
+                motor.write_encoder_calibration_to_flash(data)
+                print('Successful write of FLASH.')
+                self.wait_on_device(device_name)
+                motor.board_reset()
+                motor.push_command()
+                motor.transport.ser.close()
+                time.sleep(2.0)
+                self.wait_on_device(device_name)
+                print('Successful return of device to bus.')
         return True
-
-
 
 
     def post_firmware_update(self):
         #Return True if no errors
         click.secho(' Performing Post Firmware Updates '.center(110, '#'), fg="cyan", bold=True)
-        StretchDeviceMgmt.reset_all_arduino()
-        s = StretchDeviceMgmt()
-        s.reset_all()
+
+        #StretchDeviceMgmt.reset_all_arduino()
+
+        for device_name in self.target.keys():
+            #StretchDeviceMgmt.reset_all_arduino()
+            ts=time.time()
+            while not hdu.is_device_present('/dev/'+device_name) and time.time()-ts<10.0:
+                print('Resetting %s',device_name)
+                s = StretchDeviceMgmt([device_name])
+                s.reset_all()
+                time.sleep(0.5)
+
+        # s = StretchDeviceMgmt(self.target.keys())
+        # s.reset_all()
+        #
         time.sleep(2.0)
         flash_stepper_calibration_success={}
         for device_name in self.target.keys():
@@ -619,6 +630,7 @@ class FirmwareUpdater():
         click.secho(' Confirming Firmware Updates '.center(110,'#'), fg="cyan", bold=True)
         self.fw_installed = InstalledFirmware(self.use_device) #Pull the currently installed system from fw
         n_failure=0
+
         for device_name in self.target.keys():
             if self.use_device[device_name]:
                 if not self.fw_installed.is_device_valid(device_name): #Device may not have come back on bus
