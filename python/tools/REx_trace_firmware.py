@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import argparse
 import click
 from colorama import Style
@@ -17,8 +17,10 @@ hu.print_stretch_re_use()
 parser = argparse.ArgumentParser(description='Tool to load and view the firmware trace data.', )
 args = parser.parse_args()
 robot=stretch_body.robot.Robot()
-if not robot.startup():
-    exit(1)
+
+robot.startup()
+# if not robot.startup():
+#     exit(1)
 
 
 class TraceMgmt:
@@ -40,14 +42,29 @@ class TraceMgmt:
                 return int(result)
             print("Error Invalid Input")
 
+    def get_trace_type(self,trace_data):
+        if len(trace_data)==0:
+            return None
+        if len(trace_data[0]['status']):
+            return 'status'
+        if len(trace_data[0]['debug']):
+            return 'debug'
+        if len(trace_data[0]['print']):
+            return 'print'
+
     def run_menu(self):
         trace_data=[]
         device_name=''
 
         while True:
             if len(trace_data):
-                click.secho('Current trace: Device %s | Duration (s): %f | Start timestamp %f: ' % (
-                device_name, (trace_data[-1]['status']['timestamp']-trace_data[0]['status']['timestamp'])/1000000.0,trace_data[0]['status']['timestamp']), fg="green", bold=True)
+                tt=self.get_trace_type(trace_data)
+                msg = 'Current trace: Device %s | Type: %s: ' % (device_name, tt.upper())
+                if tt =='status' or tt=='print':
+                    t0=trace_data[0][tt]['timestamp']/ 1000000.0
+                    t1=trace_data[-1][tt]['timestamp']/ 1000000.0
+                    msg =  msg+ '| Duration (s): %f | Start timestamp %f'%(t1-t0,t0)
+                click.secho(msg, fg="green", bold=True)
             else:
                 click.secho('No trace loaded', fg="yellow", bold=True)
             print('')
@@ -57,7 +74,7 @@ class TraceMgmt:
             print('d: load trace from device')
             print('l: load trace from file')
             print('s: save trace to file')
-            print('p: plot trace')
+            print('y: display trace data')
             print('x: print trace to console')
             print('-------------------------------------')
             #try:
@@ -72,8 +89,8 @@ class TraceMgmt:
                 trace_data,device_name=self.load_trace_from_file()
             elif r == 's':
                 self.save_trace(trace_data,device_name)
-            elif r == 'p':
-                self.do_plot(trace_data,device_name)
+            elif r == 'y':
+                self.display_trace(trace_data,device_name)
             elif r== 'x':
                 print(trace_data)
             else:
@@ -173,13 +190,78 @@ class TraceMgmt:
             fh.write('###%s###\n'%device_name)
             yaml.dump(trace_data, fh, encoding='utf-8', default_flow_style=False, Dumper=Dumper) #Use C YAML dumper for 5x speed increase over Python
 
+    def display_trace(self,trace_data,device_name):
+        tt=self.get_trace_type(trace_data)
+        if tt=='status':
+            self.do_plot_status(trace_data,device_name)
+        if tt=='debug':
+            self.do_plot_debug(trace_data,device_name)
+        if tt=='print':
+            self.do_plot_print(trace_data,device_name)
+    def do_plot_print(self,trace_data, device_name):
+        print(Style.BRIGHT + '############### Echoing Print Trace: %s ################'%device_name.upper() + Style.RESET_ALL)
+        if len(trace_data[0]['print'])==0:
+            print('No Print Trace data available')
+        else:
+            data = []
+            for k in trace_data:
+                print('%f: %s'%(k['print']['timestamp'],k['print']['line']))
+                data.append(k['print']['x'])
+            print('---------- PLOT DATA ----------')
+            print(data)
+            print('')
 
+            plt.ion()  # enable interactivity
+            fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
+            fig.canvas.set_window_title('TRACE %s | %s' % (device_name.upper(), 'X'))
+            axes.set_yscale('linear')
+            axes.set_xlabel('Sample')
+            axes.set_ylabel('X')
+            axes.grid(True)
+            axes.plot(data, 'b')
+            fig.canvas.draw_idle()
 
-    def do_plot(self,trace_data,device_name):
-        print(Style.BRIGHT + '############### Plotting ################' + Style.RESET_ALL)
+    def do_plot_debug(self,trace_data,device_name):
+        print(Style.BRIGHT + '############### Plotting Debug Trace: %s ################'%device_name.upper() + Style.RESET_ALL)
+        print('----- Trace Fields -----')
+        s0=trace_data[0]['debug']
+        kk=list(s0.keys())
+        if len(kk)==0:
+            print('No data available')
+            return
+        kk.sort()
+        field_keys=[]
+        for k in kk:
+            if type(s0[k])==int or type(s0[k])==float or type(s0[k])==bool:
+                field_keys.append(k)
+                print('%d: %s'%(len(field_keys)-1,str(k)))
+        print('')
+        field_name=field_keys[self.get_int([0,len(field_keys)-1],'FIELD ID')]
+        data=[]
+        for t in trace_data:
+            data.append(t['debug'][field_name])
+        print('---------- PLOT DATA ----------')
+        print(data)
+        print('')
+
+        plt.ion()  # enable interactivity
+        fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
+        fig.canvas.set_window_title('TRACE %s | %s'%(device_name.upper(),field_name.upper()))
+        axes.set_yscale('linear')
+        axes.set_xlabel('Sample')
+        axes.set_ylabel(field_name.upper())
+        axes.grid(True)
+        axes.plot(data, 'b')
+        fig.canvas.draw_idle()
+
+    def do_plot_status(self,trace_data,device_name):
+        print(Style.BRIGHT + '############### Plotting Status Trace: %s ################'%device_name.upper() + Style.RESET_ALL)
         print('----- Trace Fields -----')
         s0=trace_data[0]['status']
         kk=list(s0.keys())
+        if len(kk)==0:
+            print('No data available')
+            return
         kk.sort()
         field_keys=[]
         for k in kk:
