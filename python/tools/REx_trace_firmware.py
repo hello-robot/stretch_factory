@@ -61,8 +61,8 @@ class TraceMgmt:
                 tt=self.get_trace_type(trace_data)
                 msg = 'Current trace: Device %s | Type: %s: ' % (device_name, tt.upper())
                 if tt =='status' or tt=='print':
-                    t0=trace_data[0][tt]['timestamp']/ 1000000.0
-                    t1=trace_data[-1][tt]['timestamp']/ 1000000.0
+                    t0=trace_data[0][tt]['timestamp']
+                    t1=trace_data[-1][tt]['timestamp']
                     msg =  msg+ '| Duration (s): %f | Start timestamp %f'%(t1-t0,t0)
                 click.secho(msg, fg="green", bold=True)
             else:
