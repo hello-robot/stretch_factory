@@ -283,18 +283,21 @@ def burn_bootloader(sketch):
 
 def reset_arduino_usb():
     USBDEVFS_RESET = 21780
-    lsusb_out = Popen("lsusb | grep -i %s" % 'Arduino', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                      close_fds=True).stdout.read().strip().split()
-    while len(lsusb_out):
-        bus = lsusb_out[1]
-        device = lsusb_out[3][:-1]
+    lsusb_out = Popen("lsusb | grep -i Arduino", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+    if type(lsusb_out)==bytes:
+        lsusb_out=lsusb_out.decode('utf-8')
+    lsusb_out=lsusb_out.strip().split('\n')
+    for d in lsusb_out:
+        dd=d.split(' ')
+        bus = dd[1]
+        device = dd[3][:-1]
         try:
             print('Resetting Arduino. Bus:', bus, 'Device: ', device)
             f = open("/dev/bus/usb/%s/%s" % (bus, device), 'w', os.O_WRONLY)
             fcntl.ioctl(f, USBDEVFS_RESET, 0)
         except Exception as msg:
             print("failed to reset device: %s" % msg)
-        lsusb_out = lsusb_out[8:]
+
 
 
 # ##############################################################
