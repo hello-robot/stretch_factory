@@ -15,6 +15,7 @@ import stretch_body.device
 from stretch_factory.device_mgmt import StretchDeviceMgmt
 import stretch_body.hello_utils
 import stretch_factory.hello_device_utils as hdu
+import shlex
 
 # #####################################################################################################
 class FirmwareVersion():
@@ -408,15 +409,13 @@ class FirmwareUpdater():
             yaml.dump(arduino_config, yaml_file, default_flow_style=False)
 
     def __check_ubuntu_version(self):
-        res = Popen('cat /etc/lsb-release | grep DISTRIB_RELEASE', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                    close_fds=True).stdout.read().strip(b'\n')
+        res = Popen(shlex.split('cat /etc/lsb-release | grep DISTRIB_RELEASE'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip(b'\n')
         return res == b'DISTRIB_RELEASE=18.04'
 
     def __check_arduino_cli_install(self):
         target_version = b'0.31.0'  # 0.18.3'
         version = 'None'
-        res = Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                    close_fds=True).stdout.read()
+        res = Popen(shlex.split('arduino-cli version'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
         do_install = False
         if not (res[:11] == b'arduino-cli'):
             do_install = True
@@ -486,36 +485,57 @@ class FirmwareUpdater():
         if not self.num_update:
             click.secho('System is up to date. No updates to be done', fg="yellow", bold=True)
             return False
+
         self.print_upload_warning()
-        self.fw_updated = {}
+        self.update_log = {}
+
         if no_prompts or click.confirm('Proceed with update??'):
             for device_name in self.target:
-                self.fw_updated[device_name] = False
                 if self.target[device_name] is not None:
-                    self.fw_updated[device_name] = self.flash_firmware_update(device_name,
-                                                                              self.target[device_name].to_string(),
-                                                                              repo_path=repo_path, verbose=verbose)
-                    if not self.fw_updated[device_name]:
+                    self.update_log[device_name] = {'compile': False, 'flash': False, 'return_to_bus': False,'version_validate': False, 'calibration_flash': False}
+                    self.flash_firmware_update(device_name,self.target[device_name].to_string(),repo_path=repo_path, verbose=verbose)
+                    if not self.update_log[device_name]['compile'] or not self.update_log[device_name]['flash']:
                         return False
             click.secho('---- Firmware update of all devices complete! ----', fg="green", bold=True)
 
-            #time.sleep(2.0)
-            #click.secho('Resetting all Arduino device USB')
-            #hdu.reset_arduino_usb()
+
             click.secho('Checking that Arduino devices returned to bus ')
-            #time.sleep(2.0)
+            print('---------------------------------')
             no_return=[]
             no_stepper_return=[]
-            success=True
+            all_success=True
             for device_name in self.target:
-                if not self.wait_on_device(device_name):
-                    click.secho('Device %s failed to return to bus.' % device_name, fg="yellow",bold=True)
+                print('Checking for %s. It may take several minutes to appear on the USB bus.'%device_name)
+                ts=time.time()
+                found=False
+                for i in range(30):
+                    if not self.wait_on_device(device_name, timeout=10.0):
+                        print('Trying again: %d\n'%i)
+                        # Bit of a hack.Sometimes after a firmware flash the device
+                        # Doesn't fully present on the USB bus with a serial No for Udev to find
+                        # In does present as an 'Arduino Zero' product. This will attempt to reset it
+                        # and re-present to the bus
+                        # time.sleep(1.0)
+                        # os.system('usbreset \"Arduino Zero\"')
+                        # time.sleep(1.0)
+                        print('')
+                    else:
+                        found=True
+                        break
+                if not found:
+                    click.secho('Device %s failed to return to bus after %f seconds.' %(device_name,time.time()-ts), fg="yellow", bold=True)
                     no_return.append(device_name)
-                    if device_name.find('motor')>=0:
+                    all_success=False
+                    if device_name.find('motor') >= 0:
                         no_stepper_return.append(device_name)
                 else:
-                    click.secho('Device %s returned to bus.' % device_name, fg="green", bold=True)
-                    success = success and self.post_firmware_update(device_name)
+                    click.secho('Device %s returned to bus after %f seconds.'%(device_name,time.time()-ts), fg="green", bold=True)
+                    all_success = all_success and self.verify_firmware_version(device_name)
+                    print('')
+                    print('')
+
+            #NOTE: Move to exceptions and single device flow, can track where in the flow it fails.
+            self.post_firmware_update(device_name)
 
             if len(no_return):
                 click.secho('Devices did not return to bus. Power cycle robot', fg="yellow",bold=True)
@@ -524,7 +544,11 @@ class FirmwareUpdater():
                     click.secho('Device %s requires calibration data to be written after power cycle.'%device_name, fg="yellow", bold=True)
                     click.secho('After power cycle run: REx_stepper_calibration_YAML_to_flash.py %s'%device_name, fg="yellow",bold=True)
                 return False
-            return success
+            if all_success:
+                print('')
+                click.secho('----------------- Congratulations! ---------------.' ,fg="green", bold=True)
+                click.secho('No issues encountered. Firmware update successful.', fg="green", bold=True)
+            return all_success
         return True
 
 
@@ -661,6 +685,23 @@ class FirmwareUpdater():
                 print('Successful return of device to bus.')
         return True
 
+
+    def verify_firmware_version(self,device_name):
+        fw_installed = InstalledFirmware({device_name: True})  # Pull the currently installed system from fw
+        if not fw_installed.is_device_valid(device_name):  # Device may not have come back on bus
+            print('%s | No device available' % device_name.upper().ljust(25))
+            print('')
+            return False
+        else:
+            click.secho(' Confirming Firmware Updates '.center(110, '#'), fg="cyan", bold=True)
+            v_curr = fw_installed.get_version(device_name)  # Version that is now on the board
+            if v_curr == self.target[device_name]:
+                click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
+                return True
+            else:
+                click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
+                return False
+
     def post_firmware_update(self, device_name):
         #Assumes device is back on bus after an firmware flash
         #Return True if no errors
@@ -676,19 +717,7 @@ class FirmwareUpdater():
                 click.secho('REx_stepper_calibration_YAML_to_flash.py %s' % device_name)
                 return False
 
-        fw_installed = InstalledFirmware({device_name: True})  # Pull the currently installed system from fw
-        if not fw_installed.is_device_valid(device_name):  # Device may not have come back on bus
-            print('%s | No device available' % device_name.upper().ljust(25))
-            print('')
-        else:
-            click.secho(' Confirming Firmware Updates '.center(110,'#'), fg="cyan", bold=True)
-            v_curr =fw_installed.get_version(device_name)  # Version that is now on the board
-            if v_curr ==  self.target[device_name]:
-                click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Installed firmware matches target'.ljust(40)),fg="green")
-                return True
-            else:
-                click.secho('%s | %s ' % (device_name.upper().ljust(25), 'Firmware update failure!!'.ljust(40)),fg="red", bold=True)
-                return False
+
 
         return False
 
@@ -774,7 +803,7 @@ class FirmwareUpdater():
 
     def get_port_name(self, device_name):
         try:
-            port_name = Popen("ls -l /dev/" + device_name, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
+            port_name = Popen(shlex.split("ls -l /dev/" + device_name), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip().split()[-1]
             if not type(port_name)==str:
                 port_name=port_name.decode('utf-8')
             return port_name
@@ -806,14 +835,14 @@ class FirmwareUpdater():
         if sketch_name=='hello_stepper' and not self.does_stepper_have_encoder_calibration_YAML(device_name):
             print('Encoder data has not been stored for %s and may be lost. Aborting firmware flash.'%device_name)
             return False
-        #s = StretchDeviceMgmt([device_name])
-        #if not s.reset(device_name):
-        #    return False
+
         print('Looking for device %s on bus' % device_name)
         if not self.wait_on_device(device_name, timeout=5.0):
             print('Failure: Device not on bus.')
             return False
         port_name = self.get_port_name(device_name)
+        user_msg_log('Device: %s Port: %s'%(device_name,port_name), user_display=verbose)
+
         if port_name is not None and sketch_name is not None:
 
             print('Starting programming. This will take about 5s...')
@@ -826,7 +855,7 @@ class FirmwareUpdater():
 
             compile_command = 'arduino-cli compile --config-file %s --fqbn hello-robot:samd:%s %s/arduino/%s'%(config_file,sketch_name,src_path,sketch_name)
             user_msg_log(compile_command,user_display=verbose)
-            c=Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
+            c=Popen(shlex.split(compile_command), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
             if type(c)==bytes:
                 c=c.decode("utf-8")
             cc = c.split('\n')
@@ -835,16 +864,20 @@ class FirmwareUpdater():
             # In version 0.18.x the last line after compile is: Sketch uses xxx bytes (58%) of program storage space. Maximum is yyy bytes.
             #In version 0.24.x +this is now on line 0.
             #Need a more robust way to determine successful compile. Works for now.
-            success=str(cc[0]).find('Sketch uses')!=-1
-            if not success:
+            self.update_log[device_name]['compile']=(str(cc[0]).find('Sketch uses')!=-1)
+            if not self.update_log[device_name]['compile']:
                 print('Firmware failed to compile %s at %s' % (sketch_name,src_path))
                 return False
             else:
                 print('Success in firmware compile')
 
+
             upload_command = 'arduino-cli upload  --config-file %s -p /dev/%s --fqbn hello-robot:samd:%s %s/arduino/%s' % (config_file, port_name, sketch_name, src_path,sketch_name)
+
             user_msg_log(upload_command,user_display=verbose)
-            u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
+            u = Popen(shlex.split(upload_command), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
+
+
             if type(u) == bytes:
                 u=u.decode('utf-8')
             uu = u.split('\n')
@@ -860,6 +893,11 @@ class FirmwareUpdater():
                         for m in k:
                             print(m)
             success = uu[-1] == 'CPU reset.'
+
+            print('')
+            print('PIMU', self.get_port_name('hello-pimu'))
+            print('WACC', self.get_port_name('hello-wacc'))
+
             if not success:
                 print('Firmware flash. Failed to upload to %s' % (port_name))
                 return False
