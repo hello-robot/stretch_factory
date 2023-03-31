@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import argparse
 import stretch_body.hello_utils as hu
 import click
@@ -47,6 +47,7 @@ class TraceMgmt:
             print('Enter command. (q to quit)')
             print('s: set active trace')
             print('p: plot')
+            print('d: print')
             print('-------------------------------------')
             try:
                 r = input()
@@ -57,6 +58,8 @@ class TraceMgmt:
                     trace_data = self.get_trace_data(segs[active_seg_id])
                 elif r == 'p':
                     self.do_plot(trace_data)
+                elif r == 'd':
+                    self.do_print(trace_data)
                 else:
                     print('Invalid entry')
             except(TypeError, ValueError):
@@ -82,6 +85,20 @@ class TraceMgmt:
         axes.grid(True)
         axes.plot(xval, yval, 'b')
         fig.canvas.draw_idle()
+
+    def do_print(self,trace_data):
+        print(Style.BRIGHT + '############### Print ################' + Style.RESET_ALL)
+        self.pretty_print_fields(trace_data)
+        kk = list(trace_data['trace'].keys())
+        kk.sort()
+        id1 = self.get_int([0, len(kk) - 1], msg='FIELD ID')
+        print('')
+        yval = trace_data['trace'][kk[id1]]
+        xval = np.array(trace_data['trace']['timestamp'])
+        xval = (xval - xval[0]) / 60.0
+        for i in range(len(yval)):
+            print('%f: %f'%(xval[i],yval[i]))
+
     def pretty_print_fields(self,trace_data):
         i=0
         click.secho('%s | %s |  %s ' % ('ID'.ljust(8), 'FIELD'.ljust(25), 'SAMPLES'.ljust(25)), fg="cyan",bold=True)
