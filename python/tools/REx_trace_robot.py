@@ -44,10 +44,11 @@ class TraceMgmt:
             self.pretty_print_segments(segs, active_seg_id)
             self.pretty_print_fields(trace_data)
             print(Style.BRIGHT + '############### MENU ################' + Style.RESET_ALL)
-            print('Enter command. (q to quit)')
+            print('Enter command.')
             print('s: set active trace')
             print('p: plot')
             print('d: print')
+            print('q: quit')
             print('-------------------------------------')
             try:
                 r = input()
@@ -78,7 +79,7 @@ class TraceMgmt:
         plt.ion()  # enable interactivity
 
         fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
-        fig.canvas.set_window_title('TRACE')
+        plt.title('TRACE')
         axes.set_yscale('linear')
         axes.set_xlabel('Time (m)')
         axes.set_ylabel(kk[id1].upper())
@@ -187,3 +188,4 @@ class TraceMgmt:
 
 mgmt=TraceMgmt()
 mgmt.run_menu()
+
