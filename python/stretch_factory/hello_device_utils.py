@@ -118,6 +118,26 @@ def get_all_ttyACMx():
             ret.append(l[5:])
     return ret
 
+def get_hello_ttyACMx_mapping():
+    mapping={}
+    mapping['hello'] = {'hello-motor-arm': None, 'hello-motor-right-wheel': None, 'hello-motor-left-wheel': None,'hello-pimu': None, 'hello-wacc': None, 'hello-motor-lift': None}
+    mapping['missing']=[]
+    mapping['ACMx']={}
+
+    for d in mapping['hello']:
+        x = get_device_ttyACMx('/dev/'+d)
+        if x is not None:
+            mapping['hello'][d] = x
+        else:
+            mapping['missing'].append(d)
+
+    att = get_all_ttyACMx()
+    for a in att:
+        mapping['ACMx'][a]=None
+        for h in mapping['hello']:
+            if mapping['hello'][h]==a:
+                mapping['ACMx'][a]=h
+    return mapping
 
 def is_device_present(device):
     try:

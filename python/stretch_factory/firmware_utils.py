@@ -12,6 +12,7 @@ import sys
 import stretch_body.device
 import stretch_body.hello_utils
 import shlex
+import stretch_factory.hello_device_utils as hdu
 
 log_device = stretch_body.device.Device(req_params=False)
 
@@ -20,11 +21,11 @@ def user_msg_log(msg, user_display=True, fg=None, bg=None, bold=False):
         click.secho(str(msg), fg=fg, bg=bg, bold=bold)
     log_device.logger.debug(str(msg))
 
-def __check_ubuntu_version():
+def check_ubuntu_version():
     res = Popen(shlex.split('cat /etc/lsb-release | grep DISTRIB_RELEASE'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip(b'\n')
     return res == b'DISTRIB_RELEASE=18.04'
 
-def __check_arduino_cli_install():
+def check_arduino_cli_install():
     target_version = b'0.31.0'  # 0.18.3'
     version = 'None'
     res = Popen(shlex.split('arduino-cli version'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
@@ -119,4 +120,21 @@ def does_stepper_have_encoder_calibration_YAML(device_name):
     fn = 'calibration_steppers/' + device_name + '_' + sn + '.yaml'
     enc_data = stretch_body.hello_utils.read_fleet_yaml(fn)
     return len(enc_data)!=0
+
+def get_device_protocols(device_name):
+    #return list like ['p0','p1']
+    s=get_sketch_name(device_name)
+    if s == 'hello_wacc':
+        import stretch_body.wacc
+        dd = stretch_body.wacc.Wacc()
+        return list(dd.supported_protocols.keys())
+    elif s == 'hello_pimu':
+        import stretch_body.pimu
+        dd = stretch_body.pimu.Pimu()
+        return list(dd.supported_protocols.keys())
+    elif s == 'hello_stepper':
+        import stretch_body.stepper
+        dd = stretch_body.stepper.Stepper('/dev/'+device_name)
+        return list(dd.supported_protocols.keys())
+    return []
 

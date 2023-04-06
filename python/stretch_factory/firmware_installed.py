@@ -22,6 +22,16 @@ class FirmwareInstalled():
         """
         use_device has form of:
         {'hello-motor-lift': True, 'hello-motor-arm': True, 'hello-motor-right-wheel': True, 'hello-motor-left-wheel': True, 'hello-pimu': True, 'hello-wacc': True}
+
+        config_info is a dict like:
+
+        {'hello-motor-lift': {'board_info': {'board_variant': 'Stepper.0',
+           'firmware_version': 'Stepper.v0.3.0p2',
+           'protocol_version': 'p2',
+           'hardware_id': 0},
+          'supported_protocols': ['p0', 'p1', 'p2'],
+          'installed_protocol_valid': True,
+          'version': 'Stepper.v0.3.0p2'},...}
         """
         self.use_device = use_device
         self.config_info = {'hello-motor-lift': None, 'hello-motor-arm': None, 'hello-motor-left-wheel': None,
@@ -40,14 +50,13 @@ class FirmwareInstalled():
                     self.config_info[device] = {}
                     self.config_info[device]['board_info'] = dd.board_info.copy()
                     try:
-                        self.config_info[device]['supported_protocols'] = dd.supported_protocols.keys()
+                        self.config_info[device]['supported_protocols'] = list(dd.supported_protocols.keys())
                     except AttributeError:
                         # Older versions of stretch body used a different represenation
                         self.config_info[device]['supported_protocols'] = [dd.valid_firmware_protocol]
                     self.config_info[device]['installed_protocol_valid'] = (
                                 dd.board_info['protocol_version'] in self.config_info[device]['supported_protocols'])
-                    self.config_info[device]['version'] = FirmwareVersion(
-                        self.config_info[device]['board_info']['firmware_version'])
+                    self.config_info[device]['version'] = FirmwareVersion(self.config_info[device]['board_info']['firmware_version'])
                     dd.stop()
                 else:
                     self.config_info[device] = None
