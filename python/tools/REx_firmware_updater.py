@@ -17,7 +17,6 @@ group.add_argument("--install_version", help="Install a specific firmware versio
 group.add_argument("--install_branch", help="Install the HEAD of a specific branch", action="store_true")
 group.add_argument("--install_path", help="Install the firmware on the provided path (eg ./stretch_firmware/arduino)", type=str)
 group.add_argument("--resume", help="Resume an install in progress", action="store_true")
-parser.add_argument("--zombie", help="Attempt to recover zombie device", action="store_true")
 group.add_argument("--mgmt", help="Display overview on firmware management", action="store_true")
 
 parser.add_argument("--pimu", help="Upload Pimu firmware", action="store_true")
@@ -114,7 +113,7 @@ if args.available:
     exit()
 
 
-if args.resume or args.install or args.install_version or args.install_branch or args.install_path or args.zombie:
+if args.resume or args.install or args.install_version or args.install_branch or args.install_path:
     u = FirmwareUpdater(use_device, args)
     u.run()
 else:

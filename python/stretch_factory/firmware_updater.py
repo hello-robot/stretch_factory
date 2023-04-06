@@ -22,30 +22,7 @@ import stretch_factory.firmware_utils as fwu
 
 import stretch_factory.hello_device_utils as hdu
 
-# def get_zombie_port():
-#     devices = {'hello-motor-arm': None, 'hello-motor-right-wheel': None, 'hello-motor-left-wheel': None,
-#                'hello-pimu': None, 'hello-wacc': None, 'hello-motor-lift': None}
-#     missing=[]
-#     att = hdu.get_all_ttyACMx()
-#     for d in devices:
-#         x=hdu.get_device_ttyACMx(d)
-#         if x is not None:
-#             devices[d]='/dev/'+x
-#         else:
-#             missing.append(d)
-#
-#     if len(missing)==0:
-#         print('No zombie devices found')
-#     else:
-#         print('Potential zombie devices: ',missing)
 
-    # if len(att)!=len(devices):
-    #     print('Can only restore a zombie port when all ')
-    #
-    # return port, target    # if len(att)!=len(devices):
-    #     print('Can only restore a zombie port when all ')
-    #
-    # return port, target
 
 class FirmwareUpdater():
     def __init__(self, use_device,args):
@@ -54,11 +31,6 @@ class FirmwareUpdater():
         self.resume_tmp_filename='/tmp/REx_firmware_updater_resume.yaml'
         self.args=args
         state_from_yaml = self.from_yaml()
-
-        if args.zombie:
-            self.ready_to_run=True
-            return
-
 
         if args.resume:
             if not state_from_yaml:
@@ -105,8 +77,8 @@ class FirmwareUpdater():
 
         #Update the devices to flash based on the available devices on bus
         self.fw_installed = FirmwareInstalled(self.state['use_device'])
-        for d in self.state['use_device']:
-            self.state['use_device'][d] = self.state['use_device'][d] and self.fw_installed.is_device_valid(d)
+        # for d in self.state['use_device']:
+        #     self.state['use_device'][d] = self.state['use_device'][d] and self.fw_installed.is_device_valid(d)
 
         self.fw_available = FirmwareAvailable(self.state['use_device'])
         self.fw_recommended = FirmwareRecommended(self.state['use_device'], self.fw_installed, self.fw_available)
@@ -144,7 +116,10 @@ class FirmwareUpdater():
             # Store updated target for potential future resume
             self.state['target_str'] = {}
             for d in self.target:
+                if self.target[d]:
                     self.state['target_str'][d] = self.target[d].to_string()
+                else:
+                    self.state['target_str'][d] ='None'
 
         # Count how many updates doing
         num_update = 0
@@ -156,9 +131,9 @@ class FirmwareUpdater():
             if not args.resume:
                 click.secho('No updates to be done', fg="yellow", bold=True)
             else:
-                click.secho('WARNING: Unable to resume update. Not all devices returned to bus successfully', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume')
+                click.secho('WARNING: Unable to resume update. Not all devices returned to bus successfully', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
             self.ready_to_run=False
         #At this point self.state dictionary has all information needed to run an update cycle
 
@@ -210,31 +185,12 @@ class FirmwareUpdater():
                 click.secho('Invalid ID', fg="red")
         return dp
 
-    def recover_zombie(self):
-        print('')
-        print('Will attempt to recover a zombie device by flashing Stretch Firmware master code')
-        print('')
-        device_name = self.get_device_from_user()
-        print('')
-        port_name=self.get_port_from_user()
-        print('')
-        print('Selected port %s for device %s' % (port_name, device_name))
-        print('')
-        if  click.confirm('Proceed with firmware flash?'):
-            self.fw_available = FirmwareAvailable({device_name:True})
-            protocols=fwu.get_device_protocols(device_name)
-            target=self.fw_available.get_most_recent_version(device_name,protocols).to_string()
-            return self.do_device_flash(device_name,tag=target, repo_path=None, verbose=self.args.verbose, port_name=port_name)
-        return False
+
 
     def run(self):
         if not self.ready_to_run:
             click.secho('WARNING: Unable to configure system for firmware update', fg="yellow", bold=True)
             return False
-
-        if self.args.zombie:
-            return self.recover_zombie()
-
 
         self.print_upload_warning()
 
@@ -244,12 +200,16 @@ class FirmwareUpdater():
             #Flash all devices
             for d in self.target:
                 if not self.state['completed'][d]['flash']:
-                    self.state['completed'][d]['flash']=self.do_device_flash(d,self.target[d].to_string(),self.state['repo_path'],self.state['verbose'])
+                    if self.fw_installed.is_device_valid(d):
+                        self.state['completed'][d]['flash']=self.do_device_flash(d,self.target[d].to_string(),self.state['repo_path'],self.state['verbose'])
+                    else:
+                        click.secho('WARNING: Unable to flash %d as device not valid'%d, fg="yellow", bold=True)
+                        self.state['completed'][d]['flash'] =False
 
             if not self.all_completed('flash'):
-                click.secho('WARNING: Not all devices flashed firmware successfully', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume')
+                click.secho('WARNING: Not all devices flashed firmware successfully', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
                 self.to_yaml()
                 return False
 
@@ -259,9 +219,9 @@ class FirmwareUpdater():
                     self.state['completed'][d]['return_to_bus']=self.wait_on_return_to_bus(d)
 
             if not self.all_completed('return_to_bus'):
-                click.secho('WARNING: Not all devices returned to bus successfully', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume')
+                click.secho('WARNING: Not all devices returned to bus successfully', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
                 self.to_yaml()
                 return False
 
@@ -274,9 +234,9 @@ class FirmwareUpdater():
                         self.state['completed'][d]['return_to_bus']=False
 
             if not self.all_completed('version_validate'):
-                click.secho('WARNING: Not all devices have updated to target firmware version', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume')
+                click.secho('WARNING: Not all devices have updated to target firmware version', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
                 self.to_yaml()
                 return False
 
@@ -286,9 +246,9 @@ class FirmwareUpdater():
                     self.state['completed'][d]['calibration_flash'] = self.flash_stepper_calibration(d)
 
             if not self.all_completed('calibration_flash'):
-                click.secho('WARNING: Not all devices have encoder calibration flashed', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume')
+                click.secho('WARNING: Not all devices have encoder calibration flashed', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
                 self.to_yaml()
                 return False
 
@@ -298,9 +258,9 @@ class FirmwareUpdater():
                     self.state['completed'][d]['return_to_bus2']=self.wait_on_return_to_bus(d)
 
             if not self.all_completed('return_to_bus2'):
-                click.secho('WARNING: Not all devices returned to bus successfully', fg="yellow", bold=True)
-                click.secho('WARNING: Power cycle robot.', fg="yellow", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py - -resume')
+                click.secho('WARNING: Not all devices returned to bus successfully', fg="red", bold=True)
+                click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_udpater.py - -resume', fg="red", bold=True)
                 self.to_yaml()
                 return False
 
@@ -421,9 +381,9 @@ class FirmwareUpdater():
                 # Doesn't fully present on the USB bus with a serial No for Udev to find
                 # In does present as an 'Arduino Zero' product. This will attempt to reset it
                 # and re-present to the bus
-                # time.sleep(1.0)
-                # os.system('usbreset \"Arduino Zero\"')
-                # time.sleep(1.0)
+                time.sleep(1.0)
+                os.system('usbreset \"Arduino Zero\"')
+                time.sleep(1.0)
                 print('')
             else:
                 found = True
@@ -454,7 +414,7 @@ class FirmwareUpdater():
 # ########################################################################################################3
     def flash_stepper_calibration(self, device_name):
         if device_name == 'hello-motor-arm' or device_name == 'hello-motor-lift' or device_name == 'hello-motor-right-wheel' or device_name == 'hello-motor-left-wheel':
-            click.secho(' Flashing Stepper Calibration: %s '.center(110, '#') % device_name, fg="cyan", bold=True)
+            click.secho(' Flashing Stepper Calibration: %s '.center(70, '#') % device_name, fg="cyan", bold=True)
             if not fwu.wait_on_device(device_name):
                 click.secho('Device %s failed to return to bus.' % device_name, fg="red", bold=True)
                 return False
@@ -656,7 +616,7 @@ class FirmwareUpdater():
                     bold=True)
         click.secho('WARNING: (2) Do not have other robot processes running during update', fg="yellow", bold=True)
         click.secho('WARNING: (3) Leave robot powered on during update', fg="yellow", bold=True)
-        if self.use_device['hello-motor-lift']:
+        if self.state['use_device']['hello-motor-lift']:
             click.secho('WARNING: (4) Ensure Lift has support clamp in place', fg="yellow", bold=True)
             click.secho('WARNING: (5) Lift may make a loud noise during programming. This is normal.', fg="yellow",
                         bold=True)
