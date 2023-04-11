@@ -13,7 +13,10 @@ import usb.core
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 import stretch_body.device
+
+import serial
 from colorama import Fore, Style
+
 
 # ###################################
 class stream_tee(object):
@@ -118,6 +121,26 @@ def get_all_ttyACMx():
             ret.append(l[5:])
     return ret
 
+def get_hello_ttyACMx_mapping():
+    mapping={}
+    mapping['hello'] = {'hello-motor-arm': None, 'hello-motor-right-wheel': None, 'hello-motor-left-wheel': None,'hello-pimu': None, 'hello-wacc': None, 'hello-motor-lift': None}
+    mapping['missing']=[]
+    mapping['ACMx']={}
+
+    for d in mapping['hello']:
+        x = get_device_ttyACMx('/dev/'+d)
+        if x is not None:
+            mapping['hello'][d] = x
+        else:
+            mapping['missing'].append(d)
+
+    att = get_all_ttyACMx()
+    for a in att:
+        mapping['ACMx'][a]=None
+        for h in mapping['hello']:
+            if mapping['hello'][h]==a:
+                mapping['ACMx'][a]=h
+    return mapping
 
 def is_device_present(device):
     try:
@@ -138,6 +161,23 @@ def find_steppers_on_bus():
 
 
 # ###################################
+
+def place_arduino_in_bootloader(port):
+    print('Putting %s into bootloader mode.'%port)
+    arduino = serial.Serial(port, baudrate=1200)
+    with arduino:  # the reset part is actually optional but the sleep is nice to have either way.
+        arduino.setDTR(False)
+        time.sleep(0.1)
+        arduino.flushInput()
+        arduino.setDTR(True)
+        time.sleep(0.1)
+        arduino.setDTR(False)
+        time.sleep(0.1)
+        arduino.flushInput()
+        arduino.setDTR(True)
+        time.sleep(0.5)
+
+
 def find_arduinos():
     devs = []
     all = usb.core.find(find_all=True)
@@ -288,18 +328,21 @@ def burn_bootloader(sketch):
 
 def reset_arduino_usb():
     USBDEVFS_RESET = 21780
-    lsusb_out = Popen("lsusb | grep -i %s" % 'Arduino', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                      close_fds=True).stdout.read().strip().split()
-    while len(lsusb_out):
-        bus = lsusb_out[1]
-        device = lsusb_out[3][:-1]
+    lsusb_out = Popen("lsusb | grep -i Arduino", shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
+    if type(lsusb_out)==bytes:
+        lsusb_out=lsusb_out.decode('utf-8')
+    lsusb_out=lsusb_out.strip().split('\n')
+    for d in lsusb_out:
+        dd=d.split(' ')
+        bus = dd[1]
+        device = dd[3][:-1]
         try:
             print('Resetting Arduino. Bus:', bus, 'Device: ', device)
             f = open("/dev/bus/usb/%s/%s" % (bus, device), 'w', os.O_WRONLY)
             fcntl.ioctl(f, USBDEVFS_RESET, 0)
         except Exception as msg:
             print("failed to reset device: %s" % msg)
-        lsusb_out = lsusb_out[8:]
+
 
 
 # ##############################################################
