@@ -13,7 +13,9 @@ import usb.core
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 import stretch_body.device
+
 import serial
+from colorama import Fore, Style
 
 
 # ###################################
@@ -265,48 +267,53 @@ def find_ftdi_port():
 
 
 # ###################################
+
+
 def compile_arduino_firmware(sketch_name, repo_path):
     """
     :param sketch_name: eg 'hello_stepper'
     :return T if success:
     """
-    compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s %s/arduino/%s' % (
-    sketch_name, repo_path, sketch_name)
+    text='------------------------ Compile Arduino Firmware {} ------------------------'.format(sketch_name)
+    print(Style.BRIGHT + Fore.BLUE + text + Style.RESET_ALL)
+    compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s %s/arduino/%s' % (sketch_name, repo_path, sketch_name)
     print(compile_command)
     c = Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
     return c.find(b'Sketch uses') > -1
 
 
-def burn_arduino_firmware(port, sketch_name, repo_path):
-    print('-------- Flashing firmware %s | %s ------------' % (port, sketch_name))
-    port_name = Popen("ls -l " + port, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE,
-                      close_fds=True).stdout.read().strip().split()[-1]
-    port_name = port_name.decode("utf-8")
+def burn_arduino_firmware(port, sketch_name,repo_path):
+    text='------------------------ Flashing firmware %s | %s ------------------------' % (port, sketch_name)
+    print(Style.BRIGHT + Fore.BLUE + text + Style.RESET_ALL)
+
+    port_name = Popen("ls -l " + port, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip().split()[-1]
+    port_name=port_name.decode("utf-8")
+    if '/dev/' != port_name[:5]:
+        port_name = f"/dev/{port_name}"
     if port_name is not None:
-        upload_command = 'arduino-cli upload -p %s --fqbn hello-robot:samd:%s %s/arduino/%s' % (
-        port_name, sketch_name, repo_path, sketch_name)
-        print('Running: %s' % upload_command)
+        upload_command = 'arduino-cli upload -p %s --fqbn hello-robot:samd:%s %s/arduino/%s' % (port_name, sketch_name,repo_path, sketch_name)
+        print('Running: %s'%upload_command)
         u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
         uu = u.split(b'\n')
-        # Pretty print the result
+        #Pretty print the result
         for l in uu:
-            k = l.split(b'\r')
-            if len(k) == 1:
+            k=l.split(b'\r')
+            if len(k)==1:
                 print(k[0].decode('utf-8'))
             else:
                 for m in k:
                     print(m.decode('utf-8'))
         print('################')
-        success = uu[-1] == b'CPU reset.'
+        success=uu[-1]==b'CPU reset.'
         if not success:
-            print('Firmware flash. Failed to upload to %s' % (port))
+            print('Firmware flash. Failed to upload to %s'% ( port))
+            return False
         else:
             print('Success in firmware flash')
-        return success
+        return True
     else:
-        print('Firmware flash. Failed to find device %s' % (port))
+        print('Firmware flash. Failed to find device %s' % ( port))
         return False
-
 
 def burn_bootloader(sketch):
     print('-------- Burning bootlader ------------')

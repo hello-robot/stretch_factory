@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from stretch_factory.hello_device_utils import compile_arduino_firmware, burn_arduino_firmware
 import os.path

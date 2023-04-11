@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import sys
+import time
 import argparse
 import stretch_body.hello_utils as hu
 import click
@@ -44,9 +46,11 @@ class TraceMgmt:
             self.pretty_print_segments(segs, active_seg_id)
             self.pretty_print_fields(trace_data)
             print(Style.BRIGHT + '############### MENU ################' + Style.RESET_ALL)
-            print('Enter command. (q to quit)')
+            print('Enter command.')
             print('s: set active trace')
             print('p: plot')
+            print('d: print')
+            print('q: quit')
             print('-------------------------------------')
             try:
                 r = input()
@@ -57,6 +61,8 @@ class TraceMgmt:
                     trace_data = self.get_trace_data(segs[active_seg_id])
                 elif r == 'p':
                     self.do_plot(trace_data)
+                elif r == 'd':
+                    self.do_print(trace_data)
                 else:
                     print('Invalid entry')
             except(TypeError, ValueError):
@@ -75,33 +81,53 @@ class TraceMgmt:
         plt.ion()  # enable interactivity
 
         fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
-        fig.canvas.set_window_title('TRACE')
+        plt.title('TRACE')
         axes.set_yscale('linear')
         axes.set_xlabel('Time (m)')
         axes.set_ylabel(kk[id1].upper())
         axes.grid(True)
         axes.plot(xval, yval, 'b')
         fig.canvas.draw_idle()
+
+    def do_print(self,trace_data):
+        print(Style.BRIGHT + '############### Print ################' + Style.RESET_ALL)
+        self.pretty_print_fields(trace_data)
+        kk = list(trace_data['trace'].keys())
+        kk.sort()
+        id1 = self.get_int([0, len(kk) - 1], msg='FIELD ID')
+        print('')
+        yval = trace_data['trace'][kk[id1]]
+        xval = np.array(trace_data['trace']['timestamp'])
+        xval = (xval - xval[0]) / 60.0
+        for i in range(len(yval)):
+            print('%f: %f'%(xval[i],yval[i]))
+
     def pretty_print_fields(self,trace_data):
         i=0
-        click.secho('%s | %s |  %s ' % ('ID'.ljust(8), 'FIELD'.ljust(25), 'SAMPLES'.ljust(25)), fg="cyan",bold=True)
+        click.secho('%s | %s |  %s ' % ('ID'.ljust(8), 'FIELD'.ljust(50), 'SAMPLES'.ljust(25)), fg="cyan",bold=True)
         click.secho('-' * 110, fg="cyan", bold=True)
         kk=list(trace_data['trace'].keys())
         kk.sort()
         for k in kk:
-            click.secho('%s | %s |  %s ' % (str(i).ljust(8), str(k).ljust(25), str(len(trace_data['trace'][k])).ljust(25)), fg="cyan",bold=True)
+            click.secho('%s | %s |  %s ' % (str(i).ljust(8), str(k).ljust(50), str(len(trace_data['trace'][k])).ljust(25)), fg="cyan",bold=True)
             i=i+1
         print('')
 
     def pretty_print_segments(self,segs,active_seg_id):
-        click.secho('%s | %s |  %s |  %s' % ('TRACE'.ljust(8), 'DURATION(m)'.ljust(25), 'START'.ljust(30), 'END'.ljust(30)), fg="cyan",bold=True)
+        click.secho('%s | %s |  %s |  %s' % ('TRACE'.ljust(8), 'DURATION'.ljust(25), 'START'.ljust(30), 'END'.ljust(30)), fg="cyan",bold=True)
         click.secho('-' * 110, fg="cyan", bold=True)
         for i in range(len(segs)):
-            duration = (segs[i]['ts_end'] - segs[i]['ts_start']) / 60
+            duration = (segs[i]['ts_end'] - segs[i]['ts_start'])
+            if duration >= 60 * 60 * 24:
+                print('ERROR: trace longer than 1 day')
+                sys.exit(1)
+            duration_str = time.strftime('%H:%M:%S', time.gmtime(duration))
+            if duration_str[0:3] == '00:':
+                duration_str = duration_str[3:]
             dt_start = datetime.fromtimestamp(segs[i]['ts_start'])
             dt_end = datetime.fromtimestamp(segs[i]['ts_end'])
 
-            ln='%s | %s |  %s |  %s' % (str(i).ljust(8), ('%.2f'%duration).ljust(25), str(dt_start).ljust(30), str(dt_end).ljust(30))
+            ln='%s | %s |  %s |  %s' % (str(i).ljust(8), (duration_str).ljust(25), str(dt_start).ljust(30), str(dt_end).ljust(30))
             if i==active_seg_id:
                 click.secho(ln, fg="yellow")
             else:
@@ -170,3 +196,4 @@ class TraceMgmt:
 
 mgmt=TraceMgmt()
 mgmt.run_menu()
+
