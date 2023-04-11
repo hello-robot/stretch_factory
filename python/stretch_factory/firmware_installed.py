@@ -45,21 +45,23 @@ class FirmwareInstalled():
                     dd = stretch_body.pimu.Pimu()
                 else:
                     dd = stretch_body.stepper.Stepper('/dev/' + device)
-                dd.startup()
-                if dd.board_info['firmware_version'] is not None:  # Was able to pull board info from device
-                    self.config_info[device] = {}
-                    self.config_info[device]['board_info'] = dd.board_info.copy()
-                    try:
-                        self.config_info[device]['supported_protocols'] = list(dd.supported_protocols.keys())
-                    except AttributeError:
-                        # Older versions of stretch body used a different represenation
-                        self.config_info[device]['supported_protocols'] = [dd.valid_firmware_protocol]
-                    self.config_info[device]['installed_protocol_valid'] = (
-                                dd.board_info['protocol_version'] in self.config_info[device]['supported_protocols'])
-                    self.config_info[device]['version'] = FirmwareVersion(self.config_info[device]['board_info']['firmware_version'])
-                    dd.stop()
+                if not dd.startup():
+                    click.secho('Unable to communicate with device %s'%device,fg="red", bold=True)
                 else:
-                    self.config_info[device] = None
+                    if dd.board_info['firmware_version'] is not None:  # Was able to pull board info from device
+                        self.config_info[device] = {}
+                        self.config_info[device]['board_info'] = dd.board_info.copy()
+                        try:
+                            self.config_info[device]['supported_protocols'] = list(dd.supported_protocols.keys())
+                        except AttributeError:
+                            # Older versions of stretch body used a different represenation
+                            self.config_info[device]['supported_protocols'] = [dd.valid_firmware_protocol]
+                        self.config_info[device]['installed_protocol_valid'] = (
+                                    dd.board_info['protocol_version'] in self.config_info[device]['supported_protocols'])
+                        self.config_info[device]['version'] = FirmwareVersion(self.config_info[device]['board_info']['firmware_version'])
+                        dd.stop()
+                    else:
+                        self.config_info[device] = None
 
     def get_supported_protocols(self, device_name):
         if self.is_device_valid(device_name):

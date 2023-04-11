@@ -13,6 +13,7 @@ import usb.core
 import stretch_body.hello_utils as hello_utils
 import stretch_body.robot_params
 import stretch_body.device
+import serial
 
 
 # ###################################
@@ -158,6 +159,23 @@ def find_steppers_on_bus():
 
 
 # ###################################
+
+def place_arduino_in_bootloader(port):
+    print('Putting %s into bootloader mode.'%port)
+    arduino = serial.Serial(port, baudrate=1200)
+    with arduino:  # the reset part is actually optional but the sleep is nice to have either way.
+        arduino.setDTR(False)
+        time.sleep(0.1)
+        arduino.flushInput()
+        arduino.setDTR(True)
+        time.sleep(0.1)
+        arduino.setDTR(False)
+        time.sleep(0.1)
+        arduino.flushInput()
+        arduino.setDTR(True)
+        time.sleep(0.5)
+
+
 def find_arduinos():
     devs = []
     all = usb.core.find(find_all=True)
