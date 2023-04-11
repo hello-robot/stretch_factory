@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import argparse
 from stretch_factory.firmware_available import FirmwareAvailable
 from stretch_factory.firmware_recommended import FirmwareRecommended
