@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(description='Tool to directly flash Stretch fir
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--map", help="Print mapping from ttyACMx to Hello devices", action="store_true")
 group.add_argument('--flash', nargs=2, type=str, help='Flash firmware. E.g, --flash /dev/ttyACM0 hello-motor-arm')
-group.add_argument('--boot', nargs=1, type=str, help='Place board in bootloader mode. E.g, --reset /dev/ttyACM0')
+group.add_argument('--boot', nargs=1, type=str, help='Place board in bootloader mode. E.g, --boot /dev/ttyACM0')
 
 
 args = parser.parse_args()
@@ -72,10 +72,10 @@ if args.flash:
         print(Fore.RED + 'Invalid Device name')
         sys.exit()
 
-    repo_path = os.path.expanduser('~/repos/stretch_firmware')
+    repo_path = os.path.expanduser('~/stretch_firmware')
     if not os.path.exists(repo_path):
         print('Firmware not present')
-        print('Clone https://github.com/hello-robot/stretch_firmware to ~/repos/stretch_firmware first')
+        print('Clone https://github.com/hello-robot/stretch_firmware to ~/stretch_firmware first')
         sys.exit()
     t = 'Choose a Firmware Version'
     print(Style.BRIGHT + t)
