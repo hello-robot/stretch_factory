@@ -225,16 +225,21 @@ class FirmwareUpdater():
                     if self.fw_installed.is_device_valid(d):
                         nretry=3
                         for i in range(nretry):
-                            self.state['completed'][d]['flash']=self.do_device_flash(d,self.target[d].to_string(),self.state['repo_path'],self.state['verbose'])
-                            if not self.state['completed'][d]['flash']:
+                            compile_fail, upload_success=self.do_device_flash(d,self.target[d].to_string(),self.state['repo_path'],self.state['verbose'])
+                            self.state['completed'][d]['flash'] = not compile_fail and upload_success
+                            if self.state['completed'][d]['flash']:
+                                break
+                            if compile_fail:
+                                click.secho('WARNING: Firmware failed to compile. Fix source then try again', fg="red",bold=True)
+                                break
+                            if not upload_success: #Dont retry if compile failure
                                 #It may get here if the usb bus connectoin fails during flash
                                 #Attempt to reset the device and then try again
                                 print('Retrying firmware flash for %s'%d)
                                 port=fwu.get_port_name(d)
                                 if port is not None:
                                     hdu.place_arduino_in_bootloader('/dev/'+port)
-                            else:
-                                break
+                           
                     else:
                         click.secho('WARNING: Unable to flash %s as device not valid'%d, fg="yellow", bold=True)
                         self.state['completed'][d]['flash'] =False
@@ -323,7 +328,9 @@ class FirmwareUpdater():
 
 # ########################################################################################################################
     def do_device_flash(self, device_name, tag, repo_path=None, verbose=False, port_name=None):
-        #click.secho('-------- FIRMWARE FLASH %s | %s ------------' % (device_name, tag), fg="cyan", bold=True)
+        """
+        Return compile_fail, upload_success
+        """
         config_file = self.fw_available.repo_path + '/arduino-cli.yaml'
 
         fwu.user_msg_log('Config: ' + str(config_file), user_display=verbose)
@@ -333,13 +340,13 @@ class FirmwareUpdater():
 
         if sketch_name == 'hello_stepper' and not fwu.does_stepper_have_encoder_calibration_YAML(device_name):
             print('Encoder data has not been stored for %s and may be lost. Aborting firmware flash.' % device_name)
-            return False
+            return False, False
 
         if port_name is None:
             print('Looking for device %s on bus' % device_name)
             if not fwu.wait_on_device(device_name, timeout=5.0):
                 print('Failure: Device not on bus.')
-                return False
+                return False, False
             port_name = fwu.get_port_name(device_name)
 
         fwu.user_msg_log('Device: %s Port: %s' % (device_name, port_name), user_display=verbose)
@@ -372,7 +379,7 @@ class FirmwareUpdater():
             success = (str(cc[0]).find('Sketch uses') != -1)
             if not success:
                 print('Firmware failed to compile %s at %s' % (sketch_name, src_path))
-                return False
+                return True, False
             else:
                 print('Success in firmware compile')
 
@@ -401,13 +408,13 @@ class FirmwareUpdater():
 
             if not success:
                 print('Firmware flash. Failed to upload to %s' % (port_name))
-                return False
+                return False, False
             else:
                 click.secho('Success in firmware flash' , fg="green")
-                return True
+                return False, True
         else:
             print('Firmware update %s. Failed to find device %s' % (tag, device_name))
-            return False
+            return False, False
 
 # ########################################################################################################3
     def wait_on_return_to_bus(self,device_name):
