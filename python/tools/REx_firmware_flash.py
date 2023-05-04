@@ -11,8 +11,10 @@ from colorama import Fore, Style
 import stretch_body.device
 import click
 import stretch_factory.hello_device_utils as hdu
-import stretch_factory.firmware_utils as fwu
 import serial
+import subprocess
+import yaml
+
 
 hu.print_stretch_re_use()
 
@@ -38,8 +40,24 @@ def does_stepper_have_encoder_calibration_YAML(device_name):
     enc_data = stretch_body.hello_utils.read_fleet_yaml(fn)
     return len(enc_data) != 0
 
-fwu.check_arduino_cli_install()
+def execute_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
 
+def check_setup_arduino_cli():
+    result = execute_command('arduino-cli version')
+    if 'Version:' not in result:
+        target_version = '0.31.0'
+        os.system(f"curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s {target_version}'")
+    os.system('arduino-cli config init')
+    os.system('arduino-cli core install arduino:samd@1.6.21')
+    config_file = os.path.expanduser('~/.arduino15/arduino-cli.yaml')
+    with open(config_file, 'r') as file:
+        data = yaml.safe_load(file)
+        data['directories']['user:'] = os.path.expanduser('~/stretch_firmware/arduino')
+    with open(config_file, 'w') as file:
+        yaml.dump(data, file)
+        
 if args.boot:
     hdu.place_arduino_in_bootloader(args.boot[0])
     exit()
@@ -78,11 +96,12 @@ if args.flash:
     repo_path = os.path.expanduser('~/stretch_firmware')
     if not os.path.exists(repo_path):
         print('Stretch Firmware folder not present')
-        s = click.prompt("'Clone https://github.com/hello-robot/stretch_firmware to ~/stretch_firmware first'?(y/n)")
+        s = click.prompt("'Clone https://github.com/hello-robot/stretch_firmware to ~/stretch_firmware first'? (y/n)")
         if s=='y':
             os.system("cd ~/;git clone https://github.com/hello-robot/stretch_firmware")
         else:
             sys.exit()
+    check_setup_arduino_cli()
     t = 'Choose a Firmware Version'
     print(Style.BRIGHT + t)
     print('=' * len(t))
@@ -105,7 +124,7 @@ if args.flash:
         time.sleep(1.0)
         if burn_arduino_firmware(port, sketch_name, repo_path):
             print(Fore.GREEN + f"Burned Arduino Sketch:{sketch_name} Successfully to port:{port}." + Style.RESET_ALL)
-            if sketch_name == 'hello_stepper' and 'hello-' in port:
+            if sketch_name == 'hello_stepper':
                 time.sleep(3)
                 os.system(f"REx_stepper_calibration_YAML_to_flash.py {device}")
         else:
