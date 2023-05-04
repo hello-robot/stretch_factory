@@ -11,6 +11,7 @@ from colorama import Fore, Style
 import stretch_body.device
 import click
 import stretch_factory.hello_device_utils as hdu
+import stretch_factory.firmware_utils as fwu
 import serial
 
 hu.print_stretch_re_use()
@@ -36,6 +37,8 @@ def does_stepper_have_encoder_calibration_YAML(device_name):
     fn = 'calibration_steppers/' + device_name + '_' + sn + '.yaml'
     enc_data = stretch_body.hello_utils.read_fleet_yaml(fn)
     return len(enc_data) != 0
+
+fwu.check_arduino_cli_install()
 
 if args.boot:
     hdu.place_arduino_in_bootloader(args.boot[0])
@@ -74,9 +77,12 @@ if args.flash:
 
     repo_path = os.path.expanduser('~/stretch_firmware')
     if not os.path.exists(repo_path):
-        print('Firmware not present')
-        print('Clone https://github.com/hello-robot/stretch_firmware to ~/stretch_firmware first')
-        sys.exit()
+        print('Stretch Firmware folder not present')
+        s = click.prompt("'Clone https://github.com/hello-robot/stretch_firmware to ~/stretch_firmware first'?(y/n)")
+        if s=='y':
+            os.system("cd ~/;git clone https://github.com/hello-robot/stretch_firmware")
+        else:
+            sys.exit()
     t = 'Choose a Firmware Version'
     print(Style.BRIGHT + t)
     print('=' * len(t))
