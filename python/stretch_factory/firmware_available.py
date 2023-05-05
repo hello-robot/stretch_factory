@@ -20,7 +20,7 @@ class FirmwareAvailable():
         self.__get_available_firmware_versions()
 
     def __clone_firmware_repo(self):
-        print('Collecting information...')
+        print('Collecting information...', end='')
         self.repo_path = '/tmp/stretch_firmware_update'
         if not os.path.isdir(self.repo_path):
             # print('Cloning latest version of Stretch Firmware to %s'% self.repo_path)
@@ -85,7 +85,13 @@ class FirmwareAvailable():
         if len(self.versions[device_name]) == 0:
             return None
         recent = None
-        s = [int(x[1:]) for x in supported_protocols]
+        if supported_protocols is not None:
+            s = [int(x[1:]) for x in supported_protocols]
+        else:
+            class Everything(object):
+                def __contains__(self, other):
+                    return True
+            s = Everything()
         supported_versions = []
         for v in self.versions[device_name]:
             if v.protocol in s:
