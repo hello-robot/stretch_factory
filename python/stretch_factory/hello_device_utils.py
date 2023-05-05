@@ -8,6 +8,7 @@ import fcntl
 import subprocess
 import sys
 import glob
+import yaml
 from subprocess import Popen, PIPE
 import usb.core
 import stretch_body.hello_utils as hello_utils
@@ -268,21 +269,36 @@ def find_ftdi_port():
 
 # ###################################
 
+def create_arduinocli_config_file(firmware_path):
+    arduino_config = {'board_manager': {'additional_urls': []},
+                        'daemon': {'port': '50051'},
+                        'directories': {'data': os.environ['HOME'] + '/.arduino15',
+                                        'downloads': os.environ['HOME'] + '/.arduino15/staging',
+                                        'user': firmware_path + '/arduino'},
+                        'library': {'enable_unsafe_install': False},
+                        'logging': {'file': '', 'format': 'text', 'level': 'info'},
+                        'metrics': {'addr': ':9090', 'enabled': True},
+                        'sketch': {'always_export_binaries': False},
+                        'telemetry': {'addr': ':9090', 'enabled': True}}
+    with open(firmware_path + '/arduino-cli.yaml', 'w') as yaml_file:
+        yaml.dump(arduino_config, yaml_file, default_flow_style=False)
+    return firmware_path + '/arduino-cli.yaml'
 
-def compile_arduino_firmware(sketch_name, repo_path):
+def compile_arduino_firmware(sketch_name, repo_path, config_file=None):
     """
     :param sketch_name: eg 'hello_stepper'
     :return T if success:
     """
     text='------------------------ Compile Arduino Firmware {} ------------------------'.format(sketch_name)
     print(Style.BRIGHT + Fore.BLUE + text + Style.RESET_ALL)
-    compile_command = 'arduino-cli compile --fqbn hello-robot:samd:%s %s/arduino/%s' % (sketch_name, repo_path, sketch_name)
-    print(compile_command)
+    config_file_option = f' --config-file {config_file}' if config_file else ''
+    compile_command = f'arduino-cli compile{config_file_option} --fqbn hello-robot:samd:{sketch_name} {repo_path}/arduino/{sketch_name}'
+    print(f'Running: {compile_command}')
     c = Popen(compile_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
     return c.find(b'Sketch uses') > -1
 
 
-def burn_arduino_firmware(port, sketch_name,repo_path):
+def burn_arduino_firmware(port, sketch_name, repo_path, config_file=None, verbose=False):
     text='------------------------ Flashing firmware %s | %s ------------------------' % (port, sketch_name)
     print(Style.BRIGHT + Fore.BLUE + text + Style.RESET_ALL)
 
@@ -291,25 +307,26 @@ def burn_arduino_firmware(port, sketch_name,repo_path):
     if '/dev/' != port_name[:5]:
         port_name = f"/dev/{port_name}"
     if port_name is not None:
-        upload_command = 'arduino-cli upload -p %s --fqbn hello-robot:samd:%s %s/arduino/%s' % (port_name, sketch_name,repo_path, sketch_name)
-        print('Running: %s'%upload_command)
+        config_file_option = f' --config-file {config_file}' if config_file else ''
+        upload_command = f'arduino-cli upload{config_file_option} -p {port_name} --fqbn hello-robot:samd:{sketch_name} {repo_path}/arduino/{sketch_name}'
+        print(f'Running: {upload_command}')
         u = Popen(upload_command, shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read().strip()
         uu = u.split(b'\n')
-        #Pretty print the result
-        for l in uu:
-            k=l.split(b'\r')
-            if len(k)==1:
-                print(k[0].decode('utf-8'))
-            else:
-                for m in k:
-                    print(m.decode('utf-8'))
-        print('################')
+        if verbose:
+            #Pretty print the result
+            for l in uu:
+                k=l.split(b'\r')
+                if len(k)==1:
+                    print(k[0].decode('utf-8'))
+                else:
+                    for m in k:
+                        print(m.decode('utf-8'))
+            print('################')
         success=uu[-1]==b'CPU reset.'
         if not success:
             print('Firmware flash. Failed to upload to %s'% ( port))
             return False
-        else:
-            print('Success in firmware flash')
+        print('Success in firmware flash')
         return True
     else:
         print('Firmware flash. Failed to find device %s' % ( port))
