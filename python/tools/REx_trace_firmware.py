@@ -104,6 +104,7 @@ class TraceMgmt:
             print('s: save trace to file')
             print('y: display trace data')
             print('x: print trace to console')
+            print('q: quit')
             print('-------------------------------------')
             #try:
             r = input()
@@ -122,7 +123,8 @@ class TraceMgmt:
             elif r== 'x':
                 print(trace_data)
             else:
-                print('Invalid entry')
+                self.device.pull_status()
+                self.device.pretty_print()
             # except(TypeError, ValueError):
             #     print('Invalid entry')
 
@@ -137,7 +139,6 @@ class TraceMgmt:
         input("Hit enter to end recording")
         self.device.disable_firmware_trace()
         self.device.push_command()
-
         print('Reading trace back from recording. This may take a minute...')
         trace_data = self.device.read_firmware_trace()
         if len(trace_data)==0:
@@ -204,7 +205,8 @@ class TraceMgmt:
 
             plt.ion()  # enable interactivity
             fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
-            fig.canvas.set_window_title('TRACE %s | %s' % (self.device_name.upper(), 'X'))
+            if fig.canvas.manager is not None:
+                fig.canvas.manager.set_window_title('TRACE %s | %s' % (self.device_name.upper(), field_name.upper()))
             axes.set_yscale('linear')
             axes.set_xlabel('Sample')
             axes.set_ylabel('X')
@@ -237,7 +239,8 @@ class TraceMgmt:
 
         plt.ion()  # enable interactivity
         fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
-        fig.canvas.set_window_title('TRACE %s | %s'%(self.device_name.upper(),field_name.upper()))
+        if fig.canvas.manager is not None:
+            fig.canvas.manager.set_window_title('TRACE %s | %s' % (self.device_name.upper(), field_name.upper()))
         axes.set_yscale('linear')
         axes.set_xlabel('Sample')
         axes.set_ylabel(field_name.upper())
@@ -270,7 +273,8 @@ class TraceMgmt:
 
         plt.ion()  # enable interactivity
         fig, axes = plt.subplots(1, 1, figsize=(15.0, 8.0), sharex=True)
-        fig.canvas.set_window_title('TRACE %s | %s'%(self.device_name.upper(),field_name.upper()))
+        if fig.canvas.manager is not None:
+            fig.canvas.manager.set_window_title('TRACE %s | %s' % (self.device_name.upper(), field_name.upper()))
         axes.set_yscale('linear')
         axes.set_xlabel('Sample')
         axes.set_ylabel(field_name.upper())
