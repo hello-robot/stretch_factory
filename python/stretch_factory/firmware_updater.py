@@ -531,8 +531,13 @@ class FirmwareUpdater():
                             default_id = i
                         print('%d: %s' % (i, vs[i]))
                     print('----------------------')
-
-                    self.target[device_name] = vt
+                    id = click.prompt('Please enter desired version id [Recommended]', default=default_id)
+                    if id >= 0 and id < len(vs):
+                        vt = vs[id]
+                    else:
+                        click.secho('Invalid ID', fg="red")
+                print('Selected version %s for device %s' % (vt, device_name))
+                self.target[device_name] = vt
         print('')
         print('')
         return True
