@@ -470,6 +470,10 @@ class FirmwareUpdater():
         if not dd.startup():
             click.secho('FAIL: Unable to establish comms with device %s' % device_name.upper(), fg="red")
             return False
+        else:
+            time.sleep(0.5)
+            dd.stop()
+            del dd
         click.secho('PASS: Established comms with device %s ' % device_name.upper(),fg="green")
         return True
 # ########################################################################################################3
@@ -645,11 +649,16 @@ class FirmwareUpdater():
 
 
     def create_arduino_config_file(self):
+        if  self.state['install_path']:
+            user_path = self.state['install_path']
+        else:
+            user_path = self.fw_available.repo_path + '/arduino'
+       
         arduino_config = {'board_manager': {'additional_urls': []},
                           'daemon': {'port': '50051'},
                           'directories': {'data': os.environ['HOME'] + '/.arduino15',
                                           'downloads': os.environ['HOME'] + '/.arduino15/staging',
-                                          'user': self.fw_available.repo_path + '/arduino'},
+                                          'user': user_path},
                           'library': {'enable_unsafe_install': False},
                           'logging': {'file': '', 'format': 'text', 'level': 'info'},
                           'metrics': {'addr': ':9090', 'enabled': True},
