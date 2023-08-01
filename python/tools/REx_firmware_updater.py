@@ -130,8 +130,8 @@ if args.available:
 
 if args.resume or args.install or args.install_version or args.install_branch or args.install_path:
     u = FirmwareUpdater(use_device, args)
-    u.run()
-    exit()
+    success = u.run()
+    exit(0 if success else 1)
 else:
     parser.print_help()
 

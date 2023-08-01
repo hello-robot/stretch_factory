@@ -25,7 +25,7 @@ def check_ubuntu_version():
     res = Popen(shlex.split('cat /etc/lsb-release | grep DISTRIB_RELEASE'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read().strip(b'\n')
     return res == b'DISTRIB_RELEASE=18.04'
 
-def check_arduino_cli_install():
+def check_arduino_cli_install(no_prompts=False):
     target_version = b'0.31.0'  # 0.18.3'
     version = 'None'
     res = Popen(shlex.split('arduino-cli version'), shell=False, bufsize=64, stdin=PIPE, stdout=PIPE,close_fds=True).stdout.read()
@@ -41,12 +41,13 @@ def check_arduino_cli_install():
                     fg="yellow", bold=True)
         click.secho('WARNING: Compatible version of arduino_cli not installed. ', fg="yellow", bold=True)
         click.secho('Requires version %s. Installed version of %s' % (target_version, version))
-        if click.confirm('Install now?'):
+        if no_prompts or click.confirm('Install now?'):
             os.system(
                 'curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin/ sh -s %s' % target_version.decode(
                     'utf-8'))
-            os.system('arduino-cli config init')
+            os.system('arduino-cli config init --overwrite')
             os.system('arduino-cli core install arduino:samd@1.6.21')
+            os.system("sed -i -e 's#Arduino#repos/stretch_firmware/arduino#g' ~/.arduino15/arduino-cli.yaml")
             return True
         else:
             return False

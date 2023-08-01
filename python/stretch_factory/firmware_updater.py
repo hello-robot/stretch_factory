@@ -104,7 +104,7 @@ class FirmwareUpdater():
         self.fw_recommended = FirmwareRecommended(self.state['use_device'], self.fw_installed, self.fw_available)
 
         self.create_arduino_config_file()
-        self.ready_to_run = fwu.check_arduino_cli_install()
+        self.ready_to_run = fwu.check_arduino_cli_install(self.state['no_prompts'])
 
         # Set the target version to flash to recommended for each device
         #This dict has a FirmwareVersion target for each device that has a valid (and desired) update
