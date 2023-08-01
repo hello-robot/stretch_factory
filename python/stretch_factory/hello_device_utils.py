@@ -62,22 +62,6 @@ def check_internet():
 
 
 # ###################################
-def check_arduino_cli_install():
-    """
-    Return true if the arduino-cli is available
-    """
-    res = Popen('arduino-cli version', shell=True, bufsize=64, stdin=PIPE, stdout=PIPE, close_fds=True).stdout.read()[
-          :11]
-    if not (res == b'arduino-cli'):
-        print('WARNING:---------------------------------------------------------------------------------')
-        print('WARNING: Tool arduino_cli not installed. See stretch_install_dev.sh (Stretch Install repo)')
-        print('WARNING:---------------------------------------------------------------------------------')
-        print('')
-        return False
-    return True
-
-
-# ###################################
 def exec_process(cmdline, silent, input=None, **kwargs):
     """Execute a subprocess and returns the returncode, stdout buffer and stderr buffer.
        Optionally prints stdout and stderr while running."""
