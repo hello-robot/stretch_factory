@@ -51,7 +51,7 @@ class FirmwareUpdater():
         else:
             if state_from_yaml:
                 click.secho('WARNING: A previous firmware update is incomplete', fg="yellow", bold=True)
-                click.secho('WARNING: Run REx_firmware_udpater.py --resume', fg="yellow", bold=True)
+                click.secho('WARNING: Run REx_firmware_updater.py --resume', fg="yellow", bold=True)
                 click.secho('WARNING: Or delete file %s and try again.'%self.resume_tmp_filename, fg="yellow",bold=True)
                 self.ready_to_run = False
                 return
@@ -153,7 +153,7 @@ class FirmwareUpdater():
             else:
                 click.secho('WARNING: Unable to resume update. Not all devices returned to bus successfully', fg="red", bold=True)
                 click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
             self.ready_to_run=False
         #At this point self.state dictionary has all information needed to run an update cycle
 
@@ -247,7 +247,7 @@ class FirmwareUpdater():
                     if not self.state['completed'][d]['flash']:
                         click.secho('WARNING: Device %s did not flash firmware successfully'%d, fg="red", bold=True)
                         click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                        click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                        click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                         self.to_yaml()
                         return False
 
@@ -258,7 +258,7 @@ class FirmwareUpdater():
                     if not self.state['completed'][d]['return_to_bus']:
                         click.secho('WARNING: Device %s did not return to bus successfully'%d, fg="red", bold=True)
                         click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                        click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                        click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                         self.to_yaml()
                         return False
 
@@ -271,7 +271,7 @@ class FirmwareUpdater():
                     if not self.state['completed'][d]['establish_comms']:
                         click.secho('WARNING: Device %s did not establish comms successfully'%d, fg="red", bold=True)
                         click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                        click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                        click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                         self.to_yaml()
                         return False
 
@@ -284,7 +284,7 @@ class FirmwareUpdater():
                         self.state['completed'][d]['establish_comms'] = False
                         click.secho('WARNING: Device %s has not updated to target firmware version'%d, fg="red", bold=True)
                         click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                        click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                        click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                         self.to_yaml()
                         return False
 
@@ -295,7 +295,7 @@ class FirmwareUpdater():
                 if not self.state['completed'][d]['calibration_flash']:
                     click.secho('WARNING: Device %s failed on encoder calibration flash'%d, fg="red", bold=True)
                     click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                    click.secho('WARNING: Then run: REx_firmware_udpater.py --resume', fg="red", bold=True)
+                    click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                     self.to_yaml()
                     return False
 
@@ -306,7 +306,7 @@ class FirmwareUpdater():
                 if not self.state['completed'][d]['return_to_bus2']:
                     click.secho('WARNING: Device %s did not return to bus successfully'%d, fg="red", bold=True)
                     click.secho('WARNING: Power cycle robot.', fg="red", bold=True)
-                    click.secho('WARNING: Then run: REx_firmware_udpater.py - -resume', fg="red", bold=True)
+                    click.secho('WARNING: Then run: REx_firmware_updater.py --resume', fg="red", bold=True)
                     self.to_yaml()
                     return False
                 print('\n\n\n')
