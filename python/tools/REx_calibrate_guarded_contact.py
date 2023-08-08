@@ -40,6 +40,12 @@ if args.lift:
     os.system('stretch_arm_home.py')
     os.system('stretch_wrist_yaw_home.py')
 
+if args.arm:
+    click.secho("The Lift and Wrist yaw will need to be first homed. Ensure workspace is collision free.",fg="yellow")
+    click.confirm("Proceed?")
+    os.system('stretch_lift_home.py')
+    os.system('stretch_wrist_yaw_home.py')
+
 if (j.name in j.user_params and 'contact_models' in j.user_params[j.name]) and ('effort_pct' in j.user_params[j.name]['contact_models']) \
         and ('contact_thresh_default' in j.user_params[j.name]['contact_models']['effort_pct']):
     click.secho('------------------------',fg="yellow")
