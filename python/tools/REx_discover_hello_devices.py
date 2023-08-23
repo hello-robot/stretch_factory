@@ -145,7 +145,7 @@ class DiscoverHelloDevices:
         Populate all the devices with FTDI vendor (dynamixel driver)
         """
         for k in self.all_tty_devices.keys():
-            if self.all_tty_devices[k]['vendor'] == 'FTDI':
+            if self.all_tty_devices[k]['vendor'] == 'FTDI' or self.all_tty_devices[k]['vendor_id'] == '0403' or  self.all_tty_devices[k]['model_id'] == '6001':
                 self.hello_dxl_devices[k] = self.all_tty_devices[k]
         print("Found {} dxl devices:".format(len(self.hello_dxl_devices.keys())))
         pprint.pprint(self.hello_dxl_devices, width=40)
@@ -203,7 +203,7 @@ class DiscoverHelloDevices:
         end_pose = self.get_all_stepper_poses()
         moved_motors = self.get_moved_motor(start_pose, end_pose)
         cnt = list(moved_motors.values()).count(True)
-        if self.assertEqual(cnt, 2, "More than two motor or none moved"):
+        if self.assertEqual(cnt, 2, f"No. motors moved={cnt}. Wrong number of motors or none moved"):
             wheel_motors = [k for k in list(moved_motors.keys()) if moved_motors[k]]
 
             """Both the unknown sides wheel motor poses are pulled in 'hello-motor-left' wheel configuration. When the 

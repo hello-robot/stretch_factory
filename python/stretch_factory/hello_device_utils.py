@@ -549,12 +549,16 @@ def find_tty_devices():
     for d in ttyACM_dev_list:
         devices_dict[d] = {"serial": extract_udevadm_info(d, 'ID_SERIAL_SHORT'),
                            "vendor": extract_udevadm_info(d, 'ID_VENDOR'),
+                           "vendor_id": extract_udevadm_info(d, 'ID_VENDOR_ID'),
                            "model": extract_udevadm_info(d, 'ID_MODEL'),
+                           "model_id": extract_udevadm_info(d, 'ID_MODEL_ID'),
                            "path": extract_udevadm_info(d, 'DEVPATH')}
     for d in ttyUSB_dev_list:
         devices_dict[d] = {"serial": extract_udevadm_info(d, 'ID_SERIAL_SHORT'),
                            "vendor": extract_udevadm_info(d, 'ID_VENDOR'),
+                           "vendor_id": extract_udevadm_info(d, 'ID_VENDOR_ID'),
                            "model": extract_udevadm_info(d, 'ID_MODEL'),
+                           "model_id": extract_udevadm_info(d, 'ID_MODEL_ID'),
                            "path": extract_udevadm_info(d, 'DEVPATH')}
     return devices_dict
 
