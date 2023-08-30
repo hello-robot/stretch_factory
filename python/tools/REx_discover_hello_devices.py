@@ -52,11 +52,15 @@ class DiscoverHelloDevices:
     def get_all_stepper_poses(self):
         poses = {}
         for k in list(self.hello_stepper_devices.keys()):
-            motor = stretch_body.stepper.Stepper(usb=k, name='hello-motor-left-wheel')
-            self.assertTrue(motor.startup(), "Unable to start stepper motor at {}".format(k))
-            motor.pull_status()
-            poses[k] = motor.status['pos']
-            motor.stop()
+            try:
+                motor = stretch_body.stepper.Stepper(usb=k, name='hello-motor-left-wheel')
+                self.assertTrue(motor.startup(), "Unable to start stepper motor at {}".format(k))
+                motor.pull_status()
+                poses[k] = motor.status['pos']
+                motor.stop()
+            except Exception as e:
+                print(click.style(f"Unable to get pose from stepper at port:{k}.\nError: {e}",fg="red"))
+                poses[k] = None
         return poses
 
     def get_base_wheels_poses(self, left_wheel, right_wheel):
@@ -77,10 +81,11 @@ class DiscoverHelloDevices:
         pos_diff_thresh = 0.8
         moved_motors = {}
         for k in list(start_poses.keys()):
-            pos_diff = start_poses[k] - end_poses[k]
-            if abs(pos_diff) > pos_diff_thresh:
-                moved_motors[k] = True
-                print("Motor in {} was moved by {}".format(k, pos_diff))
+            if start_poses[k] is not None and end_poses[k] is not None:
+                pos_diff = start_poses[k] - end_poses[k]
+                if abs(pos_diff) > pos_diff_thresh:
+                    moved_motors[k] = True
+                    print("Motor in {} was moved by {}".format(k, pos_diff))
             else:
                 moved_motors[k] = False
         return moved_motors
