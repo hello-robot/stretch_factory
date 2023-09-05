@@ -1,7 +1,7 @@
 site_name: Stretch Factory
 site_url: https://docs.hello-robot.com/stretch_factory
 site_description: "Hello Robot Stretch Factory Documentation"
-copyright: 'Copyright &copy; 2022 Hello Robot Inc'
+copyright: 'Copyright &copy; 2023 Hello Robot Inc'
 site_author: Hello Robot Inc
 use_directory_urls: True
 docs_dir: .
