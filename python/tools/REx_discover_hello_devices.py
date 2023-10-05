@@ -270,17 +270,13 @@ class DiscoverHelloDevices:
         head_sn = None
         wrist_sn = None
         for k in list(found_ids.keys()):
+            print(found_ids[k])
             if found_ids[k] == [11, 12]:
                 head_sn = self.all_tty_devices[k]['serial']
                 self.hello_usb_alias[k] = "/dev/hello-dynamixel-head"
-            if self.robot_tool == "tool_stretch_dex_wrist":
-                if found_ids[k] == [13, 14, 15, 16]:
-                    wrist_sn = self.all_tty_devices[k]['serial']
-                    self.hello_usb_alias[k] = "/dev/hello-dynamixel-wrist"
-            else:
-                if found_ids[k] == [13, 14]:
-                    wrist_sn = self.all_tty_devices[k]['serial']
-                    self.hello_usb_alias[k] = "/dev/hello-dynamixel-wrist"
+            if 13 in found_ids[k]:
+                wrist_sn = self.all_tty_devices[k]['serial']
+                self.hello_usb_alias[k] = "/dev/hello-dynamixel-wrist"
         self.hello_dxl_sns["hello-dynamixel-head"] = head_sn
         self.hello_dxl_sns["hello-dynamixel-wrist"] = wrist_sn
         print("\n")
