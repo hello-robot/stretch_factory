@@ -270,7 +270,6 @@ class DiscoverHelloDevices:
         head_sn = None
         wrist_sn = None
         for k in list(found_ids.keys()):
-            print(found_ids[k])
             if found_ids[k] == [11, 12]:
                 head_sn = self.all_tty_devices[k]['serial']
                 self.hello_usb_alias[k] = "/dev/hello-dynamixel-head"
@@ -298,13 +297,16 @@ class DiscoverHelloDevices:
         print("Assigning FTDI devices SN to robot....")
         for k in list(self.hello_dxl_sns.keys()):
             try:
-                hdu.add_ftdi_udev_line(device_name=k, serial_no=self.hello_dxl_sns[k],
-                                       fleet_dir=hu.get_fleet_directory())
+                if self.hello_dxl_sns[k]:
+                    hdu.add_ftdi_udev_line(device_name=k, serial_no=self.hello_dxl_sns[k],
+                                        fleet_dir=hu.get_fleet_directory())
 
-                print("Pushing Udev files to /etc/udev/rules.d/....")
-                os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-                os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
-                os.system("sudo udevadm control --reload; sudo udevadm trigger")
+                    print("Pushing Udev files to /etc/udev/rules.d/....")
+                    os.system("sudo cp {}udev/95-hello-arduino.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+                    os.system("sudo cp {}udev/99-hello-dynamixel.rules /etc/udev/rules.d/".format(hu.get_fleet_directory()))
+                    os.system("sudo udevadm control --reload; sudo udevadm trigger")
+                else:
+                    print(click.style('Unable to find SN of {}. Skipping.'.format(k), fg='red'))
             except Exception as err:
                 print(click.style('ERROR [{}]: {}'.format(k, str(err)), fg='red'))
         print(click.style('UDEV rules and stretch configuration files specific to Dynamixels updated', fg='green',
@@ -316,23 +318,33 @@ class DiscoverHelloDevices:
 
         for k in list(self.hello_stepper_sns.keys()):
             try:
-                hdu.add_arduino_udev_line(device_name=k, serial_no=self.hello_stepper_sns[k],
-                                          fleet_dir=hu.get_fleet_directory())
-                dev = Device(k)
-                dev.write_configuration_param_to_YAML("{}.serial_no".format(k), self.hello_stepper_sns[k],
-                                                      hu.get_fleet_directory())
+                if self.hello_stepper_sns[k]:
+                    hdu.add_arduino_udev_line(device_name=k, serial_no=self.hello_stepper_sns[k],
+                                            fleet_dir=hu.get_fleet_directory())
+                    dev = Device(k)
+                    dev.write_configuration_param_to_YAML("{}.serial_no".format(k), self.hello_stepper_sns[k],
+                                                        hu.get_fleet_directory())
+                else:
+                    print(click.style('Unable to find SN of {}. Skipping.'.format(k), fg='red'))
             except Exception as err:
                 print(click.style('ERROR [{}]: {}'.format(k, str(err)), fg='red'))
 
         print("Assigning Pimu and Wacc SN to robot....")
         try:
-            hdu.add_arduino_udev_line(device_name="hello-pimu", serial_no=self.hello_pimu_sn['hello-pimu'],
-                                      fleet_dir=hu.get_fleet_directory())
+            if self.hello_pimu_sn['hello-pimu']:
+                hdu.add_arduino_udev_line(device_name="hello-pimu", serial_no=self.hello_pimu_sn['hello-pimu'],
+                                        fleet_dir=hu.get_fleet_directory())
+            else:
+                print(click.style('Unable to find SN of {}. Skipping.'.format('hello-pimu'), fg='red'))
         except Exception as err:
             print(click.style('ERROR [{}]: {}'.format("hello-pimu", str(err)), fg='red'))
+
         try:
-            hdu.add_arduino_udev_line(device_name="hello-wacc", serial_no=self.hello_wacc_sn['hello-wacc'],
-                                      fleet_dir=hu.get_fleet_directory())
+            if self.hello_wacc_sn['hello-wacc']:
+                hdu.add_arduino_udev_line(device_name="hello-wacc", serial_no=self.hello_wacc_sn['hello-wacc'],
+                                        fleet_dir=hu.get_fleet_directory())
+            else:
+                print(click.style('Unable to find SN of {}. Skipping.'.format('hello-wacc'), fg='red'))
         except Exception as err:
             print(click.style('ERROR [{}]: {}'.format("hello-wacc", str(err)), fg='red'))
         print(click.style('UDEV rules and stretch configuration files specific to arduino devices updated', fg='green',
