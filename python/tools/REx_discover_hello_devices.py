@@ -164,7 +164,7 @@ class DiscoverHelloDevices:
         input(click.style("WARNING: The Lift would drop, make sure the clamp is underneath lift. Then hit ENTER",
                           fg="yellow", bold=True))
         start_pose = self.get_all_stepper_poses()
-        input(click.style("Move the Lift joint manually and place the clamp underneath when done. Then hit ENTER",
+        input(click.style("Move the Lift joint manually to another position and place the clamp underneath when done. Then hit ENTER",
                           fg="blue",
                           bold=True))
         end_pose = self.get_all_stepper_poses()
@@ -185,7 +185,7 @@ class DiscoverHelloDevices:
         Find the Serial number of the Arm motor serial by detecting a manual movement
         """
         start_pose = self.get_all_stepper_poses()
-        input(click.style("Move the Arm joint manually and hit ENTER", fg="blue", bold=True))
+        input(click.style("Move the Arm joint manually to another position and hit ENTER", fg="blue", bold=True))
         end_pose = self.get_all_stepper_poses()
         moved_motors = self.get_moved_motor(start_pose, end_pose)
         cnt = list(moved_motors.values()).count(True)
@@ -204,7 +204,7 @@ class DiscoverHelloDevices:
         Find the Serial number of the wheel motors serial by detecting a manual movement
         """
         start_pose = self.get_all_stepper_poses()
-        input(click.style("Move the Base backward manually and hit ENTER", fg="blue", bold=True))
+        input(click.style("Move the Base backward manually to another position and hit ENTER", fg="blue", bold=True))
         end_pose = self.get_all_stepper_poses()
         moved_motors = self.get_moved_motor(start_pose, end_pose)
         cnt = list(moved_motors.values()).count(True)
@@ -216,7 +216,7 @@ class DiscoverHelloDevices:
             respectively. This logic is used to differentiate left wheel from right wheel"""
 
             start_pos1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
-            input(click.style("Move the base forward manually and hit ENTER", fg="blue", bold=True))
+            input(click.style("Move the base forward manually to another position and hit ENTER", fg="blue", bold=True))
             end_pose1 = self.get_base_wheels_poses(wheel_motors[0], wheel_motors[1])
             assumed_left_diff = start_pos1['left_wheel'] - end_pose1['left_wheel']
             assumed_right_diff = start_pos1['right_wheel'] - end_pose1['right_wheel']
