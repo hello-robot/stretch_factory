@@ -2,7 +2,7 @@
 
 import click
 import os
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call, DEVNULL
 import stretch_body.stepper
 import stretch_body.pimu
 import stretch_body.wacc
@@ -445,9 +445,11 @@ class FirmwareUpdater():
                 if hdu.extract_udevadm_info('/dev/'+port_name,'ID_MODEL') == 'Arduino_Zero':
                     click.secho(f'Success {device_name} in bootloader mode, Now Flashing!', fg="green", bold=True)
                     time.sleep(1)
-                    result = os.system(flash_command)
+                    # result = os.system(flash_command)
+                    result = call(flash_command, shell=True, stdout=DEVNULL)
                     if result == 0:
                         click.secho(f'Success Flashing {device_name}', fg="green", bold=True)
+                        time.sleep(1)
                         flash_sts = False, True
                         break
                     else:
@@ -481,7 +483,16 @@ class FirmwareUpdater():
                 # In does present as an 'Arduino Zero' product. This will attempt to reset it
                 # and re-present to the bus
                 time.sleep(1.0)
-                os.system('usbreset \"Arduino Zero\"')
+                click.secho(f'Reseting usb of {device_name}', fg="yellow", bold = False)
+                call('usbreset \"Arduino Zero\"', shell=True, stdout=DEVNULL)
+                
+                ###using for debugging#############
+                try:
+                    with open(self.home_dir+'/arduino_zero.txt', 'a') as file:
+                        file.write(device_name + '\n')
+                except Exception as e:
+                    print(f"Error writing to file: {e}")
+                ###using for debugging#############
                 time.sleep(1.0)
                 print('')
             else:
