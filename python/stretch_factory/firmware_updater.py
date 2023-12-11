@@ -485,9 +485,7 @@ class FirmwareUpdater():
                 time.sleep(1.0)
                 click.secho(f'Reseting usb of {device_name}', fg="yellow", bold = False)
                 call('sudo usbreset \"Arduino Zero\"', shell=True, stdout=DEVNULL)
-                
-               
-                time.sleep(1.0)
+                time.sleep(3.0)
                 print('')
             else:
                 found = True
