@@ -226,6 +226,7 @@ class FirmwareUpdater():
         #self.pretty_print_state()
         #Advance the state machine
         if self.state['no_prompts'] or click.confirm('Proceed with update??'):
+            call('sudo echo', shell=True)
             print('\n\n\n')
             #Flash all devices
             for d in self.target:
@@ -483,10 +484,9 @@ class FirmwareUpdater():
                 # In does present as an 'Arduino Zero' product. This will attempt to reset it
                 # and re-present to the bus
                 time.sleep(1.0)
-                click.secho(f'Reseting usb of {device_name}', fg="yellow", bold = False)
+                click.secho(f'Resetting usb of {device_name}', fg="yellow", bold = False)
                 call('sudo usbreset \"Arduino Zero\"', shell=True, stdout=DEVNULL)
                 time.sleep(3.0)
-                print('')
             else:
                 found = True
                 break
