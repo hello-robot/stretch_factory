@@ -246,10 +246,13 @@ class FirmwareUpdater():
                             if not upload_success: #Dont retry if compile failure
                                 #It may get here if the usb bus connectoin fails during flash
                                 #Attempt to reset the device and then try again
-                                print('Retrying firmware flash for %s'%d)
-                                port=fwu.get_port_name(d)
-                                if port is not None:
-                                    hdu.place_arduino_in_bootloader('/dev/'+port)
+
+                                click.secho('WARNING: Failed firmware flash for %s'%d, fg='red', bold=True)
+                                break
+                                # print('Retrying firmware flash for %s'%d)
+                                # port=fwu.get_port_name(d)
+                                # if port is not None:
+                                #     hdu.place_arduino_in_bootloader('/dev/'+port)
                            
                     else:
                         click.secho('WARNING: Unable to flash %s as device not valid'%d, fg="yellow", bold=True)
