@@ -487,9 +487,9 @@ class FirmwareUpdater():
                 # In does present as an 'Arduino Zero' product. This will attempt to reset it
                 # and re-present to the bus
                 time.sleep(1.0)
-                click.secho(f'Resetting usb of {device_name}', fg="yellow", bold = False)
+                click.secho(f'Resetting usb of {device_name} please wait a few seconds', fg="yellow", bold = False)
                 call('sudo usbreset \"Arduino Zero\"', shell=True, stdout=DEVNULL)
-                time.sleep(3.0)
+                time.sleep(2.0)
             else:
                 found = True
                 break
