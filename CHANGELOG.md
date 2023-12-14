@@ -2,6 +2,9 @@
 
 The changes between releases of Stretch Factory is documented here.
 
+## [0.4.13](https://github.com/hello-robot/stretch_factory/pull/73) - December 13, 2023
+This release eliminates a failure case in the firmware updater where Hello devices are left in a soft-bricked (i.e. can be hardware reset) state from a failed firmware update attempt. The fix has been tested with 800+ firmware flashes on a variety of Stretch robots.
+
 ## [0.3.11](https://github.com/hello-robot/stretch_factory/pull/56) - January 17, 2023
 This release adds the tool `REx_discover_hello_devices.py`. This tool will enable users to find and map all the robot-specific USB devices (i.e. Lift, Arm, Left wheel, Right wheel, Head, Wrist/End-of-arm) and assign them to the robot by updating UDEV rules and stretch configuration files. 
 This tool would require Stretch Body v0.4.11 and above.
