@@ -340,6 +340,22 @@ class FirmwareUpdater():
         for d in self.target:
             all_completed=all_completed and self.state['completed'][d][state_name]
         return all_completed
+    
+    def extract_stepper_type(self, device_name):
+                if 'hello-motor' in device_name:
+                    st = stretch_body.stepper.Stepper('/dev/' + device_name)
+                    for i in st.supported_protocols.keys():
+                        recent_protocol = i.strip('p')
+                    if int(recent_protocol) >= 5:
+                        if not st.startup():
+                            click.secho('FAIL: Unable to establish comms with device %s' % device_name.upper(), fg="red")
+                            return False
+                        else:
+                            if int(st.board_info['protocol_version'].strip('p')) >= 5:
+                                self.stepper_type = st.board_info['stepper_type']
+                                time.sleep(0.5)
+                            st.stop()
+                            del st
 
 # ########################################################################################################################
     def do_device_flash(self, device_name, tag, repo_path=None, verbose=False, port_name=None):
@@ -360,19 +376,8 @@ class FirmwareUpdater():
                 return False, False
             port_name = fwu.get_port_name(device_name)
 
-            ## Extracting Stepper type from firmware before updating ##
-            if 'hello-motor' in device_name:
-                st = stretch_body.stepper.Stepper('/dev/' + device_name)
-                st.startup()
-                if not st.startup():
-                    click.secho('FAIL: Unable to establish comms with device %s' % device_name.upper(), fg="red")
-                    return False
-                else:
-                    self.stepper_type = st.board_info['stepper_type']
-                    time.sleep(0.5)
-                    st.stop()
-                    del st
         
+        self.extract_stepper_type(device_name)
         fwu.user_msg_log('Device: %s Port: %s' % (device_name, port_name), user_display=verbose)
 
         if port_name is not None and sketch_name is not None:
@@ -569,10 +574,13 @@ class FirmwareUpdater():
                 print('Writing calibration data to flash...')
                 motor.write_encoder_calibration_to_flash(data)
                 print('\n')
-                print('Writing stepper type to flash...')
-                motor.write_stepper_type_to_flash(self.stepper_type)
-                print('Success writing stepper type to Flash')
-                print('\n')
+
+                if int(motor.board_info['protocol_version'].strip('p')) >= 5 and self.stepper_type is not None:
+                    print('Writing stepper type to flash...')
+                    motor.write_stepper_type_to_flash(self.stepper_type)
+                    print('Success writing stepper type to Flash')
+                    print('\n')
+
                 print('Successful write of FLASH.')
                 fwu.wait_on_device(device_name)
                 motor.board_reset()
