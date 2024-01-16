@@ -32,6 +32,7 @@ class FirmwareUpdater():
         self.args=args
         state_from_yaml = self.from_yaml()
         self.home_dir = os.path.expanduser('~')
+        self.stepper_type = None
 
         if args.resume:
             if not state_from_yaml:
@@ -352,7 +353,6 @@ class FirmwareUpdater():
 
         sketch_name=fwu.get_sketch_name(device_name)
 
-
         if port_name is None:
             print('Looking for device %s on bus' % device_name)
             if not fwu.wait_on_device(device_name, timeout=5.0):
@@ -360,6 +360,19 @@ class FirmwareUpdater():
                 return False, False
             port_name = fwu.get_port_name(device_name)
 
+            ## Extracting Stepper type from firmware before updating ##
+            if 'hello-motor' in device_name:
+                st = stretch_body.stepper.Stepper('/dev/' + device_name)
+                st.startup()
+                if not st.startup():
+                    click.secho('FAIL: Unable to establish comms with device %s' % device_name.upper(), fg="red")
+                    return False
+                else:
+                    self.stepper_type = st.board_info['stepper_type']
+                    time.sleep(0.5)
+                    st.stop()
+                    del st
+        
         fwu.user_msg_log('Device: %s Port: %s' % (device_name, port_name), user_display=verbose)
 
         if port_name is not None and sketch_name is not None:
@@ -555,7 +568,11 @@ class FirmwareUpdater():
                 data = motor.read_encoder_calibration_from_YAML()
                 print('Writing calibration data to flash...')
                 motor.write_encoder_calibration_to_flash(data)
-
+                print('\n')
+                print('Writing stepper type to flash...')
+                motor.write_stepper_type_to_flash(self.stepper_type)
+                print('Success writing stepper type to Flash')
+                print('\n')
                 print('Successful write of FLASH.')
                 fwu.wait_on_device(device_name)
                 motor.board_reset()
