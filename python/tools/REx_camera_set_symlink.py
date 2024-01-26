@@ -61,6 +61,9 @@ def generate_udev_rule(port,symlink):
         os.system(f"sudo rm /tmp/{fname}")
         if symlink in devices:
             print(f"Successfully Identified device at port: /dev/{symlink}")
+            # Backup the udev rules file
+            os.system(f"sudo cp /etc/udev/rules.d/{fname} {hu.get_fleet_directory()}udev")
+            os.system(f"sudo cp /etc/udev/rules.d/{fname} /etc/hello-robot/{hu.get_fleet_id()}/udev")
         else:
             print(f"Failed to find port: /dev/{symlink}")
     else:
