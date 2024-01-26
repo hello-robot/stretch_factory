@@ -1,14 +1,16 @@
+#!/usr/bin/env python3
+
 import stretch_body.hello_utils as hu
 import argparse
 import sys
 import os
 from stretch_factory import hello_device_utils as hdu
 from datetime import datetime
-
+import time
 hu.print_stretch_re_use()
 
 
-parser = argparse.ArgumentParser(description="Tool to assign an camera symlink to plugged-in USB camera"
+parser = argparse.ArgumentParser(description="Tool to assign an camera symlink to a plugged-in USB camera"
                                              " by generating an UDEV rule.\n"
                                              "Example Usage:\n"
                                              "REx_camera_set_symlink.py --port /dev/video6 --symlink hello-navigation-camera"
@@ -38,7 +40,7 @@ def generate_udev_rule(port,symlink):
     ID_SERIAL_SHORT = hdu.extract_udevadm_info(port,'ID_SERIAL_SHORT')
     ID_VENDOR_ID = hdu.extract_udevadm_info(port,'ID_VENDOR_ID')
     ID_MODEL_ID = hdu.extract_udevadm_info(port,'ID_MODEL_ID')
-    line = f"KERNEL==\"video*\", KERNELS==\"1-1.3.*\", ATTRS{{idVendor}}==\"{ID_VENDOR_ID}\", ATTRS{{idProduct}}==\"{ID_MODEL_ID}\", MODE:=\"0777\", ATTRS{{serial}}==\"{ID_SERIAL_SHORT}\", SYMLINK+=\"{symlink}\""
+    line = f"KERNEL==\"video*\", SUBSYSTEMS==\"usb\", ATTRS{{idVendor}}==\"{ID_VENDOR_ID}\", ATTRS{{idProduct}}==\"{ID_MODEL_ID}\", MODE:=\"0666\", ATTRS{{serial}}==\"{ID_SERIAL_SHORT}\", SYMLINK+=\"{symlink}\""
     fname = f'86-{symlink}.rules'
     current_datetime = datetime.now()
     formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
@@ -49,13 +51,22 @@ def generate_udev_rule(port,symlink):
         file.write(f"# Date: {formatted_datetime} \n")
         file.write(line)
     os.system(f"sudo cp /tmp/{fname} /etc/udev/rules.d/")
+    reset_udev_ctrl()
+    time.sleep(1)
+
     rules = os.listdir("/etc/udev/rules.d/")
+    devices = os.listdir("/dev/")
     if fname in rules:
-        print("Successfully generate udev rule at path: /etc/udev/rules.d/{fname}")
+        print(f"Successfully generated udev rule at path: /etc/udev/rules.d/{fname}")
         os.system(f"sudo rm /tmp/{fname}")
-        reset_udev_ctrl()
+        if symlink in devices:
+            print(f"Successfully Identified device at port: /dev/{symlink}")
+        else:
+            print(f"Failed to find port: /dev/{symlink}")
     else:
-        print("Unable to generate udev rule at path: /etc/udev/rules.d/{fname}")
+        print(f"Unable to generate udev rule at path: /etc/udev/rules.d/{fname}")
+
+
 
 if args['list']:
     print_video_devices_list()
@@ -71,7 +82,7 @@ elif args['name']:
         port = hu.get_video_device_port(args['name'])
         if port:
             print(f"Assing usb port: {port} to symlink port: /dev/{args['symlink']}")
-            generate_udev_rule(port,args['set_symlink'])
+            generate_udev_rule(port,args['symlink'])
         else:
             print(f"Unable to find a USB video device port matching the name: {args['name']}")
     else:
