@@ -209,6 +209,8 @@ def calculate_expected_torque():
 """Input arguments are the motor name (just this for now, change?)"""
 if __name__ == "__main__":
 
+    print('This tool is no longer maintained. It is kept for reference only.')
+    exit(1)
 
     if len(sys.argv) < 2:
         raise Exception("Provide motor name e.g.: stepper_jog.py hello-motor1")
