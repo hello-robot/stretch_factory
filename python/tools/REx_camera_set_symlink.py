@@ -63,7 +63,10 @@ def generate_udev_rule(port,symlink):
             print(f"Successfully Identified device at port: /dev/{symlink}")
             # Backup the udev rules file
             os.system(f"sudo cp /etc/udev/rules.d/{fname} {hu.get_fleet_directory()}udev")
+            os.system(f"sudo chown $USER:$USER {hu.get_fleet_directory()}udev/{fname}")
+            print(f"Backed up udev rule at path: {hu.get_fleet_directory()}udev/{fname}")
             os.system(f"sudo cp /etc/udev/rules.d/{fname} /etc/hello-robot/{hu.get_fleet_id()}/udev")
+            print(f"Backed up udev rule at path: /etc/hello-robot/{hu.get_fleet_id()}/udev/{fname}")
         else:
             print(f"Failed to find port: /dev/{symlink}")
     else:
