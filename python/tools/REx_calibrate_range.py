@@ -57,17 +57,33 @@ if args.arm or args.lift:
         click.secho('NOTE: Your stretch_user_params.yaml overrides range_m for %s' % j.name.upper(),fg="yellow")
         click.secho('NOTE: As such, the updated calibration will not change the behavior unless you remove the user params.',fg="yellow")
     click.secho('------------------------', fg="yellow")
+
     click.secho('Joint %s will go through its full range-of-motion. Ensure workspace is collision free ' % j.name.capitalize(),fg="yellow")
+
     if click.confirm('Proceed?'):
-        measured_rom = j.home(measuring=True)
-        if measured_rom is not None:
-            if (measured_rom>=j.params['calibration_range_bounds'][0] and measured_rom<=j.params['calibration_range_bounds'][1]):
-                click.secho('%s measured range-of-motion: %f . Within acceptable range of %f to %f' %(j.name.capitalize(), measured_rom,j.params['calibration_range_bounds'][0], j.params['calibration_range_bounds'][1]),fg='green')
+        if args.arm:
+            input('Manually move arm to full retraction. Ensure that arm is fully retracted, then hit enter')
+            j.pull_status()
+            x_0=j.status['pos']
+            success_pos, log = j.home_single_ended(end_pos=None, to_positive_stop=True, measuring=True,do_pull_status=True)
+            measured_rom = log['x_contact']-x_0
+            print('Measured arm extension of: %f'%measured_rom)
+            if(measured_rom >= j.params['calibration_range_bounds'][0] and measured_rom <=j.params['calibration_range_bounds'][1]):
                 if click.confirm('Save calibrated range of motion?'):
-                    j.write_configuration_param_to_YAML('%s.range_m'%j.name, [0,measured_rom])
+                    j.write_configuration_param_to_YAML('%s.range_m' % j.name, [0, measured_rom])
             else:
-                click.secho('%s measured range-of-motion: %f . Outside acceptable range of %f to %f' %
-                           (j.name.capitalize(), measured_rom, j.params['calibration_range_bounds'][0],j.params['calibration_range_bounds'][1]), fg='yellow')
+                click.secho('%s measured range-of-motion: %f . Outside acceptable range of %f to %f' %(j.name.capitalize(), measured_rom, j.params['calibration_range_bounds'][0],j.params['calibration_range_bounds'][1]), fg='yellow')
+
+        if args.lift:
+            measured_rom = j.home(measuring=True)
+            if measured_rom is not None:
+                if (measured_rom>=j.params['calibration_range_bounds'][0] and measured_rom<=j.params['calibration_range_bounds'][1]):
+                    click.secho('%s measured range-of-motion: %f . Within acceptable range of %f to %f' %(j.name.capitalize(), measured_rom,j.params['calibration_range_bounds'][0], j.params['calibration_range_bounds'][1]),fg='green')
+                    if click.confirm('Save calibrated range of motion?'):
+                        j.write_configuration_param_to_YAML('%s.range_m'%j.name, [0,measured_rom])
+                else:
+                    click.secho('%s measured range-of-motion: %f . Outside acceptable range of %f to %f' %
+                               (j.name.capitalize(), measured_rom, j.params['calibration_range_bounds'][0],j.params['calibration_range_bounds'][1]), fg='yellow')
 
     j.stop()
 
