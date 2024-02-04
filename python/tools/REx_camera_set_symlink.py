@@ -10,11 +10,11 @@ import time
 hu.print_stretch_re_use()
 
 
-parser = argparse.ArgumentParser(description="Tool to assign an camera symlink to a plugged-in USB camera"
-                                             " by generating an UDEV rule.\n"
-                                             "Example Usage:\n"
-                                             "REx_camera_set_symlink.py --port /dev/video6 --symlink hello-navigation-camera"
-                                             )
+parser = argparse.ArgumentParser(
+    description="Tool to assign an camera symlink to a plugged-in USB camera by generating an UDEV rule.\n"
+                "Example Usage:\n"
+                "REx_camera_set_symlink.py --port /dev/video6 --symlink hello-navigation-camera"
+)
 
 group = parser.add_mutually_exclusive_group(required=False)
 group.add_argument('--port', type=str,help='Plugged in USB camera video device port. E.g. --port /dev/video4')
@@ -35,6 +35,7 @@ def print_video_devices_list():
 
 def reset_udev_ctrl():
     os.system("sudo udevadm control --reload; sudo udevadm trigger")
+
 
 def generate_udev_rule(port,symlink):
     ID_SERIAL_SHORT = hdu.extract_udevadm_info(port,'ID_SERIAL_SHORT')
@@ -73,13 +74,12 @@ def generate_udev_rule(port,symlink):
         print(f"Unable to generate udev rule at path: /etc/udev/rules.d/{fname}")
 
 
-
 if args['list']:
     print_video_devices_list()
     sys.exit()
 elif args['port']:
     if args['symlink']:
-        print(f"Assing usb port: {args['port']} to symlink port: /dev/{args['symlink']}")
+        print(f"Linking usb port: {args['port']} to symlink port: /dev/{args['symlink']}")
         generate_udev_rule(args['port'],args['symlink'])
     else:
         print("Symlink argument (--symlink) not provided")
@@ -87,7 +87,7 @@ elif args['name']:
     if args['symlink']:
         port = hu.get_video_device_port(args['name'])
         if port:
-            print(f"Assing usb port: {port} to symlink port: /dev/{args['symlink']}")
+            print(f"Linking usb port: {port} to symlink port: /dev/{args['symlink']}")
             generate_udev_rule(port,args['symlink'])
         else:
             print(f"Unable to find a USB video device port matching the name: {args['name']}")
