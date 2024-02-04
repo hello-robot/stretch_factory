@@ -41,6 +41,11 @@ def generate_udev_rule(port,symlink):
     ID_SERIAL_SHORT = hdu.extract_udevadm_info(port,'ID_SERIAL_SHORT')
     ID_VENDOR_ID = hdu.extract_udevadm_info(port,'ID_VENDOR_ID')
     ID_MODEL_ID = hdu.extract_udevadm_info(port,'ID_MODEL_ID')
+    ID_V4L_CAPABILITIES = hdu.extract_udevadm_info(port,'ID_V4L_CAPABILITIES')
+    if 'capture' not in ID_V4L_CAPABILITIES:
+        yn = input("Warning: The selected device is not a capture device. It may be unable to stream imagery. Do you wish to proceed? [y/n]: ")
+        if yn not in ['y', 'Y', 'yes', 'YES']:
+            sys.exit(1)
     line = f"KERNEL==\"video*\", SUBSYSTEM==\"video4linux\", SUBSYSTEMS==\"usb\", ENV{{ID_V4L_CAPABILITIES}}==\":capture:\", ATTRS{{idVendor}}==\"{ID_VENDOR_ID}\", ATTRS{{idProduct}}==\"{ID_MODEL_ID}\", ATTRS{{serial}}==\"{ID_SERIAL_SHORT}\", MODE:=\"0777\", SYMLINK+=\"{symlink}\""
     fname = f'86-{symlink}.rules'
     current_datetime = datetime.now()
