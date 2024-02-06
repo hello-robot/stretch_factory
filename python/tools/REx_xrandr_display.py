@@ -70,14 +70,20 @@ def get_display_info():
         print(f'Error: This tool only supports 1 display. There are {len(result)} plugged in')
         sys.exit(1)
 
-    return result[0]
+    oresult = result[0]
+    oresult['available_resolutions'].sort(key=lambda val: int(val.split('x')[0]))
+
+    return oresult
 
 if args['current']:
     info = get_display_info()
     print(f"Display Name:       {info['name']}")
     print(f"Display Resolution: {info['resolution']}")
 elif args['list']:
-    print('okay')
+    info = get_display_info()
+    print("Available Resolutions:")
+    for r in info['available_resolutions']:
+        print(r)
 else:
     print('oh no')
 
