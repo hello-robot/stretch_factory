@@ -23,7 +23,7 @@ args = vars(parser.parse_args())
 def find_mode(id, modes):
     for mode in modes:
         if id == mode.id:
-            return f"{mode.width}x{mode.height}x{mode.dot_clock / (mode.h_total * mode.v_total)}"
+            return f"{mode.width}x{mode.height}x{mode.dot_clock / (mode.h_total * mode.v_total):.2f}"
 
 def get_display_info():
     try:
