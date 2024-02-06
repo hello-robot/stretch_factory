@@ -11,7 +11,7 @@ from Xlib.ext import randr
 parser = argparse.ArgumentParser(
     description="Tool to change display resolution/fps/etc.."
 )
-group = parser.add_mutually_exclusive_group(required=True)
+group = parser.add_mutually_exclusive_group(required=False)
 group.add_argument('--set', type=str, help='Set resolution to WIDTHxHEIGHTxFPS. E.g. --set 1920x1080x60.00')
 group.add_argument('--set-720p', action='store_true', help='Set resolution to 1280x720xhighest_fps')
 group.add_argument('--set-1080p', action='store_true', help='Set resolution to 1920x1080xhighest_fps')
@@ -84,6 +84,23 @@ elif args['list']:
     print("Available Resolutions:")
     for r in info['available_resolutions']:
         print(r)
+elif args['set']:
+    desired_resolution = args['set']
+    dr_parts = desired_resolution.split('x')
+    if len(dr_parts) != 3:
+        print('Error: Resolution should have 3 parts. E.g. 1920x1080x60.00')
+        sys.exit(1)
+    info = get_display_info()
+    if desired_resolution not in info['available_resolutions']:
+        closest_resolution = '1920x1080x60.00'
+        width_match_resolutions = [wmr for wmr in info['available_resolutions'] if dr_parts[0] in wmr]
+        closest_resolution = width_match_resolutions[0] if len(width_match_resolutions) > 0 else closest_resolution
+        wh_match_resolutions = [whmr for whmr in info['available_resolutions'] if f"{dr_parts[0]}x{dr_parts[1]}" in whmr]
+        closest_resolution = wh_match_resolutions[0] if len(wh_match_resolutions) > 0 else closest_resolution
+        print(f'Warning: Desired resolution not available. Picking closest: {closest_resolution}')
+        desired_resolution = closest_resolution
+
+    print(desired_resolution)
 else:
-    print('oh no')
+    parser.print_help()
 
