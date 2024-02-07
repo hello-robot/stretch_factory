@@ -3,6 +3,7 @@
 import stretch_body.hello_utils as hu
 hu.print_stretch_re_use()
 
+import os
 import sys
 import argparse
 from Xlib import display
@@ -19,6 +20,13 @@ group.add_argument('--revert', action='store_true', help='Revert resolution to w
 group.add_argument('--list', action='store_true', help='List all available resolutions for the display')
 group.add_argument('--current', action='store_true', help='Print out the current resolution being used')
 args = vars(parser.parse_args())
+
+def issue_xrandr_command(output, resolution):
+    if hu.get_display() != ":0":
+        print("Error: Cannot change resolution when the DISPLAY env var isn't set to ':0'. Try export DISPLAY=':0'")
+        sys.exit(1)
+    width, height, fps = resolution.split('x')
+    os.system(f"xrandr --output {output} --mode {width}x{height} --rate {fps}")
 
 def find_mode(id, modes):
     for mode in modes:
@@ -95,12 +103,20 @@ elif args['set']:
         closest_resolution = '1920x1080x60.00'
         width_match_resolutions = [wmr for wmr in info['available_resolutions'] if dr_parts[0] in wmr]
         closest_resolution = width_match_resolutions[0] if len(width_match_resolutions) > 0 else closest_resolution
-        wh_match_resolutions = [whmr for whmr in info['available_resolutions'] if f"{dr_parts[0]}x{dr_parts[1]}" in whmr]
+        wh_match_resolutions = [whmr for whmr in width_match_resolutions if f"{dr_parts[0]}x{dr_parts[1]}" in whmr]
         closest_resolution = wh_match_resolutions[0] if len(wh_match_resolutions) > 0 else closest_resolution
+        whf_match_resolutions = [whfmr for whfmr in wh_match_resolutions if float(dr_parts[2]) == float(whfmr.split('x')[2])]
+        closest_resolution = whf_match_resolutions[0] if len(whf_match_resolutions) > 0 else closest_resolution
         print(f'Warning: Desired resolution not available. Picking closest: {closest_resolution}')
         desired_resolution = closest_resolution
 
-    print(desired_resolution)
+    issue_xrandr_command(info['name'], desired_resolution)
+
+    old_info = info
+    new_info = get_display_info()
+    if new_info['resolution'] != desired_resolution:
+        print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
+    # print(new_info, old_info)
 else:
     parser.print_help()
 
