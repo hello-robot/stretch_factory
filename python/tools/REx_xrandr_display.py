@@ -87,6 +87,7 @@ def get_display_info():
 
 def save_display_info(info):
     f = pathlib.Path(hu.get_stretch_directory()) / 'log' / 'previous_display_resolution.yaml'
+    f.parent.mkdir(exist_ok=True, parents=True)
     if f.is_file():
         print('Warning: previous display resolution already saved. Not overwriting.')
         return
