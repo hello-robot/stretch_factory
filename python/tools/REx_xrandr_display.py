@@ -170,6 +170,23 @@ elif args['set_1080p']:
     if new_info['resolution'] != desired_resolution:
         print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
     save_display_info(old_info)
+elif args['revert']:
+    prev_info = load_display_info()
+    curr_info = get_display_info()
+    if prev_info['name'] != curr_info['name']:
+        print(f"Error: display has changed, prev={prev_info['name']}, curr={curr_info['name']}")
+        sys.exit(1)
+
+    desired_resolution = prev_info['resolution']
+    if desired_resolution not in curr_info['available_resolutions']:
+        print(f'Error: previous resolution, {desired_resolution}, not available')
+        sys.exit(1)
+    issue_xrandr_command(curr_info['name'], desired_resolution)
+
+    new_info = get_display_info()
+    if new_info['resolution'] != desired_resolution:
+        print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
+    clear_display_info()
 else:
     parser.print_help()
 
