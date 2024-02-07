@@ -2,6 +2,33 @@
 
 The changes between releases of Stretch Factory is documented here.
 
+## [0.5.4](https://github.com/hello-robot/stretch_factory/pull/93) - Feburary 7, 2024
+This release adds a new tool `REx_xrandr_display.py` that allows users to programmatically change and revert the display resolution.
+
+Example Usage:
+```bash
+$ REx_xrandr_display.py --current
+For use with S T R E T C H (R) from Hello Robot Inc.
+---------------------------------------------------------------------
+
+Display Name:       HDMI-1
+Display Resolution: 1920x1080x60.00
+$ REx_xrandr_display.py --set-720p
+For use with S T R E T C H (R) from Hello Robot Inc.
+---------------------------------------------------------------------
+
+$ REx_xrandr_display.py --current
+For use with S T R E T C H (R) from Hello Robot Inc.
+---------------------------------------------------------------------
+
+Display Name:       HDMI-1
+Display Resolution: 1280x720x60.00
+$ REx_xrandr_display.py --revert
+For use with S T R E T C H (R) from Hello Robot Inc.
+---------------------------------------------------------------------
+```
+
+
 ## [0.5.3](https://github.com/hello-robot/stretch_factory/pull/89) - Feburary 3, 2024
 This release adds a new tool `REx_camera_set_symlink.py` that allows the user create a USB symlink to any USB camera that is plugged into the robot. The symlink is assigned by generating an Udev rule that records the following USB attributes of the plugged in camera: `[idVendor,idProduct,serial]`.
 
