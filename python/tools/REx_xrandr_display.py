@@ -5,6 +5,8 @@ hu.print_stretch_re_use()
 
 import os
 import sys
+import yaml
+import pathlib
 import argparse
 from Xlib import display
 from Xlib.ext import randr
@@ -83,6 +85,31 @@ def get_display_info():
 
     return oresult
 
+def save_display_info(info):
+    f = pathlib.Path(hu.get_stretch_directory()) / 'log' / 'previous_display_resolution.yaml'
+    if f.is_file():
+        print('Warning: previous display resolution already saved. Not overwriting.')
+        return
+    with open(str(f), 'w') as s:
+        yaml.dump(info, s)
+
+def load_display_info():
+    f = pathlib.Path(hu.get_stretch_directory()) / 'log' / 'previous_display_resolution.yaml'
+    if not f.is_file():
+        print('Error: cannot find previous display resolution')
+        sys.exit(1)
+    with open(str(f), 'r') as s:
+        try:
+            info = yaml.safe_load(s)
+        except:
+            print('Error: unable to load previous display resolution')
+            sys.exit(1)
+    return info
+
+def clear_display_info():
+    f = pathlib.Path(hu.get_stretch_directory()) / 'log' / 'previous_display_resolution.yaml'
+    f.unlink(missing_ok=True)
+
 if args['current']:
     info = get_display_info()
     print(f"Display Name:       {info['name']}")
@@ -116,7 +143,7 @@ elif args['set']:
     new_info = get_display_info()
     if new_info['resolution'] != desired_resolution:
         print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
-    # print(new_info, old_info)
+    save_display_info(info)
 else:
     parser.print_help()
 
