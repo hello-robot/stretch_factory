@@ -143,7 +143,33 @@ elif args['set']:
     new_info = get_display_info()
     if new_info['resolution'] != desired_resolution:
         print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
-    save_display_info(info)
+    save_display_info(old_info)
+elif args['set_720p']:
+    desired_resolution = '1280x720x60.00'
+    info = get_display_info()
+    if desired_resolution not in info['available_resolutions']:
+        print('Error: 720p resolution not available')
+        sys.exit(1)
+    issue_xrandr_command(info['name'], desired_resolution)
+
+    old_info = info
+    new_info = get_display_info()
+    if new_info['resolution'] != desired_resolution:
+        print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
+    save_display_info(old_info)
+elif args['set_1080p']:
+    desired_resolution = '1920x1080x60.00'
+    info = get_display_info()
+    if desired_resolution not in info['available_resolutions']:
+        print('Error: 1080p resolution not available')
+        sys.exit(1)
+    issue_xrandr_command(info['name'], desired_resolution)
+
+    old_info = info
+    new_info = get_display_info()
+    if new_info['resolution'] != desired_resolution:
+        print("Warning: Issued xrandr request, but the resolution doesn't seem to have change")
+    save_display_info(old_info)
 else:
     parser.print_help()
 
