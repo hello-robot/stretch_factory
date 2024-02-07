@@ -26,6 +26,6 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
     ],
 
-    install_requires=['future', 'pyserial','pyusb','gitpython','hello-robot-stretch-body>=0.4.26','tabulate']
+    install_requires=['future', 'pyserial','pyusb','gitpython','hello-robot-stretch-body>=0.4.26','tabulate', 'python-xlib']
 
 )
