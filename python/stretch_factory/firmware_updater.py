@@ -148,7 +148,8 @@ class FirmwareUpdater():
         for device_name in self.target:
             if self.fw_installed.is_device_valid(device_name):
                 num_update = num_update + 1
-        self.pretty_print_target()
+        if self.ready_to_run:
+            self.pretty_print_target()
         if not num_update:
             if not args.resume:
                 click.secho('No updates to be done', fg="yellow", bold=True)
@@ -644,6 +645,7 @@ class FirmwareUpdater():
                             default_id = i-f_limit
                         print('%d: %s' % (i-f_limit, vs[i]))
 
+
                     valid_id = True
                     while valid_id:
                         id = click.prompt('Please enter desired version id [Recommended]', default=default_id)
@@ -654,6 +656,27 @@ class FirmwareUpdater():
                             click.secho('Invalid ID Try Again', fg="red")
                 print('Selected version %s for device %s' % (vt, device_name))
                 self.target[device_name] = vt
+
+                target_version = vt
+                if target_version is None:
+                    return False
+                self.target[device_name] = target_version
+                path_protocol = 'p' + str(target_version.protocol)
+                if not self.fw_installed.is_protocol_supported(device_name, path_protocol):
+                    click.secho('---------------------------', fg="yellow")
+                    click.secho(
+                        'Target firmware path of %s is incompatible with installed Stretch Body for device %s' % (
+                        target_version, device_name), fg="yellow")
+                    x = " , ".join(["{}"] * len(self.fw_installed.get_supported_protocols(device_name))).format(
+                        *self.fw_installed.get_supported_protocols(device_name))
+                    click.secho('Installed Stretch Body supports protocols %s' % x, fg="yellow")
+                    click.secho('Target path supports protocol %s' % path_protocol, fg="yellow")
+                    if path_protocol > self.fw_installed.max_protocol_supported(device_name):
+                        click.secho('Upgrade Stretch Body first...', fg="yellow")
+                    else:
+                        click.secho('Downgrade Stretch Body first...', fg="yellow")
+                    return False
+
         print('')
         print('')
         return True
