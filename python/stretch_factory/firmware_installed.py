@@ -72,6 +72,11 @@ class FirmwareInstalled():
         if self.is_device_valid(device_name):
             return self.config_info[device_name]['version']
         return None
+    
+    def get_hw_id(self, device_name):
+        if self.is_device_valid(device_name):
+            return (self.config_info[device_name]['board_info']['hardware_id'])
+        return None
 
     def is_device_valid(self, device_name):
         return self.config_info[device_name] is not None

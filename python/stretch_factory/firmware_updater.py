@@ -621,22 +621,41 @@ class FirmwareUpdater():
                     click.secho('---------- %s [%s]-----------' % (
                     device_name.upper(), str(self.fw_installed.get_version(device_name))), fg="blue", bold=True)
                     default_id = 0
-                    for i in range(len(vs)):
+
+                    ## Checks to hw id to ensure that user can not downgrade fw to far
+                    for f_limit in range(len(vs)):  
+                        if self.fw_installed.get_hw_id(device_name) >= 3:
+                            fw_limit = '0.7.0p5'
+                            fw_version = str(vs[f_limit])
+                            fw_version = fw_version[fw_version.index('v') + 1:]
+                            if fw_version == fw_limit:
+                                click.secho(f"Can only install firmware versions from {fw_limit} onwards", fg="yellow")
+                                break
+                        else:
+                            fw_limit = '0.3.1p2'
+                            fw_version = str(vs[f_limit])
+                            fw_version = fw_version[fw_version.index('v') + 1:]
+                            if fw_version == fw_limit:
+                                break
+
+                    for i in range(f_limit, len(vs)):
                         if vs[i] == self.fw_recommended.recommended[device_name]:
-                            default_id = i
-                        print('%d: %s' % (i, vs[i]))
-                    print('----------------------')
-                    id = click.prompt('Please enter desired version id [Recommended]', default=default_id)
-                    if id >= 0 and id < len(vs):
-                        vt = vs[id]
-                    else:
-                        click.secho('Invalid ID', fg="red")
+                            default_id = i-f_limit
+                        print('%d: %s' % (i-f_limit, vs[i]))
+
+                    valid_id = True
+                    while valid_id:
+                        id = click.prompt('Please enter desired version id [Recommended]', default=default_id)
+                        if id >= 0 and id < len(vs) - f_limit:
+                            vt = vs[id+f_limit]
+                            valid_id = False
+                        else:
+                            click.secho('Invalid ID Try Again', fg="red")
                 print('Selected version %s for device %s' % (vt, device_name))
                 self.target[device_name] = vt
         print('')
         print('')
         return True
-
     def set_target_from_install_path(self, path_name):
         # Burn the Head of the branch to each board regardless of what is currently installed
         click.secho('>>> Flashing firmware from path %s ' % path_name, fg="cyan", bold=True)
