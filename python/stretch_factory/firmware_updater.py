@@ -636,6 +636,7 @@ class FirmwareUpdater():
                             fw_version = str(vs[f_limit])
                             fw_version = fw_version[fw_version.index('v') + 1:]
                             if fw_version == fw_limit:
+                                click.secho(f"Can only install firmware versions from {fw_limit} onwards", fg="yellow")
                                 break
 
                     for i in range(f_limit, len(vs)):
