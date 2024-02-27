@@ -622,23 +622,22 @@ class FirmwareUpdater():
                     click.secho('---------- %s [%s]-----------' % (
                     device_name.upper(), str(self.fw_installed.get_version(device_name))), fg="blue", bold=True)
                     default_id = 0
-
+                    self.min_allowed_fw_version = {
+                        0: '0.3.1p2',
+                        1: '0.3.1p2',
+                        2: '0.3.1p2',
+                        3: '0.7.0p5',
+                        4: '0.7.0p5',
+                    }
                     ## Checks to hw id to ensure that user can not downgrade fw to far
-                    for f_limit in range(len(vs)):  
-                        if self.fw_installed.get_hw_id(device_name) >= 3:
-                            fw_limit = '0.7.0p5'
-                            fw_version = str(vs[f_limit])
-                            fw_version = fw_version[fw_version.index('v') + 1:]
-                            if fw_version == fw_limit:
-                                click.secho(f"Can only install firmware versions from {fw_limit} onwards", fg="yellow")
-                                break
-                        else:
-                            fw_limit = '0.3.1p2'
-                            fw_version = str(vs[f_limit])
-                            fw_version = fw_version[fw_version.index('v') + 1:]
-                            if fw_version == fw_limit:
-                                click.secho(f"Can only install firmware versions from {fw_limit} onwards", fg="yellow")
-                                break
+                    for f_limit in range(len(vs)):
+                        fw_limit = self.min_allowed_fw_version.get(self.fw_installed.get_hw_id(device_name), None)
+                        if fw_limit is None:
+                            raise ValueError(f'Hardware ID for {device_name.upper()} Exceeds Mapped Version Please Contact Hello Robot Support') # exit out with error message asking user to contact Hello Robot Support
+                        fw_version = str(vs[f_limit])
+                        fw_version = fw_version[fw_version.index('v') + 1:]
+                        if fw_version == fw_limit:
+                            break
 
                     for i in range(f_limit, len(vs)):
                         if vs[i] == self.fw_recommended.recommended[device_name]:
