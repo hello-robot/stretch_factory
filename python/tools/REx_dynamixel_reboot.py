@@ -29,6 +29,7 @@ try:
         baud = DynamixelXL430.identify_baud_rate(id, args.usb_full_path)
         if baud != -1:
             m = DynamixelXL430(id, args.usb_full_path,baud=baud)
+            m.startup()
             #m.startup() #Don't startup as may be in error state
             if (m.do_ping(verbose=False)):
                 print('Found device %d on bus %s'%(id,args.usb_full_path))
