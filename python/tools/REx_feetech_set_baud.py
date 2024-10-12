@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from stretch_body.feetech_servo_sm import FeetechServoSM
 import argparse
