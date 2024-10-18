@@ -18,11 +18,14 @@ curr_baud = FeetechServoSM.identify_baud_rate(id=args.id, usb=args.usb)
 m = FeetechServoSM(id=args.id, usb=args.usb, baud=curr_baud)
 if not m.startup():
     exit(1)
+m.unlock_eeprom()
 change_succeeded = m.set_baudrate(args.baud)
+
 m.stop()
 
 n = FeetechServoSM(id=args.id, usb=args.usb, baud=args.baud)
 if change_succeeded and n.startup() and n.do_ping(verbose=False):
     print("Success at changing baud. Current baud is %d for servo %d on bus %s"%(args.baud,args.id,args.usb))
+    m.lock_eeprom()
 else:
     print("Failed to change baud")

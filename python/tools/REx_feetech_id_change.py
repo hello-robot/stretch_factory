@@ -21,13 +21,14 @@ except:
     print("Unable to detect baud at ID %d on bus %s"%(args.id_from,args.usb_full_path))
     exit(1)
 if baud !=-1:
-    m = FeetechServoSM(args.id_from, args.usb_full_path,baud=baud)
+    m = FeetechServoSM(id=args.id_from, usb=args.usb_full_path,baud=baud)
     m.startup()
     if not m.do_ping():
         exit(0)
 
     input('Ready to change ID %d to %d. Hit enter to continue'%(args.id_from,args.id_to))
     #m.disable_torque()
+    m.unlock_eeprom()
     m.set_id(args.id_to)
 
     m = FeetechServoSM(args.id_to, args.usb_full_path,baud=baud)
@@ -36,6 +37,7 @@ if baud !=-1:
         print('Failed to set new ID')
     else:
         print('Success at setting ID to %d'%args.id_to)
+    m.lock_eeprom()
 else:
     print("Unable to detect baud at ID %d on bus %s"%(args.id_from,args.usb_full_path))
 

@@ -23,7 +23,6 @@ try:
         result=FeetechServoSM.list_servos(args.usb_full_path,b)
         if len(result):
             print('Found %d  servos on bus %s' % (len(result), args.usb_full_path))
-            break
 except (KeyboardInterrupt, SystemExit):
     print('Error while scanning bus')
 
