@@ -2,6 +2,15 @@
 
 The changes between releases of Stretch Factory is documented here.
 
+## [0.5.7](https://pypi.org/project/hello-robot-stretch-factory/0.5.7/) - January 30, 2025
+This release adds a new tool `REx_amend_venv_execs.py` that amends ROS2 node executables to use a venv interpreter when running. Paired with UV, this enables Stretch's software to run in isolated Python virtual environments without changing how the user needs to call these packages through the `ros2` CLI.
+
+Example Usage:
+```bash
+$ REx_amend_venv_execs.py stretch_funmap
+Wrapped funmap
+```
+
 ## [0.5.4](https://github.com/hello-robot/stretch_factory/pull/93) - Feburary 7, 2024
 This release adds a new tool `REx_xrandr_display.py` that allows users to programmatically change and revert the display resolution.
 
