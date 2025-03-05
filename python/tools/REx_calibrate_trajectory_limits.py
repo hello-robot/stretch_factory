@@ -140,15 +140,16 @@ class MotionData:
         self.step_calibration_result = step_calibration_result
 
     def motion_overview(self, prefix: str = ""):
-        joint_did_not_reach_message = ""
+        warnings = ""
         if not np.isclose(
             self.goal_position_cm,
             self.actual_position_cm,
             atol=self.calibration_targets.goal_error_absolute_target_cm,
         ):
-            joint_did_not_reach_message = (
-                f"WARNING: the {joint.name} did not reach the goal.\n"
-            )
+            warnings += f"WARNING: the {joint.name} did not reach the goal.\n"
+            
+        if self.step_calibration_result == TrajectoryCalibrationData.StepCalibrationResult.MOTION_STOPPED_FOR_SAFETY:
+            warnings += f"WARNING: the {joint.name}'s motion was stopped for safety before completing the trajectory.\n"
 
         return f"""{prefix}
     Moved {self.travel_range_cm}cm in {self.trajectory.travel_duration_seconds} seconds ({self.linear_speed_cm_per_second})cm/s. 
@@ -157,7 +158,7 @@ class MotionData:
     Target effort reached? {self.is_exceeds_effort_target()} 
     Target absolute goal position error reached? {self.is_exceeds_absolute_goal_error_target()}
     Target percentage goal position error reached? {self.is_exceeds_percent_goal_error_target()}
-    {joint_did_not_reach_message}
+    {warnings}
 """
 
     @property
@@ -485,6 +486,10 @@ def _run_profile_trajectory(
 
     joint.motor.disable_guarded_mode()
 
+    # We're disabling the limits for dynamic checks.
+    joint.params['motion']['trajectory_max']['vel_m'] = 0.5
+    joint.params['motion']['trajectory_max']['accel_m'] = 0.5
+
     joint.pull_status()
 
     time.sleep(2) # let things settle
@@ -511,6 +516,9 @@ def _run_profile_trajectory(
             motion_data.step_calibration_result = TrajectoryCalibrationData.StepCalibrationResult.MOTION_STOPPED_FOR_SAFETY
 
             joint.stop_trajectory()
+            joint.push_command()
+            joint.move_by(0) # Lock the motors.
+            joint.push_command()
         
 
     return motion_data
@@ -703,7 +711,7 @@ class TrajectoryCalibrationData:
             motion_data.step_calibration_result = (
                 TrajectoryCalibrationData.StepCalibrationResult.TARGETS_NOT_REACHED
             )
-            
+
             self.collected_under_calibration_atleast_once = True
             self.backtrack_convergence_penalty = 1  # Reset penalty.
 
@@ -1159,7 +1167,9 @@ if __name__ == "__main__":
             "The Lift, Arm and Wrist yaw will need to be first homed. Ensure workspace is collision free.",
             fg="yellow",
         )
-        click.confirm("Proceed?")
+        if not click.confirm("Proceed?"):
+            exit(0)
+
         subprocess.call(
             "stretch_lift_home.py"
         )  # Home the lift first to avoid the arm slamming into the ground at lift=0
@@ -1211,11 +1221,17 @@ if __name__ == "__main__":
         )
     click.secho("------------------------", fg="yellow")
     click.secho(
-        "Joint %s will go through its full range-of-motion. Ensure workspace is collision free "
+        """
+Joint %s will go through its full range-of-motion.
+1. Ensure workspace is collision free
+2. Dynamic limits will be significantly increased - effectively disabled - for the duration of this test, be careful!
+"""
         % joint.name.capitalize(),
         fg="yellow",
     )
     if click.confirm("Proceed?"):
+
+        _run_calibration()
 
         if args.run_continously_until_battery_low:
             current_voltage = BatteryInfo.get_battery_info().battery_voltage 
@@ -1229,8 +1245,5 @@ if __name__ == "__main__":
                 print("Target battery voltage reached, starting calibration.")
 
                 _run_calibration()
-
-        else:
-            _run_calibration()
 
 
