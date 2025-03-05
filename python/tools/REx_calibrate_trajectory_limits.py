@@ -452,6 +452,8 @@ def plot_motion_profiles(
         == TrajectoryCalibrationData.StepCalibrationResult.FIRST_OVERSHOOT
     ):
         title_snakecase += "_first_overshoot"
+
+    global trajectory_folder_to_save_plots
     if write_to_json:
         filename = f"{trajectory_folder_to_save_plots}/{title_snakecase}.json"
         with open(filename, "w") as json_file:
@@ -1080,6 +1082,57 @@ def tictoc_timer(tag: str):
     print("Started Timer", tag)
     tictoc_timer_tracker[tag] = time.time()
 
+def _run_calibration():
+    global trajectory_folder_to_save_plots
+
+    trajectory_folder_to_save_plots = get_stretch_directory(
+        f"calibration_trajectory_dynamic_limits/{int(time.time())}"
+    )
+
+    os.system("mkdir -p " + trajectory_folder_to_save_plots)
+
+    print(f"Writing to {trajectory_folder_to_save_plots}")
+
+    tictoc_timer("Calibration Trajectory")
+
+    robot_name = __import__("platform").node()  # get computer name
+    label = f"{robot_name}_{round(time.time()*1000)}"
+
+    run_calibration_trajectory(joint, label=label)
+
+    tictoc_timer("Calibration Trajectory")
+
+def _idle_move_joint(target_voltage:float, joint:PrismaticJoint):
+    """
+    NOTE: custom wacc is not supported.
+    """
+
+
+    joint.motor.disable_sync_mode()
+    joint.push_command()
+
+    p = Pimu()
+    p.startup(threaded=False)
+    p.pull_status()
+    battery_voltage = p.status["voltage"]
+    battery_voltage = round(battery_voltage, 2)
+
+    to_position = 0.2
+    while target_voltage < battery_voltage:
+        battery_voltage = p.status["voltage"]
+        battery_voltage = round(battery_voltage, 2)
+
+        print(f"Idling while waiting for battery to reach {target_voltage}. Currently: {battery_voltage}")
+        
+        joint.move_to(to_position)
+        to_position = 0.6 if to_position == 0.2 else 0.2
+
+        joint.push_command()
+        joint.motor.wait_until_at_setpoint()
+
+        time.sleep(5)
+
+    p.stop()
 
 if __name__ == "__main__":
     print_stretch_re_use()
@@ -1094,6 +1147,7 @@ if __name__ == "__main__":
         "--ncycle", type=int, help="Number of sweeps to run [4]", default=4
     )
     parser.add_argument("--skip_homing", help="Skip joint homing", action="store_true")
+    parser.add_argument("--run_continously_until_battery_low", help="Runs calibration continuously until the battery is low.", action="store_true")
     args = parser.parse_args()
 
     if not args.skip_homing:
@@ -1159,19 +1213,20 @@ if __name__ == "__main__":
     )
     if click.confirm("Proceed?"):
 
-        trajectory_folder_to_save_plots = get_stretch_directory(
-            f"calibration_trajectory_dynamic_limits/{int(time.time())}"
-        )
+        if args.run_continously_until_battery_low:
+            current_voltage = BatteryInfo.get_battery_info().battery_voltage 
+            targets = np.arange(11.0, current_voltage, 0.5)[::-1]
 
-        os.system("mkdir -p " + trajectory_folder_to_save_plots)
+            print(f"Running continiously until battery low. Step targets: {targets}. Current voltage: {current_voltage}")
 
-        print(f"Writing to {trajectory_folder_to_save_plots}")
+            for target_voltage in targets:
+                _idle_move_joint(target_voltage=target_voltage, joint=joint)
 
-        tictoc_timer("Calibration Trajectory")
+                print("Target battery voltage reached, starting calibration.")
 
-        robot_name = __import__("platform").node()  # get computer name
-        label = f"{robot_name}_{round(time.time()*1000)}"
+                _run_calibration()
 
-        run_calibration_trajectory(joint, label=label)
+        else:
+            _run_calibration()
 
-        tictoc_timer("Calibration Trajectory")
+
