@@ -28,6 +28,8 @@ trajectory_folder_to_save_plots = get_stretch_directory("calibration_trajectory_
 
 os.system('mkdir -p '+trajectory_folder_to_save_plots) 
 
+print(f"Writing to {trajectory_folder_to_save_plots}")
+
 @dataclass
 class CalibrationResults:
     effort_pct_pos: tuple[float, float, float, float]
@@ -296,13 +298,13 @@ def plot_motion_profiles(
     waypoints_acceleration = trajectory.accelerations
 
     # Plotting the data
+    plt.close()
     fig = plt.figure(figsize=(12, 25))
     loc = "lower center"
     bbox_to_anchor = (1.1, -0.20)
     ncol = 1
 
     # Plot Position vs Time
-    plt.close()
     plt.subplot(4, 1, 1)
     plt.plot(
         motion_data.timestamps_normalized,
@@ -375,7 +377,7 @@ def plot_motion_profiles(
     title_snakecase = f"{filename_prefix}{calibration_data.description}_{calibration_data.profile_name}_{motion_data.linear_speed_cm_per_second}cm/s"
     title_snakecase = title_snakecase.replace(" ", "_").replace("/", "_per_").lower()
     if write_to_json:
-        filename = f"{trajectory_folder_to_save_plots}{title_snakecase}.json"
+        filename = f"{trajectory_folder_to_save_plots}/{title_snakecase}.json"
         with open(filename, "w") as json_file:
             json.dump(calibration_data.to_json(), json_file, indent=4)
 
@@ -488,7 +490,7 @@ class TrajectoryCalibrationData:
     See `MotionData::is_calibrated()` for calibration conditions.
     """
 
-    START_TRAVEL_DURATION = 20.0  # seconds, start slow
+    START_TRAVEL_DURATION = 15.0  # seconds, start slow
     DURATION_DECREMENT_MAX = 5.0  # seconds, maximum we can decrease duration by.
 
     def __init__(
