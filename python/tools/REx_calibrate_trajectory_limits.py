@@ -96,7 +96,7 @@ class CalibrationTargets:
             goal_error_absolute_target_cm=1.5,
             goal_error_percentage_target=30.0,
             travel_duration_start_seconds=10.0,
-            travel_duration_decrement_by_max_seconds=1.1,
+            travel_duration_decrement_by_max_seconds=0.9,
         )
 
     @staticmethod
@@ -106,7 +106,7 @@ class CalibrationTargets:
             goal_error_absolute_target_cm=1.5,
             goal_error_percentage_target=30.0,
             travel_duration_start_seconds=15.0,
-            travel_duration_decrement_by_max_seconds=1.5,
+            travel_duration_decrement_by_max_seconds=0.9,
         )
 
 
@@ -497,18 +497,21 @@ def _run_profile_trajectory(
     joint.pull_status()
     joint.update_trajectory()
     joint.pull_status()
+    SAMPLING_RATE = 0.05 # 50HZ
     while joint.get_trajectory_time_remaining() != 0:
-        # time.sleep(0.1)  # Sample at 10Hz
-        time.sleep(0.05)  # Sample at 50Hz
+        time.sleep(SAMPLING_RATE)  # Sample at 50Hz
 
         joint.pull_status()
         joint.update_trajectory()
 
-        try:
-            motion_data.collect_data(joint=joint)
-        except Exception as e:
-            print(f"WARNING: {e}")
-            break
+        motion_data.collect_data(joint=joint)
+
+        if motion_data.effort_during_motion[-1] > motion_data.calibration_targets.effort_percent_target:
+            # Effort too high!
+            motion_data.step_calibration_result = TrajectoryCalibrationData.StepCalibrationResult.MOTION_STOPPED_FOR_SAFETY
+
+            joint.stop_trajectory()
+        
 
     return motion_data
 
@@ -666,6 +669,7 @@ class TrajectoryCalibrationData:
         BACKTRACKING_INCREASING_TIME = 3
         TARGET_REACHED = 4
         TARGET_REACHED_JUST_DOING_MOTION = 5
+        MOTION_STOPPED_FOR_SAFETY = 6
 
     def step_calibration(self, joint: PrismaticJoint):
         """
@@ -690,15 +694,16 @@ class TrajectoryCalibrationData:
             calibration_targets=self.calibration_targets,
         )
 
-        motion_data.step_calibration_result = (
-            TrajectoryCalibrationData.StepCalibrationResult.TARGETS_NOT_REACHED
-        )
-
         # Calculate metrics post motion:
         if (
             not motion_data.is_calibrated()
             and self.optimal_calibration_motion_data is None
+            and not motion_data.step_calibration_result == TrajectoryCalibrationData.StepCalibrationResult.MOTION_STOPPED_FOR_SAFETY
         ):
+            motion_data.step_calibration_result = (
+                TrajectoryCalibrationData.StepCalibrationResult.TARGETS_NOT_REACHED
+            )
+            
             self.collected_under_calibration_atleast_once = True
             self.backtrack_convergence_penalty = 1  # Reset penalty.
 
@@ -1104,10 +1109,8 @@ def _run_calibration():
 
 def _idle_move_joint(target_voltage:float, joint:PrismaticJoint):
     """
-    NOTE: custom wacc is not supported.
+    Wait for battery to reach a target
     """
-
-
     joint.motor.disable_sync_mode()
     joint.push_command()
 
@@ -1119,6 +1122,7 @@ def _idle_move_joint(target_voltage:float, joint:PrismaticJoint):
 
     to_position = 0.2
     while target_voltage < battery_voltage:
+        p.pull_status()
         battery_voltage = p.status["voltage"]
         battery_voltage = round(battery_voltage, 2)
 
