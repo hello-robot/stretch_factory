@@ -82,44 +82,97 @@ class CalibrationTargets:
     travel_duration_decrement_by_max_seconds: (
         float  # seconds, maximum we can decrease duration by.
     )
+    end_condition_time_step: float # If the calibration step would decrease the time by this amount, end calibration
 
 
     offset_from_joint_limit_min: float
     offset_from_joint_limit_max: float
 
     @staticmethod
-    def _shared_defaults(travel_duration_start_seconds:float,travel_duration_decrement_by_max_seconds:float ):
-        return CalibrationTargets(
-            effort_percent_target=80,
-            goal_error_absolute_target_cm=1.2,
-            goal_error_percentage_target=10.0,
-            offset_from_joint_limit_min = 0.2,
-            offset_from_joint_limit_max = 0.2,
-            travel_duration_start_seconds=travel_duration_start_seconds,
-            travel_duration_decrement_by_max_seconds=travel_duration_decrement_by_max_seconds,
-        )
+    def _shared_defaults(joint: PrismaticJoint, travel_duration_start_seconds:float,travel_duration_decrement_by_max_seconds:float ) -> "CalibrationTargets":
+
+        if isinstance(joint, Lift):
+            return CalibrationTargets(
+                effort_percent_target=80,
+                goal_error_absolute_target_cm=1.2,
+                goal_error_percentage_target=10.0,
+                offset_from_joint_limit_min = 0.2,
+                offset_from_joint_limit_max = 0.2,
+                travel_duration_start_seconds=travel_duration_start_seconds,
+                travel_duration_decrement_by_max_seconds=travel_duration_decrement_by_max_seconds,
+                end_condition_time_step=0.3
+            )
+        
+        if isinstance(joint, Arm):
+            return CalibrationTargets(
+                effort_percent_target=80,
+                goal_error_absolute_target_cm=1.2,
+                goal_error_percentage_target=10.0,
+                offset_from_joint_limit_min = 0.05,
+                offset_from_joint_limit_max = 0.05,
+
+                travel_duration_start_seconds=travel_duration_start_seconds,
+                travel_duration_decrement_by_max_seconds=travel_duration_decrement_by_max_seconds,
+                end_condition_time_step=0.3
+            )
+    
+        raise NotImplementedError(f"Joint {joint.name} is not supported for trajectory calibration.")
         
     
     @staticmethod
-    def linear_default():
-        return CalibrationTargets._shared_defaults(
-            travel_duration_start_seconds=9.0,
-            travel_duration_decrement_by_max_seconds=3.5,
-        )
+    def linear_default(joint:PrismaticJoint) :
+
+        if isinstance(joint, Lift):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
+                travel_duration_start_seconds=9.0,
+                travel_duration_decrement_by_max_seconds=3.5,
+            )
+        
+        if isinstance(joint, Arm):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
+                travel_duration_start_seconds=9.0,
+                travel_duration_decrement_by_max_seconds=3.5,
+            )
+        
+        raise NotImplementedError(f"Joint {joint.name} is not supported for trajectory calibration.")
 
     @staticmethod
-    def cubic_default():
-        return CalibrationTargets._shared_defaults(
+    def cubic_default(joint:PrismaticJoint):
+        if isinstance(joint, Lift):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
             travel_duration_start_seconds=10.0,
             travel_duration_decrement_by_max_seconds=3.0,
         )
+        
+        if isinstance(joint, Arm):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
+            travel_duration_start_seconds=10.0,
+            travel_duration_decrement_by_max_seconds=3.0,
+            )
+        
+        raise NotImplementedError(f"Joint {joint.name} is not supported for trajectory calibration.")
 
     @staticmethod
-    def quintic_default():
-        return CalibrationTargets._shared_defaults(
+    def quintic_default(joint:PrismaticJoint):
+        
+        if isinstance(joint, Lift):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
             travel_duration_start_seconds=12.0,
             travel_duration_decrement_by_max_seconds=3.0
         )
+        if isinstance(joint, Arm):
+            return CalibrationTargets._shared_defaults(
+                joint=joint,
+            travel_duration_start_seconds=12.0,
+            travel_duration_decrement_by_max_seconds=3.0
+            )
+        
+        raise NotImplementedError(f"Joint {joint.name} is not supported for trajectory calibration.")
 
 
 class MotionData:
@@ -739,7 +792,7 @@ The  dynamic range has been exceeded. Step_calibration is backtracking to find t
 
         good_travel_duration = self.last_good_calibration.trajectory.travel_duration_seconds if self.last_good_calibration else None
         bad_travel_duration = self.last_bad_calibration.trajectory.travel_duration_seconds if self.last_bad_calibration else None
-        STOPPED_FOR_SAFETY_MOTION_PENALTY = 0.2
+        STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE = self.calibration_targets.end_condition_time_step
 
 
         if not good_travel_duration and not bad_travel_duration:
@@ -766,12 +819,12 @@ The  dynamic range has been exceeded. Step_calibration is backtracking to find t
             change_time_by = (good_travel_duration - bad_travel_duration) /2
 
             if self.last_motion_stopped_for_safety:
-                change_time_by -= STOPPED_FOR_SAFETY_MOTION_PENALTY
+                change_time_by -= STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE
 
             amount = round(good_travel_duration - change_time_by, 2)
 
             message +=f"""
-    Increasing the last travel time from {bad_travel_duration}s to {amount}s (+{change_time_by}s) for this run.
+    Increasing the last travel time from {bad_travel_duration}s to {amount}s ({change_time_by}s) for this run.
     The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {self.last_motion_stopped_for_safety} else ''}
     """
 
@@ -801,7 +854,7 @@ The  dynamic range has been exceeded. Step_calibration is backtracking to find t
 
         travel_duration, change_time_by, message = self.get_next_travel_duration_in_seconds()
 
-        end_condition_1 = self.last_bad_calibration and abs(change_time_by) < 0.25 and not self.last_motion_stopped_for_safety
+        end_condition_1 = self.last_bad_calibration and abs(change_time_by) < self.calibration_targets.end_condition_time_step and not self.last_motion_stopped_for_safety
 
         if self.last_good_calibration and end_condition_1:
             # we're close enough, accept this motion_data as optimal
@@ -1075,8 +1128,8 @@ def run_calibration_trajectory(joint: PrismaticJoint, label: str):
         is_use_velocity=False,
         is_use_acceleration=False,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.linear_default(),
-        negative_calibration_targets=CalibrationTargets.linear_default(),
+        positive_calibration_targets=CalibrationTargets.linear_default(joint),
+        negative_calibration_targets=CalibrationTargets.linear_default(joint),
     )
     tictoc_timer("Linear Calibration")
 
@@ -1087,8 +1140,8 @@ def run_calibration_trajectory(joint: PrismaticJoint, label: str):
         is_use_velocity=True,
         is_use_acceleration=False,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.cubic_default(),
-        negative_calibration_targets=CalibrationTargets.cubic_default(),
+        positive_calibration_targets=CalibrationTargets.cubic_default(joint),
+        negative_calibration_targets=CalibrationTargets.cubic_default(joint),
     )
     tictoc_timer("Cubic Calibration")
 
@@ -1099,8 +1152,8 @@ def run_calibration_trajectory(joint: PrismaticJoint, label: str):
         is_use_velocity=True,
         is_use_acceleration=True,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.quintic_default(),
-        negative_calibration_targets=CalibrationTargets.quintic_default(),
+        positive_calibration_targets=CalibrationTargets.quintic_default(joint),
+        negative_calibration_targets=CalibrationTargets.quintic_default(joint),
     )
     tictoc_timer("Quintic Calibration")
 
@@ -1151,7 +1204,7 @@ def _run_calibration():
 
     tictoc_timer("Calibration Trajectory")
 
-def _idle_move_joint(target_voltage:float, joint:PrismaticJoint):
+def _idle_wait_for_battery(target_voltage:float, joint:PrismaticJoint):
     """
     Wait for battery to reach a target
     """
@@ -1160,18 +1213,17 @@ def _idle_move_joint(target_voltage:float, joint:PrismaticJoint):
 
     battery_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
 
-    to_position = 0.2
+
+    node = subprocess.Popen(["ros2", "launch", "stretch_core", "rplidar.launch.py"])
+
     while target_voltage < battery_voltage:
         battery_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
         print(f"Idling while waiting for battery to reach {target_voltage}. Currently: {battery_voltage}")
-        
-        joint.move_to(to_position)
-        to_position = 0.6 if to_position == 0.2 else 0.2
+    
 
-        joint.push_command()
-        joint.motor.wait_until_at_setpoint()
+        time.sleep(30)
 
-        time.sleep(5)
+    node.kill()
 
     return battery_voltage
 
@@ -1268,24 +1320,32 @@ Joint %s will go through its full range-of-motion.
     )
     if click.confirm("Proceed?"):
 
-        _run_calibration()
-
         if args.run_continously_until_battery_low:
             current_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
             targets = np.arange(11.0, current_voltage, 0.5)[::-1]
 
             print(f"Running continiously until battery low. Step targets: {targets}. Current voltage: {current_voltage}")
 
-            for target_voltage in targets:
-                current_voltage = _idle_move_joint(target_voltage=target_voltage, joint=joint)
+            ask_for_confirmation = click.confirm(f"Do you want the joint to automatically start moving when the next battery target is reached? Choosing no will ask for confirmation before starting", default=False)
+            
+            if click.confirm(f"Run calibration immediately? Choosing no will wait until the next target {targets[0]}V to start."):
+                _run_calibration()
 
-                if current_voltage < targets[-1]:
-                    print(f"Battery voltage is below the minimum, aborting the {target_voltage}V run.")
-                    exit()
+            for target_voltage in targets:
+                current_voltage = _idle_wait_for_battery(target_voltage=target_voltage, joint=joint)
+
+
+                if ask_for_confirmation and not click.confirm(f"Battery voltage {current_voltage} (need {target_voltage}) is sufficient. Start?"):
+                    exit(1)
 
                 print("Target battery voltage reached, starting calibration.")
                 
                 _run_calibration()
+            
+            exit(0)
+
+        _run_calibration()
+
 
         
 
