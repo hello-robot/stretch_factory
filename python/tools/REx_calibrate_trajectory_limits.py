@@ -162,13 +162,13 @@ class CalibrationTargets:
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-            travel_duration_start_seconds=12.0,
+            travel_duration_start_seconds=14.0,
             travel_duration_decrement_by_max_seconds=3.0
         )
         if isinstance(joint, Arm):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-            travel_duration_start_seconds=12.0,
+            travel_duration_start_seconds=14.0,
             travel_duration_decrement_by_max_seconds=3.0
             )
         
@@ -1214,7 +1214,9 @@ def _idle_wait_for_battery(target_voltage:float, joint:PrismaticJoint):
     battery_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
 
 
+
     node = subprocess.Popen(["ros2", "launch", "stretch_core", "rplidar.launch.py"])
+    node2 = subprocess.Popen(["ros2", "launch", "stretch_core", "d435i_high_resolution.launch.py"])
 
     while target_voltage < battery_voltage:
         battery_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
@@ -1224,6 +1226,7 @@ def _idle_wait_for_battery(target_voltage:float, joint:PrismaticJoint):
         time.sleep(30)
 
     node.kill()
+    node2.kill()
 
     return battery_voltage
 
@@ -1318,24 +1321,33 @@ Joint %s will go through its full range-of-motion.
         % joint.name.capitalize(),
         fg="yellow",
     )
-    if click.confirm("Proceed?"):
+    if click.confirm("Proceed?", default=True):
 
         if args.run_continously_until_battery_low:
             current_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage 
-            targets = np.arange(11.0, current_voltage, 0.5)[::-1]
+            targets = np.arange(11.5, current_voltage, 0.5)[::-1]
+            click.secho(
+        f"""
 
-            print(f"Running continiously until battery low. Step targets: {targets}. Current voltage: {current_voltage}")
+Running continiously until the is battery low. Step targets: {targets}V. Current voltage: {current_voltage}V.
 
-            ask_for_confirmation = click.confirm(f"Do you want the joint to automatically start moving when the next battery target is reached? Choosing no will ask for confirmation before starting", default=False)
+Note: while the robot is idling, the rplidar and camera will be turned on to consume power more quickly.
+        """, fg="yellow",
+    )
+
+            ask_for_confirmation = click.confirm(f"Do you want to manually kick off the calibration when the next voltage target is reached? Choosing NO will automatically start the joint motion when the target voltage is reached.", default=False)
             
-            if click.confirm(f"Run calibration immediately? Choosing no will wait until the next target {targets[0]}V to start."):
+            if ask_for_confirmation:
+                print("You will be asked for confirmation when the correct voltage target is reached.")
+
+            if click.confirm(f"Run calibration immediately? Choosing NO will wait until the next target {targets[0]}V to start."):
                 _run_calibration()
 
             for target_voltage in targets:
                 current_voltage = _idle_wait_for_battery(target_voltage=target_voltage, joint=joint)
 
 
-                if ask_for_confirmation and not click.confirm(f"Battery voltage {current_voltage} (need {target_voltage}) is sufficient. Start?"):
+                if ask_for_confirmation and not click.confirm(f"Battery voltage {current_voltage} (need {target_voltage}) is sufficient. Start?", default=True):
                     exit(1)
 
                 print("Target battery voltage reached, starting calibration.")
