@@ -12,6 +12,7 @@ import click
 from stretch_body.pimu import Pimu
 from stretch_body.lift import Lift
 from stretch_body.arm import Arm
+from stretch_body.base import Base
 from stretch_body.prismatic_joint import PrismaticJoint
 
 import numpy as np
@@ -24,6 +25,28 @@ import logging
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+class MotionProfileTypes(IntEnum):
+    linear = 0
+    cubic = 1
+    quintic = 2
+
+
+class JointTypes(IntEnum):
+    arm = 0
+    lift = 1
+    base = 2
+
+    def get_joint_instance(self):
+        if self == JointTypes.arm:
+            return Arm()
+        if self == JointTypes.lift:
+            return Lift()
+        if self == JointTypes.base:
+            return Base()
+        
+        raise NotImplementedError(f"{self} joint type is not supported.")
 
 
 class StepCalibrationResult(IntEnum):
@@ -47,7 +70,7 @@ class BatteryInfo:
         return json.loads(json.dumps(asdict(self)))
 
     @staticmethod
-    def get_battery_info(pimu: Pimu, max_battery_volage: float = 14.5) -> "BatteryInfo":
+    def get_battery_info(pimu: "Pimu", max_battery_volage: float = 14.5) -> "BatteryInfo":
 
         pimu.pull_status()
         battery_voltage = pimu.status["voltage"]
@@ -81,7 +104,7 @@ class CalibrationTargets:
 
     @staticmethod
     def _shared_defaults(
-        joint: PrismaticJoint,
+        joint: "PrismaticJoint",
         travel_duration_start_seconds: float,
         travel_duration_decrement_by_max_seconds: float,
     ) -> "CalibrationTargets":
@@ -115,7 +138,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def linear_default(joint: PrismaticJoint) -> "CalibrationTargets":
+    def linear_default(joint: "PrismaticJoint") -> "CalibrationTargets":
 
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
@@ -136,7 +159,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def cubic_default(joint: PrismaticJoint) -> "CalibrationTargets":
+    def cubic_default(joint: "PrismaticJoint") -> "CalibrationTargets":
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
@@ -156,7 +179,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def quintic_default(joint: PrismaticJoint) -> "CalibrationTargets":
+    def quintic_default(joint: "PrismaticJoint") -> "CalibrationTargets":
 
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
@@ -195,17 +218,17 @@ class MotionData:
 
     is_motion_stopped_for_safety = False
 
-    def motion_overview(self, prefix: str = "") -> str:
+    def motion_overview(self, joint:"PrismaticJoint", prefix: str = "") -> str:
         warnings = ""
         if not np.isclose(
             self.goal_position_cm,
             self.actual_position_cm,
             atol=self.calibration_targets.goal_error_absolute_target_cm,
         ):
-            warnings += f"WARNING: the {joint.name} did not reach the goal.\n"
+            warnings += f"WARNING: the {joint.name} did not reach the goal.\n    "
 
         if self.is_motion_stopped_for_safety:
-            warnings += f"WARNING: the {joint.name}'s motion was stopped for safety before completing the trajectory.\n"
+            warnings += f"WARNING: the {joint.name}'s motion was stopped for safety before completing the trajectory.\n    "
 
         return f"""{prefix}
     Moved {self.travel_range_cm}cm in {self.trajectory.travel_duration_seconds} seconds ({self.linear_speed_cm_per_second})cm/s. 
@@ -393,7 +416,131 @@ class TrajectoryFlattened:
         return abs(self.positions[-1] - self.positions[0])
 
 
-def _collect_data(motion_data: MotionData, joint: PrismaticJoint):
+
+@dataclass
+class TrajectoryCalibrationData:
+    """
+    Controls calibration and data collection for one direction of joint motion.
+
+    See `MotionData::is_exceeded_calibration_targets()` for calibration conditions.
+    """
+
+    description: str
+    battery_info: BatteryInfo
+    is_positive_direction: bool
+    is_use_velocity: bool
+    is_use_acceleration: bool
+    calibration_targets: CalibrationTargets
+
+    motion_data: list[MotionData] = field(default_factory=list)
+
+    messages: list[str] = field(default_factory=list)
+
+    last_good_calibration: MotionData | None = None
+    last_bad_calibration: MotionData | None = None
+    optimal_calibration_motion_data: MotionData | None = None
+
+    last_motion_stopped_for_safety = False
+
+    def is_calibrated(self) -> bool:
+        return self.optimal_calibration_motion_data is not None
+
+    @property
+    def profile_name(self):
+        if self.is_use_acceleration:
+            return "Quintic"
+        if self.is_use_velocity:
+            return "Cubic"
+        return "Linear"
+
+    @property
+    def direction_name(self):
+        return "Positive" if self.is_positive_direction else "Negative"
+
+    def to_json(self, is_export_only_last_motion_data=True) -> dict:
+        return json.loads(
+            json.dumps(
+                {
+                    "description": self.description,
+                    "travel_duration_seconds": (
+                        self.optimal_calibration_motion_data.trajectory.travel_duration_seconds
+                        if self.optimal_calibration_motion_data
+                        else None
+                    ),
+                    "travel_range_cm": (
+                        self.optimal_calibration_motion_data.trajectory.trajectory_range
+                        if self.optimal_calibration_motion_data
+                        else None
+                    ),
+                    "linear_speed_cm_per_second": (
+                        self.optimal_calibration_motion_data.linear_speed_cm_per_second
+                        if self.optimal_calibration_motion_data
+                        else None
+                    ),
+                    "is_positive_direction": self.is_positive_direction,
+                    "is_use_velocity": self.is_use_velocity,
+                    "is_use_acceleration": self.is_use_acceleration,
+                    "calibration_targets": asdict(self.calibration_targets),
+                    "motion_data": [
+                        motion_data.to_json()
+                        for motion_data in (
+                            self.motion_data[-1:]
+                            if is_export_only_last_motion_data
+                            else self.motion_data
+                        )
+                    ],
+                    "battery_info": self.battery_info.to_json(),
+                    "last_good_calibration": (
+                        self.last_good_calibration.to_json()
+                        if self.last_good_calibration is not None
+                        else None
+                    ),
+                    "last_bad_calibration": (
+                        self.last_bad_calibration.to_json()
+                        if self.last_bad_calibration is not None
+                        else None
+                    ),
+                    "optimal_calibration_motion_data": (
+                        self.optimal_calibration_motion_data.to_json()
+                        if self.optimal_calibration_motion_data is not None
+                        else None
+                    ),
+                    "messages": self.messages,
+                }
+            )
+        )
+
+    @staticmethod
+    def from_json(json_data: dict) -> "TrajectoryCalibrationData":
+        calibration_data = TrajectoryCalibrationData(
+            description=json_data["description"],
+            battery_info=BatteryInfo(**json_data["battery_info"]),
+            is_positive_direction=json_data["is_positive_direction"],
+            is_use_velocity=json_data["is_use_velocity"],
+            is_use_acceleration=json_data["is_use_acceleration"],
+            calibration_targets=json_data["calibration_targets"],
+        )
+        motion_data_json: list[dict] = json_data["motion_data"]
+        calibration_data.motion_data = [
+            MotionData.from_json(motion_data) for motion_data in motion_data_json
+        ]
+        calibration_data.messages = json_data["messages"]
+        calibration_data.last_bad_calibration = MotionData.from_json(
+            json_data["last_bad_calibration"]
+        )
+
+        calibration_data.last_good_calibration = MotionData.from_json(
+            json_data["last_good_calibration"]
+        )
+
+        calibration_data.optimal_calibration_motion_data = MotionData.from_json(
+            json_data["optimal_calibration_motion_data"]
+        )
+
+        return calibration_data
+
+
+def _collect_data(motion_data: MotionData, joint: "PrismaticJoint"):
     motion_data.timestamps_during_motion.append(time.time())
     motion_data.positions_during_motion.append(joint.status["pos"])
     motion_data.velocities_during_motion.append(joint.status["vel"])
@@ -534,10 +681,12 @@ def _plot_motion_profiles_and_save_outputs(
     plt.savefig(f"{trajectory_folder_to_save_plots}/{title_snakecase}.png")
 
 
-def _run_profile_trajectory(
-    joint: PrismaticJoint,
+def run_profile_trajectory(
+    joint: "PrismaticJoint",
     trajectory: TrajectoryFlattened,
     calibration_targets: CalibrationTargets,
+    disable_guarded_mode:bool = True,
+    disable_dynamic_limits:bool = True
 ) -> MotionData:
     """
     Follows a trajectory and captures position and effort data.
@@ -557,11 +706,13 @@ def _run_profile_trajectory(
 
     joint.motor.disable_sync_mode()  # this is important for trajectory mode to move joints.
 
-    joint.motor.disable_guarded_mode()
+    if disable_guarded_mode:
+        joint.motor.disable_guarded_mode()
 
-    # We're disabling the limits for dynamic checks.
-    joint.params["motion"]["trajectory_max"]["vel_m"] = 0.5
-    joint.params["motion"]["trajectory_max"]["accel_m"] = 0.5
+    if disable_dynamic_limits:
+        # We're disabling the limits for dynamic checks.
+        joint.params["motion"]["trajectory_max"]["vel_m"] = 0.5
+        joint.params["motion"]["trajectory_max"]["accel_m"] = 0.5
 
     joint.pull_status()
 
@@ -589,7 +740,7 @@ def _run_profile_trajectory(
             > motion_data.calibration_targets.effort_percent_target
         ):
             # Effort too high!
-            print(f"\nWARNING: Effort exceeded, telling {joint.name} to stop!\n")
+            print(f"\n    WARNING: Effort exceeded, telling {joint.name} to stop!\n")
             joint.motor.enable_safety()
             joint.push_command()
             joint.stop_trajectory()
@@ -604,7 +755,7 @@ def _run_profile_trajectory(
 
 
 def _set_trajectory_based_on_joint_limits(
-    joint: PrismaticJoint,
+    joint: "PrismaticJoint",
     is_positive_direction: bool,
     travel_duration: float,
     is_use_velocity: bool,
@@ -662,129 +813,6 @@ def _map_range(
     ) + target_min
 
 
-@dataclass
-class TrajectoryCalibrationData:
-    """
-    Controls calibration and data collection for one direction of joint motion.
-
-    See `MotionData::is_exceeded_calibration_targets()` for calibration conditions.
-    """
-
-    description: str
-    battery_info: BatteryInfo
-    is_positive_direction: bool
-    is_use_velocity: bool
-    is_use_acceleration: bool
-    calibration_targets: CalibrationTargets
-
-    motion_data: list[MotionData] = field(default_factory=list)
-
-    messages: list[str] = field(default_factory=list)
-
-    last_good_calibration: MotionData | None = None
-    last_bad_calibration: MotionData | None = None
-    optimal_calibration_motion_data: MotionData | None = None
-
-    last_motion_stopped_for_safety = False
-
-    def is_calibrated(self) -> bool:
-        return self.optimal_calibration_motion_data is not None
-
-    @property
-    def profile_name(self):
-        if self.is_use_acceleration:
-            return "Quintic"
-        if self.is_use_velocity:
-            return "Cubic"
-        return "Linear"
-
-    @property
-    def direction_name(self):
-        return "Positive" if self.is_positive_direction else "Negative"
-
-    def to_json(self, is_export_only_last_motion_data=True) -> dict:
-        return json.loads(
-            json.dumps(
-                {
-                    "description": self.description,
-                    "travel_duration_seconds": (
-                        self.optimal_calibration_motion_data.trajectory.travel_duration_seconds
-                        if self.optimal_calibration_motion_data
-                        else None
-                    ),
-                    "travel_range_cm": (
-                        self.optimal_calibration_motion_data.trajectory.trajectory_range
-                        if self.optimal_calibration_motion_data
-                        else None
-                    ),
-                    "linear_speed_cm_per_second": (
-                        self.optimal_calibration_motion_data.linear_speed_cm_per_second
-                        if self.optimal_calibration_motion_data
-                        else None
-                    ),
-                    "is_positive_direction": self.is_positive_direction,
-                    "is_use_velocity": self.is_use_velocity,
-                    "is_use_acceleration": self.is_use_acceleration,
-                    "calibration_targets": asdict(self.calibration_targets),
-                    "motion_data": [
-                        motion_data.to_json()
-                        for motion_data in (
-                            self.motion_data[-1:]
-                            if is_export_only_last_motion_data
-                            else self.motion_data
-                        )
-                    ],
-                    "battery_info": self.battery_info.to_json(),
-                    "last_good_calibration": (
-                        self.last_good_calibration.to_json()
-                        if self.last_good_calibration is not None
-                        else None
-                    ),
-                    "last_bad_calibration": (
-                        self.last_bad_calibration.to_json()
-                        if self.last_bad_calibration is not None
-                        else None
-                    ),
-                    "optimal_calibration_motion_data": (
-                        self.optimal_calibration_motion_data.to_json()
-                        if self.optimal_calibration_motion_data is not None
-                        else None
-                    ),
-                    "messages": self.messages,
-                }
-            )
-        )
-
-    @staticmethod
-    def from_json(json_data: dict) -> "TrajectoryCalibrationData":
-        calibration_data = TrajectoryCalibrationData(
-            description=json_data["description"],
-            battery_info=BatteryInfo(**json_data["battery_info"]),
-            is_positive_direction=json_data["is_positive_direction"],
-            is_use_velocity=json_data["is_use_velocity"],
-            is_use_acceleration=json_data["is_use_acceleration"],
-            calibration_targets=json_data["calibration_targets"],
-        )
-        motion_data_json: list[dict] = json_data["motion_data"]
-        calibration_data.motion_data = [
-            MotionData.from_json(motion_data) for motion_data in motion_data_json
-        ]
-        calibration_data.messages = json_data["messages"]
-        calibration_data.last_bad_calibration = MotionData.from_json(
-            json_data["last_bad_calibration"]
-        )
-
-        calibration_data.last_good_calibration = MotionData.from_json(
-            json_data["last_good_calibration"]
-        )
-
-        calibration_data.optimal_calibration_motion_data = MotionData.from_json(
-            json_data["optimal_calibration_motion_data"]
-        )
-
-        return calibration_data
-
-
 def _get_dynamic_decrease_time_by(
     calibration_data: TrajectoryCalibrationData, motion_data: MotionData
 ) -> float:
@@ -814,7 +842,7 @@ def _get_dynamic_decrease_time_by(
 
 
 def _good_step(
-    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData, joint:PrismaticJoint
 ) -> str:
     """
     We've landed on a good step. This means we will decrease the travel duration (aka increase travel speed) to push dynamic limits further.
@@ -827,14 +855,15 @@ def _good_step(
     calibration_data.motion_data.append(motion_data)
 
     return motion_data.motion_overview(
-        f"""
+        joint=joint,
+        prefix=f"""
 {calibration_data.direction_name} {joint.name} {calibration_data.profile_name} Motion Profile:
 """
     )
 
 
 def _bad_step(
-    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData,  joint:PrismaticJoint
 ) -> str:
     """
     We've landed on a bad step. This means that we've exceeded the calibration targets.
@@ -855,7 +884,8 @@ def _bad_step(
     calibration_data.motion_data.append(motion_data)
 
     return motion_data.motion_overview(
-        f"""
+        joint=joint,
+        prefix=f"""
 {calibration_data.direction_name} {joint.name} {calibration_data.profile_name} Motion Profile: 
 The  dynamic range has been exceeded. Step_calibration is backtracking to find the optimal calibration values. 
 """
@@ -908,7 +938,7 @@ def _get_next_travel_duration_in_seconds(
         new_travel_duration = round(good_travel_duration + change_time_by, 2)
 
         message += f"""
-Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
+    Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
 """
 
     if (
@@ -936,8 +966,8 @@ Decreasing the last travel time from {good_travel_duration}s to {new_travel_dura
         new_travel_duration = round(good_travel_duration - change_time_by, 2)
 
         message += f"""
-Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
-The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {calibration_data.last_motion_stopped_for_safety} else ''}
+    Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
+    The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {calibration_data.last_motion_stopped_for_safety} else ''}
 """
 
     return new_travel_duration, change_time_by, message
@@ -1010,7 +1040,7 @@ def _step_calibration(
     )
 
     # Run the motion and collect motion data:
-    motion_data = _run_profile_trajectory(
+    motion_data = run_profile_trajectory(
         joint=joint,
         trajectory=trajectory,
         calibration_targets=calibration_data.calibration_targets,
@@ -1034,9 +1064,9 @@ def _step_calibration(
         not motion_data.is_exceeded_calibration_targets()
         and not motion_data.is_motion_stopped_for_safety
     ):
-        message = _good_step(calibration_data=calibration_data, motion_data=motion_data)
+        message = _good_step(calibration_data=calibration_data, motion_data=motion_data, joint=joint)
     else:
-        message = _bad_step(calibration_data=calibration_data, motion_data=motion_data)
+        message = _bad_step(calibration_data=calibration_data, motion_data=motion_data, joint=joint)
 
     calibration_data.messages.append(message)
 
@@ -1046,7 +1076,7 @@ def _step_calibration(
 
 
 def _do_calibration_trajectory_mode_dynamic_limits(
-    joint: PrismaticJoint,
+    joint: "PrismaticJoint",
     is_use_velocity: bool,
     is_use_acceleration: bool,
     filename_prefix: str,
@@ -1126,10 +1156,10 @@ def _do_calibration_trajectory_mode_dynamic_limits(
     print(
         f"""
 Optimal Positive {joint.name} {positive_motion.profile_name} Motion Profile: 
-{optimal_positive.motion_overview()}
+{optimal_positive.motion_overview(joint=joint)}
 
 Optimal Negative {joint.name} {negative_motion.profile_name} Motion Profile: 
-{optimal_negative.motion_overview()}
+{optimal_negative.motion_overview(joint=joint)}
 """
     )
 
@@ -1137,7 +1167,7 @@ Optimal Negative {joint.name} {negative_motion.profile_name} Motion Profile:
 
 
 def run_calibration_trajectory(
-    joint: PrismaticJoint, label: str
+    joint: "PrismaticJoint", label: str
 ) -> list[tuple[TrajectoryCalibrationData, TrajectoryCalibrationData]]:
     """
     Uses trajectory mode to construct paths, to dynamically calibrate dynamic limits for your robot's joint.
@@ -1252,7 +1282,7 @@ def _run_calibration():
     tictoc_timer("Calibration Trajectory")
 
 
-def _idle_wait_for_battery(target_voltage: float, joint: PrismaticJoint) -> float:
+def _idle_wait_for_battery(target_voltage: float, joint: "PrismaticJoint") -> float:
     """
     Wait for battery to reach a target
     """
@@ -1279,16 +1309,16 @@ def _idle_wait_for_battery(target_voltage: float, joint: PrismaticJoint) -> floa
 
     return battery_voltage
 
-
 if __name__ == "__main__":
     print_stretch_re_use()
 
     parser = argparse.ArgumentParser(
         description="Calibrate the default guarded contacts for a joint."
     )
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--lift", help="Calibrate the lift joint", action="store_true")
     group.add_argument("--arm", help="Calibrate the arm joint", action="store_true")
+    group.add_argument("--base", help="Calibrate the base joint", action="store_true")
     parser.add_argument(
         "--ncycle", type=int, help="Number of sweeps to run [4]", default=4
     )
@@ -1314,10 +1344,17 @@ if __name__ == "__main__":
         subprocess.call("stretch_arm_home.py")
         subprocess.call("stretch_wrist_yaw_home.py")
 
-    joint = Lift()
+    if not (args.arm or args.lift or args.arm):
+        joint_type = JointTypes[click.prompt("Choose one", type=click.Choice([j.name for j in JointTypes]))]
+    else:
+        joint_type = JointTypes.lift
+        if args.arm:
+            joint_type = JointTypes.arm
+        if args.base:
+            joint_type = JointTypes.base
 
-    if args.arm:
-        joint = Arm()
+
+    joint = joint_type.get_joint_instance()
 
     check_deprecated_contact_model_prismatic_joint(
         joint, "REx_calibrate_guarded_contacts.py", None, None, None, None
