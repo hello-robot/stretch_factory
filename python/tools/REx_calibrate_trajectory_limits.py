@@ -104,7 +104,7 @@ class CalibrationTargets:
 
     @staticmethod
     def _shared_defaults(
-        joint: "PrismaticJoint",
+        joint: "PrismaticJoint|Base",
         travel_duration_start_seconds: float,
         travel_duration_decrement_by_max_seconds: float,
     ) -> "CalibrationTargets":
@@ -138,7 +138,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def linear_default(joint: "PrismaticJoint") -> "CalibrationTargets":
+    def linear_default(joint: "PrismaticJoint|Base") -> "CalibrationTargets":
 
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
@@ -159,7 +159,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def cubic_default(joint: "PrismaticJoint") -> "CalibrationTargets":
+    def cubic_default(joint: "PrismaticJoint|Base") -> "CalibrationTargets":
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
@@ -179,7 +179,7 @@ class CalibrationTargets:
         )
 
     @staticmethod
-    def quintic_default(joint: "PrismaticJoint") -> "CalibrationTargets":
+    def quintic_default(joint: "PrismaticJoint|Base") -> "CalibrationTargets":
 
         if isinstance(joint, Lift):
             return CalibrationTargets._shared_defaults(
@@ -218,7 +218,7 @@ class MotionData:
 
     is_motion_stopped_for_safety = False
 
-    def motion_overview(self, joint:"PrismaticJoint", prefix: str = "") -> str:
+    def motion_overview(self, joint:"PrismaticJoint|Base", prefix: str = "") -> str:
         warnings = ""
         if not np.isclose(
             self.goal_position_cm,
@@ -390,20 +390,22 @@ class TrajectoryFlattened:
     Definition of a waypoint trajectory - flattened so that indecies correspond to the waypoint number. e.g. index 0 is the first waypoint.
     """
 
-    timestamps: list[float]
-    positions: list[float]
-    velocities: list[float] | None
-    accelerations: list[float] | None
+    timestamps: list[float] = field(default_factory=list)
+    positions: list[float]= field(default_factory=list)
+    velocities: list[float] | None = None
+    accelerations: list[float] | None = None
+
+    # For diff drive:
+    positions_y: list[float]= field(default_factory=list)
+    thetas : list[float] = field(default_factory=list)
+    velocities_translational:list[float]|None = None
+    accelerations_translational:list[float]|None = None
+
 
     def to_json(self) -> dict:
         return json.loads(
             json.dumps(
-                {
-                    "timestamps": self.timestamps,
-                    "positions": self.positions,
-                    "velocities": self.velocities,
-                    "accelerations": self.accelerations,
-                }
+                asdict(self)
             )
         )
 
@@ -412,8 +414,18 @@ class TrajectoryFlattened:
         return abs(self.timestamps[-1] - self.timestamps[0])
 
     @property
+    def x_range(self) -> float:
+        return float(abs(np.ptp(self.positions)))
+    @property
+    def y_range(self) -> float:
+        return float(abs(np.ptp(self.positions_y))) if self.positions_y else 0
+
+    @property
     def trajectory_range(self) -> float:
-        return abs(self.positions[-1] - self.positions[0])
+        return float(
+            np.linalg.norm(
+                np.array(
+                    (self.x_range, self.y_range))))
 
 
 
@@ -546,6 +558,13 @@ def _collect_data(motion_data: MotionData, joint: "PrismaticJoint"):
     motion_data.velocities_during_motion.append(joint.status["vel"])
     motion_data.effort_during_motion.append(joint.motor.status["effort_pct"])
     motion_data.current_during_motion.append(joint.motor.status["current"])
+
+def _collect_data_base(motion_data: MotionData, joint: "Base"):
+    motion_data.timestamps_during_motion.append(time.time())
+    motion_data.positions_during_motion.append(joint.status["pos"])
+    motion_data.velocities_during_motion.append(joint.status["vel"])
+    motion_data.effort_during_motion.append(joint.status["effort_pct"])
+    motion_data.current_during_motion.append(joint.status["current"])
 
 
 def _plot_motion_profiles_and_save_outputs(
@@ -682,7 +701,7 @@ def _plot_motion_profiles_and_save_outputs(
 
 
 def run_profile_trajectory(
-    joint: "PrismaticJoint",
+    joint: "PrismaticJoint|Base",
     trajectory: TrajectoryFlattened,
     calibration_targets: CalibrationTargets,
     disable_guarded_mode:bool = True,
@@ -704,10 +723,10 @@ def run_profile_trajectory(
             "No waypoints. Did you call _set_trajectory_based_on_joint_limits()?"
         )
 
-    joint.motor.disable_sync_mode()  # this is important for trajectory mode to move joints.
+    _disable_sync_mode(joint) # this is important for trajectory mode to move joints.
 
     if disable_guarded_mode:
-        joint.motor.disable_guarded_mode()
+        _disable_guarded_mode(joint)
 
     if disable_dynamic_limits:
         # We're disabling the limits for dynamic checks.
@@ -718,9 +737,8 @@ def run_profile_trajectory(
 
     time.sleep(1)  # let things settle
 
-    assert joint.follow_trajectory(
-        move_to_start_point=True
-    ), "Setting trajectory failed."
+
+    assert _follow_trajectory(joint), "Setting trajectory failed."
 
     time.sleep(0.25)
     joint.pull_status()
@@ -733,7 +751,11 @@ def run_profile_trajectory(
         joint.pull_status()
         joint.update_trajectory()
 
-        _collect_data(motion_data=motion_data, joint=joint)
+        # is this "reflection" too slow?
+        if not isinstance(joint, Base):
+            _collect_data(motion_data=motion_data, joint=joint)
+        else:
+            _collect_data_base(motion_data=motion_data, joint=joint)
 
         if (
             abs(motion_data.effort_during_motion[-1])
@@ -741,11 +763,7 @@ def run_profile_trajectory(
         ):
             # Effort too high!
             print(f"\n    WARNING: Effort exceeded, telling {joint.name} to stop!\n")
-            joint.motor.enable_safety()
-            joint.push_command()
-            joint.stop_trajectory()
-            joint.push_command()
-            joint.pull_status()
+            _enable_safety(joint)
 
             motion_data.is_motion_stopped_for_safety = True
 
@@ -795,6 +813,64 @@ def _set_trajectory_based_on_joint_limits(
     return TrajectoryFlattened(t_s, x_m, v_m, a_m)
 
 
+def _set_trajectory_diff_drive(
+    joint: "Base",
+    is_positive_direction: bool,
+    travel_duration: float,
+    is_use_velocity: bool,
+    is_use_acceleration: bool,
+    offset_from_joint_limit_min: float,
+    offset_from_joint_limit_max: float,
+) -> "TrajectoryFlattened":
+    """
+    Sets the starting and ending positions to the range limits of the joint.
+
+    If `is_use_velocity` is true, the velocity steps will be set to 0 m/s at either extremes.
+    If `is_use_acceleration` is true, the acceleration steps will be set to 0 m/s^2 at either extremes.
+
+    returns `joint_range`
+    """
+    joint_max_position = 1.0
+    joint_min_position = 0.0
+
+    start_position = joint_min_position if is_positive_direction else joint_max_position
+    end_position = joint_max_position if is_positive_direction else joint_min_position
+
+    t_s = [0.0, travel_duration]
+    x = [start_position, end_position]
+    y = [start_position, end_position]
+    theta = [0.0, 0.0]
+    translational_vel = [0.0, 0.0] if is_use_velocity else None
+    rotational_vel = translational_vel
+    translational_accel = [0.0, 0.0] if is_use_acceleration else None
+    rotational_accel=translational_accel
+
+    joint.trajectory.clear()
+
+    for index in range(len(t_s)):
+        joint.trajectory.add(
+            time=t_s[index],
+            x=x,
+            y=y,
+            theta=theta,
+              translational_vel=translational_vel, 
+              rotational_vel=rotational_vel, 
+              translational_accel=translational_accel, 
+              rotational_accel=rotational_accel
+        )
+
+    return TrajectoryFlattened(
+        timestamps=t_s, 
+        positions=x, 
+        positions_y=y,
+        thetas=theta,
+        velocities=rotational_vel, 
+        velocities_translational=translational_vel,
+        accelerations=rotational_accel,
+        accelerations_translational=translational_accel
+        )
+
+
 def _map_range(
     value, map_from: tuple[float, float], map_to: tuple[float, float]
 ) -> float:
@@ -842,7 +918,7 @@ def _get_dynamic_decrease_time_by(
 
 
 def _good_step(
-    calibration_data: TrajectoryCalibrationData, motion_data: MotionData, joint:PrismaticJoint
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData, joint: "PrismaticJoint|Base"
 ) -> str:
     """
     We've landed on a good step. This means we will decrease the travel duration (aka increase travel speed) to push dynamic limits further.
@@ -863,7 +939,7 @@ def _good_step(
 
 
 def _bad_step(
-    calibration_data: TrajectoryCalibrationData, motion_data: MotionData,  joint:PrismaticJoint
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData,  joint: "PrismaticJoint|Base"
 ) -> str:
     """
     We've landed on a bad step. This means that we've exceeded the calibration targets.
@@ -991,7 +1067,7 @@ def _check_runstop(motion_data: MotionData):
 
 
 def _step_calibration(
-    calibration_data: TrajectoryCalibrationData, joint: PrismaticJoint
+    calibration_data: TrajectoryCalibrationData, joint: "PrismaticJoint|Base"
 ) -> bool:
     """
     Decreases the `current_travel_duration` until one of the `MotionData::is_exceeded_calibration_targets()` conditions is met.
@@ -1029,15 +1105,27 @@ def _step_calibration(
         print(message)
 
     # Set the motion trajectory:
-    trajectory = _set_trajectory_based_on_joint_limits(
-        joint=joint,
-        is_positive_direction=calibration_data.is_positive_direction,
-        travel_duration=travel_duration,
-        is_use_velocity=calibration_data.is_use_velocity,
-        is_use_acceleration=calibration_data.is_use_acceleration,
-        offset_from_joint_limit_min=calibration_data.calibration_targets.offset_from_joint_limit_min,
-        offset_from_joint_limit_max=calibration_data.calibration_targets.offset_from_joint_limit_max,
-    )
+    if not isinstance(joint, Base):
+        trajectory = _set_trajectory_based_on_joint_limits(
+            joint=joint,
+            is_positive_direction=calibration_data.is_positive_direction,
+            travel_duration=travel_duration,
+            is_use_velocity=calibration_data.is_use_velocity,
+            is_use_acceleration=calibration_data.is_use_acceleration,
+            offset_from_joint_limit_min=calibration_data.calibration_targets.offset_from_joint_limit_min,
+            offset_from_joint_limit_max=calibration_data.calibration_targets.offset_from_joint_limit_max,
+        )
+    else:
+        trajectory = _set_trajectory_diff_drive(
+            joint=joint,
+            is_positive_direction=calibration_data.is_positive_direction,
+            travel_duration=travel_duration,
+            is_use_velocity=calibration_data.is_use_velocity,
+            is_use_acceleration=calibration_data.is_use_acceleration,
+            offset_from_joint_limit_min=calibration_data.calibration_targets.offset_from_joint_limit_min,
+            offset_from_joint_limit_max=calibration_data.calibration_targets.offset_from_joint_limit_max,
+        )
+
 
     # Run the motion and collect motion data:
     motion_data = run_profile_trajectory(
@@ -1076,7 +1164,7 @@ def _step_calibration(
 
 
 def _do_calibration_trajectory_mode_dynamic_limits(
-    joint: "PrismaticJoint",
+    joint: "PrismaticJoint|Base",
     is_use_velocity: bool,
     is_use_acceleration: bool,
     filename_prefix: str,
@@ -1167,7 +1255,7 @@ Optimal Negative {joint.name} {negative_motion.profile_name} Motion Profile:
 
 
 def run_calibration_trajectory(
-    joint: "PrismaticJoint", label: str
+    joint: "PrismaticJoint|Base", label: str
 ) -> list[tuple[TrajectoryCalibrationData, TrajectoryCalibrationData]]:
     """
     Uses trajectory mode to construct paths, to dynamically calibrate dynamic limits for your robot's joint.
@@ -1282,12 +1370,54 @@ def _run_calibration():
     tictoc_timer("Calibration Trajectory")
 
 
-def _idle_wait_for_battery(target_voltage: float, joint: "PrismaticJoint") -> float:
+def _disable_sync_mode(joint: "PrismaticJoint|Base"):
+    if not isinstance(joint, Base):
+        joint.motor.disable_sync_mode()
+    else:
+        joint.left_wheel.disable_sync_mode()
+        joint.right_wheel.disable_sync_mode()
+
+    joint.push_command()
+
+def _disable_guarded_mode(joint: "PrismaticJoint|Base"):
+    if not isinstance(joint, Base):
+        joint.motor.disable_guarded_mode()
+    else:
+        joint.left_wheel.disable_guarded_mode()
+        joint.right_wheel.disable_guarded_mode()
+
+    joint.push_command()
+
+def _enable_safety(joint: "PrismaticJoint|Base"):
+    if not isinstance(joint, Base):
+        joint.motor.enable_safety()
+    else:
+        joint.left_wheel.enable_safety()
+        joint.right_wheel.enable_safety()
+
+    joint.push_command()
+    joint.stop_trajectory()
+    joint.push_command()
+    joint.pull_status()
+
+def _follow_trajectory(joint: "PrismaticJoint|Base"):
+    if not isinstance(joint, Base):
+        return joint.follow_trajectory(move_to_start_point=True)
+    else:
+        return joint.follow_trajectory()
+    
+
+def _is_homed(joint: "PrismaticJoint|Base"):
+    joint.pull_status()
+    if not isinstance(joint, Base):
+        return joint.motor.status["pos_calibrated"]
+    else:
+        return joint.left_wheel.status["pos_calibrated"] and joint.right_wheel.status["pos_calibrated"]
+
+def _idle_wait_for_battery(target_voltage: float) -> float:
     """
     Wait for battery to reach a target
     """
-    joint.motor.disable_sync_mode()
-    joint.push_command()
 
     battery_voltage = BatteryInfo.get_battery_info(pimu).battery_voltage
 
@@ -1363,8 +1493,7 @@ if __name__ == "__main__":
     if not joint.startup(threaded=False):
         exit(1)
 
-    joint.pull_status()
-    if not joint.motor.status["pos_calibrated"]:
+    if not _is_homed(joint):
         print("Joint not calibrated. Exiting.")
         exit(1)
 
@@ -1444,7 +1573,7 @@ Note: while the robot is idling, the rplidar and camera will be turned on to con
 
             for target_voltage in targets:
                 current_voltage = _idle_wait_for_battery(
-                    target_voltage=target_voltage, joint=joint
+                    target_voltage=target_voltage
                 )
 
                 if ask_for_confirmation and not click.confirm(
