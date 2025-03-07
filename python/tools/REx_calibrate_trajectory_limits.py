@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import IntEnum
 import json
 import os
@@ -33,16 +33,6 @@ class StepCalibrationResult(IntEnum):
     BACKTRACKING_INCREASING_TIME = 3
     TARGET_REACHED = 4
     TARGET_REACHED_JUST_DOING_MOTION = 5
-
-
-@dataclass
-class CalibrationResults:
-    effort_pct_pos: tuple[float, float, float, float]
-    effort_pct_neg: tuple[float, float, float, float]
-    pos_out: tuple[float, float, float, float]
-    pos_in: tuple[float, float, float, float]
-    max_effort_pct_pos: float
-    min_effort_pct_neg: float
 
 
 @dataclass
@@ -186,6 +176,7 @@ class CalibrationTargets:
         )
 
 
+@dataclass
 class MotionData:
     """
     Keeps track of timestamps, joint positions, and motor efforts during motion.
@@ -193,29 +184,16 @@ class MotionData:
     Provides a `collect_data()` method to sample data.
     """
 
-    def __init__(
-        self,
-        trajectory: "TrajectoryFlattened",
-        calibration_targets: "CalibrationTargets",
-        timestamps_during_motion: list[float] | None = None,
-        positions_during_motion: list[float] | None = None,
-        velocities_during_motion: list[float] | None = None,
-        effort_during_motion: list[float] | None = None,
-        current_during_motion: list[float] | None = None,
-        step_calibration_result: "StepCalibrationResult|None" = None,
-    ) -> None:
-        self.timestamps_during_motion = timestamps_during_motion or []
-        self.positions_during_motion = positions_during_motion or []
-        self.velocities_during_motion = velocities_during_motion or []
-        self.effort_during_motion = effort_during_motion or []
-        self.current_during_motion = current_during_motion or []
+    trajectory: "TrajectoryFlattened"
+    calibration_targets: "CalibrationTargets"
+    timestamps_during_motion: list[float] = field(default_factory=list)
+    positions_during_motion: list[float] = field(default_factory=list)
+    velocities_during_motion: list[float] = field(default_factory=list)
+    effort_during_motion: list[float] = field(default_factory=list)
+    current_during_motion: list[float] = field(default_factory=list)
+    step_calibration_result: "StepCalibrationResult|None" = None
 
-        self.trajectory: TrajectoryFlattened = trajectory
-        self.calibration_targets = calibration_targets
-
-        self.step_calibration_result = step_calibration_result
-
-        self.is_motion_stopped_for_safety = False
+    is_motion_stopped_for_safety = False
 
     def motion_overview(self, prefix: str = "") -> str:
         warnings = ""
@@ -264,13 +242,6 @@ class MotionData:
         ) / 2
 
         return (accelerations, acceleration_times)
-
-    def collect_data(self, joint: PrismaticJoint):
-        self.timestamps_during_motion.append(time.time())
-        self.positions_during_motion.append(joint.status["pos"])
-        self.velocities_during_motion.append(joint.status["vel"])
-        self.effort_during_motion.append(joint.motor.status["effort_pct"])
-        self.current_during_motion.append(joint.motor.status["current"])
 
     def is_exceeds_effort_target(self) -> bool:
         return (
@@ -422,7 +393,15 @@ class TrajectoryFlattened:
         return abs(self.positions[-1] - self.positions[0])
 
 
-def plot_motion_profiles_and_save_outputs(
+def _collect_data(motion_data: MotionData, joint: PrismaticJoint):
+    motion_data.timestamps_during_motion.append(time.time())
+    motion_data.positions_during_motion.append(joint.status["pos"])
+    motion_data.velocities_during_motion.append(joint.status["vel"])
+    motion_data.effort_during_motion.append(joint.motor.status["effort_pct"])
+    motion_data.current_during_motion.append(joint.motor.status["current"])
+
+
+def _plot_motion_profiles_and_save_outputs(
     calibration_data: "TrajectoryCalibrationData",
     motion_data: "MotionData",
     filename_prefix: str = "",
@@ -603,14 +582,14 @@ def _run_profile_trajectory(
         joint.pull_status()
         joint.update_trajectory()
 
-        motion_data.collect_data(joint=joint)
+        _collect_data(motion_data=motion_data, joint=joint)
 
         if (
             abs(motion_data.effort_during_motion[-1])
             > motion_data.calibration_targets.effort_percent_target
         ):
             # Effort too high!
-            print(f"Effort exceeded, telling {joint.name} to stop!")
+            print(f"\nWARNING: Effort exceeded, telling {joint.name} to stop!\n")
             joint.motor.enable_safety()
             joint.push_command()
             joint.stop_trajectory()
@@ -683,6 +662,7 @@ def _map_range(
     ) + target_min
 
 
+@dataclass
 class TrajectoryCalibrationData:
     """
     Controls calibration and data collection for one direction of joint motion.
@@ -690,56 +670,25 @@ class TrajectoryCalibrationData:
     See `MotionData::is_exceeded_calibration_targets()` for calibration conditions.
     """
 
-    def __init__(
-        self,
-        description: str,
-        battery_info: BatteryInfo,
-        is_positive_direction: bool,
-        is_use_velocity: bool,
-        is_use_acceleration: bool,
-        calibration_targets: CalibrationTargets,
-    ) -> None:
+    description: str
+    battery_info: BatteryInfo
+    is_positive_direction: bool
+    is_use_velocity: bool
+    is_use_acceleration: bool
+    calibration_targets: CalibrationTargets
 
-        self.description = description
-        self.battery_info = battery_info
-        self.is_positive_direction = is_positive_direction
-        self.is_use_velocity = is_use_velocity
-        self.is_use_acceleration = is_use_acceleration
-        self.calibration_targets = calibration_targets
+    motion_data: list[MotionData] = field(default_factory=list)
 
-        self.motion_data: list[MotionData] = []
+    messages: list[str] = field(default_factory=list)
 
-        self.messages = []
+    last_good_calibration: MotionData | None = None
+    last_bad_calibration: MotionData | None = None
+    optimal_calibration_motion_data: MotionData | None = None
 
-        self.last_good_calibration: MotionData | None = None
-        self.last_bad_calibration: MotionData | None = None
-        self.optimal_calibration_motion_data: MotionData | None = None
+    last_motion_stopped_for_safety = False
 
     def is_calibrated(self) -> bool:
         return self.optimal_calibration_motion_data is not None
-
-    def _get_dynamic_decrease_time_by(self, motion_data: MotionData) -> float:
-        """
-        Linearly decreases the travel duration by a value between 0.1 and 1.5, depending on distance to the goal.
-        """
-        decrement_by = self.calibration_targets.travel_duration_decrement_by_max_seconds
-
-        return np.min(
-            [
-                decrement_by
-                - _map_range(
-                    motion_data.error_percent,
-                    (0, self.calibration_targets.goal_error_percentage_target),
-                    (0.1, decrement_by),
-                ),
-                decrement_by
-                - _map_range(
-                    motion_data.effort_percent_max,
-                    (0, self.calibration_targets.effort_percent_target),
-                    (0.1, decrement_by),
-                ),
-            ]
-        )
 
     @property
     def profile_name(self):
@@ -752,217 +701,6 @@ class TrajectoryCalibrationData:
     @property
     def direction_name(self):
         return "Positive" if self.is_positive_direction else "Negative"
-
-    def _good_step(self, motion_data: MotionData) -> str:
-        """
-        We've landed on a good step. This means we will decrease the travel duration (aka increase travel speed) to push dynamic limits further.
-        """
-        motion_data.step_calibration_result = StepCalibrationResult.TARGETS_NOT_REACHED
-
-        self.last_good_calibration = motion_data
-
-        # Add the motion_data after adding all the correct statuses and attributes.
-        self.motion_data.append(motion_data)
-
-        return motion_data.motion_overview(
-            f"""
-{self.direction_name} {joint.name} {self.profile_name} Motion Profile:
-"""
-        )
-
-    def _bad_step(self, motion_data: MotionData) -> str:
-        """
-        We've landed on a bad step. This means that we've exceeded the calibration targets.
-        We now want to set this as the upper bound, and bring the good step as close as possible.
-        """
-
-        is_first_time_backtracking = self.last_bad_calibration is None
-        self.last_bad_calibration = motion_data
-
-        motion_data.step_calibration_result = (
-            StepCalibrationResult.BACKTRACKING_INCREASING_TIME
-        )
-
-        if is_first_time_backtracking:
-            motion_data.step_calibration_result = StepCalibrationResult.FIRST_OVERSHOOT
-
-        # Add the motion_data after adding all the correct statuses and attributes.
-        self.motion_data.append(motion_data)
-
-        return motion_data.motion_overview(
-            f"""
-{self.direction_name} {joint.name} {self.profile_name} Motion Profile: 
-The  dynamic range has been exceeded. Step_calibration is backtracking to find the optimal calibration values. 
-"""
-        )
-
-    def get_next_travel_duration_in_seconds(self) -> tuple[float, float, str]:
-        """
-        This method figures our how much the next calibration step/run is going to change the travel duration by.
-
-        Returns new_travel_duration, change_time_by and message
-        """
-        new_travel_duration = self.calibration_targets.travel_duration_start_seconds
-        change_time_by = new_travel_duration
-
-        good_travel_duration = (
-            self.last_good_calibration.trajectory.travel_duration_seconds
-            if self.last_good_calibration
-            else None
-        )
-        bad_travel_duration = (
-            self.last_bad_calibration.trajectory.travel_duration_seconds
-            if self.last_bad_calibration
-            else None
-        )
-        STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE = (
-            self.calibration_targets.end_condition_time_step
-        )
-
-        if not good_travel_duration and not bad_travel_duration:
-            return new_travel_duration, change_time_by, ""
-
-        message = f"""New {self.direction_name} calibration step:"""
-
-        if (
-            good_travel_duration
-            and not bad_travel_duration
-            and self.last_good_calibration
-        ):
-            # We need to speed up motion and decrease the time step:
-            change_time_by = -1 * self._get_dynamic_decrease_time_by(
-                self.last_good_calibration
-            )
-
-            new_travel_duration = round(good_travel_duration + change_time_by, 2)
-
-            message += f"""
-    Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
-    """
-
-        if (
-            not good_travel_duration
-            and bad_travel_duration
-            and self.last_bad_calibration
-        ):
-            # We've already overshot without finding a good value.
-            raise ValueError(
-                f"Bad initial travel duration in Calibration Targets. Started at {bad_travel_duration}s, achieiving {self.last_bad_calibration.linear_speed_cm_per_second}m/s, and faulted. Please review the Calibration Targets: {self.calibration_targets}"
-            )
-
-        if (
-            good_travel_duration
-            and bad_travel_duration
-            and self.last_bad_calibration
-            and self.last_good_calibration
-        ):
-            # We need to slow down motion and increase the time step:
-            change_time_by = (good_travel_duration - bad_travel_duration) / 2
-
-            if self.last_motion_stopped_for_safety:
-                change_time_by -= STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE
-
-            new_travel_duration = round(good_travel_duration - change_time_by, 2)
-
-            message += f"""
-    Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
-    The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {self.last_motion_stopped_for_safety} else ''}
-    """
-
-        return new_travel_duration, change_time_by, message
-
-    def _check_runstop(self, motion_data: MotionData):
-        pimu.pull_status()
-        is_runstopped = pimu.status["runstop_event"]
-        if is_runstopped:
-            motion_data.is_motion_stopped_for_safety = True
-
-            while is_runstopped:
-                pimu.pull_status()
-                is_runstopped = pimu.status["runstop_event"]
-
-                print(
-                    f"Runstopped, waiting to resume. {BatteryInfo.get_battery_info(pimu)}"
-                )
-
-                time.sleep(3)
-
-    def step_calibration(self, joint: PrismaticJoint) -> bool:
-        """
-        Decreases the `current_travel_duration` until one of the `MotionData::is_exceeded_calibration_targets()` conditions is met.
-
-        Note: calling `step_calibration()` after calibration is completed for this movement direction will use the best calibration values to move the joint, but will not collect new data.
-
-        Returns `False` if there is no new motion data generated.
-        """
-
-        travel_duration, change_time_by, message = (
-            self.get_next_travel_duration_in_seconds()
-        )
-
-        end_condition_1 = (
-            self.last_bad_calibration
-            and abs(change_time_by) < self.calibration_targets.end_condition_time_step
-            and not self.last_motion_stopped_for_safety
-        )
-
-        if self.last_good_calibration and end_condition_1:
-            # we're close enough, accept this motion_data as optimal
-            self.optimal_calibration_motion_data = self.last_good_calibration
-            self.optimal_calibration_motion_data.step_calibration_result = (
-                StepCalibrationResult.TARGET_REACHED
-            )
-
-            # don't change the travel duration for the next run.
-            travel_duration = (
-                self.last_good_calibration.trajectory.travel_duration_seconds
-            )
-        else:
-            print(message)
-
-        # Set the motion trajectory:
-        trajectory = _set_trajectory_based_on_joint_limits(
-            joint=joint,
-            is_positive_direction=self.is_positive_direction,
-            travel_duration=travel_duration,
-            is_use_velocity=self.is_use_velocity,
-            is_use_acceleration=self.is_use_acceleration,
-            offset_from_joint_limit_min=self.calibration_targets.offset_from_joint_limit_min,
-            offset_from_joint_limit_max=self.calibration_targets.offset_from_joint_limit_max,
-        )
-
-        # Run the motion and collect motion data:
-        motion_data = _run_profile_trajectory(
-            joint=joint,
-            trajectory=trajectory,
-            calibration_targets=self.calibration_targets,
-        )
-
-        if self.is_calibrated():
-            print(
-                f"\n    The {self.direction_name} dynamic range is already calibrated, but step_calibration did the motion anyway.\n"
-            )
-            return False
-
-        self._check_runstop(motion_data)
-
-        self.last_motion_stopped_for_safety = motion_data.is_motion_stopped_for_safety
-
-        message = ""
-
-        if (
-            not motion_data.is_exceeded_calibration_targets()
-            and not motion_data.is_motion_stopped_for_safety
-        ):
-            message = self._good_step(motion_data)
-        else:
-            message = self._bad_step(motion_data)
-
-        self.messages.append(message)
-
-        print(message)
-
-        return True
 
     def to_json(self, is_export_only_last_motion_data=True) -> dict:
         return json.loads(
@@ -1047,6 +785,266 @@ The  dynamic range has been exceeded. Step_calibration is backtracking to find t
         return calibration_data
 
 
+def _get_dynamic_decrease_time_by(
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+) -> float:
+    """
+    Linearly decreases the travel duration by a value between 0.1 and 1.5, depending on distance to the goal.
+    """
+    decrement_by = (
+        calibration_data.calibration_targets.travel_duration_decrement_by_max_seconds
+    )
+
+    return np.min(
+        [
+            decrement_by
+            - _map_range(
+                motion_data.error_percent,
+                (0, calibration_data.calibration_targets.goal_error_percentage_target),
+                (0.1, decrement_by),
+            ),
+            decrement_by
+            - _map_range(
+                motion_data.effort_percent_max,
+                (0, calibration_data.calibration_targets.effort_percent_target),
+                (0.1, decrement_by),
+            ),
+        ]
+    )
+
+
+def _good_step(
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+) -> str:
+    """
+    We've landed on a good step. This means we will decrease the travel duration (aka increase travel speed) to push dynamic limits further.
+    """
+    motion_data.step_calibration_result = StepCalibrationResult.TARGETS_NOT_REACHED
+
+    calibration_data.last_good_calibration = motion_data
+
+    # Add the motion_data after adding all the correct statuses and attributes.
+    calibration_data.motion_data.append(motion_data)
+
+    return motion_data.motion_overview(
+        f"""
+{calibration_data.direction_name} {joint.name} {calibration_data.profile_name} Motion Profile:
+"""
+    )
+
+
+def _bad_step(
+    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+) -> str:
+    """
+    We've landed on a bad step. This means that we've exceeded the calibration targets.
+    We now want to set this as the upper bound, and bring the good step as close as possible.
+    """
+
+    is_first_time_backtracking = calibration_data.last_bad_calibration is None
+    calibration_data.last_bad_calibration = motion_data
+
+    motion_data.step_calibration_result = (
+        StepCalibrationResult.BACKTRACKING_INCREASING_TIME
+    )
+
+    if is_first_time_backtracking:
+        motion_data.step_calibration_result = StepCalibrationResult.FIRST_OVERSHOOT
+
+    # Add the motion_data after adding all the correct statuses and attributes.
+    calibration_data.motion_data.append(motion_data)
+
+    return motion_data.motion_overview(
+        f"""
+{calibration_data.direction_name} {joint.name} {calibration_data.profile_name} Motion Profile: 
+The  dynamic range has been exceeded. Step_calibration is backtracking to find the optimal calibration values. 
+"""
+    )
+
+
+def _get_next_travel_duration_in_seconds(
+    calibration_data: TrajectoryCalibrationData,
+) -> tuple[float, float, str]:
+    """
+    This method figures our how much the next calibration step/run is going to change the travel duration by.
+
+    Returns new_travel_duration, change_time_by and message
+    """
+    new_travel_duration = (
+        calibration_data.calibration_targets.travel_duration_start_seconds
+    )
+    change_time_by = new_travel_duration
+
+    good_travel_duration = (
+        calibration_data.last_good_calibration.trajectory.travel_duration_seconds
+        if calibration_data.last_good_calibration
+        else None
+    )
+    bad_travel_duration = (
+        calibration_data.last_bad_calibration.trajectory.travel_duration_seconds
+        if calibration_data.last_bad_calibration
+        else None
+    )
+    STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE = (
+        calibration_data.calibration_targets.end_condition_time_step
+    )
+
+    if not good_travel_duration and not bad_travel_duration:
+        return new_travel_duration, change_time_by, ""
+
+    message = f"""New {calibration_data.direction_name} calibration step:"""
+
+    if (
+        good_travel_duration
+        and not bad_travel_duration
+        and calibration_data.last_good_calibration
+    ):
+        # We need to speed up motion and decrease the time step:
+        change_time_by = -1 * _get_dynamic_decrease_time_by(
+            calibration_data=calibration_data,
+            motion_data=calibration_data.last_good_calibration,
+        )
+
+        new_travel_duration = round(good_travel_duration + change_time_by, 2)
+
+        message += f"""
+Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
+"""
+
+    if (
+        not good_travel_duration
+        and bad_travel_duration
+        and calibration_data.last_bad_calibration
+    ):
+        # We've already overshot without finding a good value.
+        raise ValueError(
+            f"Bad initial travel duration in Calibration Targets. Started at {bad_travel_duration}s, achieiving {calibration_data.last_bad_calibration.linear_speed_cm_per_second}m/s, and faulted. Please review the Calibration Targets: {calibration_data.calibration_targets}"
+        )
+
+    if (
+        good_travel_duration
+        and bad_travel_duration
+        and calibration_data.last_bad_calibration
+        and calibration_data.last_good_calibration
+    ):
+        # We need to slow down motion and increase the time step:
+        change_time_by = (good_travel_duration - bad_travel_duration) / 2
+
+        if calibration_data.last_motion_stopped_for_safety:
+            change_time_by -= STOPPED_FOR_SAFETY_MOTION_FIXED_DECREASE
+
+        new_travel_duration = round(good_travel_duration - change_time_by, 2)
+
+        message += f"""
+Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
+The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {calibration_data.last_motion_stopped_for_safety} else ''}
+"""
+
+    return new_travel_duration, change_time_by, message
+
+
+def _check_runstop(motion_data: MotionData):
+    pimu.pull_status()
+    is_runstopped = pimu.status["runstop_event"]
+    if is_runstopped:
+        motion_data.is_motion_stopped_for_safety = True
+
+        while is_runstopped:
+            pimu.pull_status()
+            is_runstopped = pimu.status["runstop_event"]
+
+            print(
+                f"Runstopped, waiting to resume. {BatteryInfo.get_battery_info(pimu)}"
+            )
+
+            time.sleep(3)
+
+
+def _step_calibration(
+    calibration_data: TrajectoryCalibrationData, joint: PrismaticJoint
+) -> bool:
+    """
+    Decreases the `current_travel_duration` until one of the `MotionData::is_exceeded_calibration_targets()` conditions is met.
+
+    Note: calling `_step_calibration()` after calibration is completed for this movement direction will use the best calibration values to move the joint, but will not collect new data.
+
+    Returns `False` if there is no new motion data generated.
+    """
+
+    travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
+        calibration_data=calibration_data
+    )
+
+    end_condition_1 = (
+        calibration_data.last_bad_calibration
+        and abs(change_time_by)
+        < calibration_data.calibration_targets.end_condition_time_step
+        and not calibration_data.last_motion_stopped_for_safety
+    )
+
+    if calibration_data.last_good_calibration and end_condition_1:
+        # we're close enough, accept this motion_data as optimal
+        calibration_data.optimal_calibration_motion_data = (
+            calibration_data.last_good_calibration
+        )
+        calibration_data.optimal_calibration_motion_data.step_calibration_result = (
+            StepCalibrationResult.TARGET_REACHED
+        )
+
+        # don't change the travel duration for the next run.
+        travel_duration = (
+            calibration_data.last_good_calibration.trajectory.travel_duration_seconds
+        )
+    else:
+        print(message)
+
+    # Set the motion trajectory:
+    trajectory = _set_trajectory_based_on_joint_limits(
+        joint=joint,
+        is_positive_direction=calibration_data.is_positive_direction,
+        travel_duration=travel_duration,
+        is_use_velocity=calibration_data.is_use_velocity,
+        is_use_acceleration=calibration_data.is_use_acceleration,
+        offset_from_joint_limit_min=calibration_data.calibration_targets.offset_from_joint_limit_min,
+        offset_from_joint_limit_max=calibration_data.calibration_targets.offset_from_joint_limit_max,
+    )
+
+    # Run the motion and collect motion data:
+    motion_data = _run_profile_trajectory(
+        joint=joint,
+        trajectory=trajectory,
+        calibration_targets=calibration_data.calibration_targets,
+    )
+
+    if calibration_data.is_calibrated():
+        print(
+            f"\n    The {calibration_data.direction_name} dynamic range is already calibrated, but step_calibration did the motion anyway.\n"
+        )
+        return False
+
+    _check_runstop(motion_data=motion_data)
+
+    calibration_data.last_motion_stopped_for_safety = (
+        motion_data.is_motion_stopped_for_safety
+    )
+
+    message = ""
+
+    if (
+        not motion_data.is_exceeded_calibration_targets()
+        and not motion_data.is_motion_stopped_for_safety
+    ):
+        message = _good_step(calibration_data=calibration_data, motion_data=motion_data)
+    else:
+        message = _bad_step(calibration_data=calibration_data, motion_data=motion_data)
+
+    calibration_data.messages.append(message)
+
+    print(message)
+
+    return True
+
+
 def _do_calibration_trajectory_mode_dynamic_limits(
     joint: PrismaticJoint,
     is_use_velocity: bool,
@@ -1054,7 +1052,7 @@ def _do_calibration_trajectory_mode_dynamic_limits(
     filename_prefix: str,
     positive_calibration_targets: CalibrationTargets,
     negative_calibration_targets: CalibrationTargets,
-) -> CalibrationResults:
+) -> tuple[TrajectoryCalibrationData, TrajectoryCalibrationData]:
     """
     Uses trajectory mode to construct paths, to dynamically calibrate dynamic limits for your robot's joint.
 
@@ -1085,19 +1083,23 @@ def _do_calibration_trajectory_mode_dynamic_limits(
 
     while not positive_motion.is_calibrated() or not negative_motion.is_calibrated():
 
-        new_motion_to_plot = positive_motion.step_calibration(joint=joint)
+        new_motion_to_plot = _step_calibration(
+            calibration_data=positive_motion, joint=joint
+        )
 
         if new_motion_to_plot:
-            plot_motion_profiles_and_save_outputs(
+            _plot_motion_profiles_and_save_outputs(
                 calibration_data=positive_motion,
                 motion_data=positive_motion.motion_data[-1],
                 filename_prefix=filename_prefix,
             )
 
-        new_motion_to_plot = negative_motion.step_calibration(joint=joint)
+        new_motion_to_plot = _step_calibration(
+            calibration_data=negative_motion, joint=joint
+        )
 
         if new_motion_to_plot:
-            plot_motion_profiles_and_save_outputs(
+            _plot_motion_profiles_and_save_outputs(
                 calibration_data=negative_motion,
                 motion_data=positive_motion.motion_data[-1],
                 filename_prefix=filename_prefix,
@@ -1110,12 +1112,12 @@ def _do_calibration_trajectory_mode_dynamic_limits(
     if optimal_positive is None or optimal_negative is None:
         raise Exception("Calibration failed.")
 
-    plot_motion_profiles_and_save_outputs(
+    _plot_motion_profiles_and_save_outputs(
         calibration_data=positive_motion,
         motion_data=optimal_positive,
         filename_prefix="optimal_" + filename_prefix,
     )
-    plot_motion_profiles_and_save_outputs(
+    _plot_motion_profiles_and_save_outputs(
         calibration_data=negative_motion,
         motion_data=optimal_negative,
         filename_prefix="optimal_" + filename_prefix,
@@ -1131,35 +1133,12 @@ Optimal Negative {joint.name} {negative_motion.profile_name} Motion Profile:
 """
     )
 
-    results = CalibrationResults(
-        **{
-            "effort_pct_pos": [
-                motion_data.effort_during_motion
-                for motion_data in positive_motion.motion_data[-4:]
-            ],
-            "effort_pct_neg": [
-                motion_data.effort_during_motion
-                for motion_data in negative_motion.motion_data[-4:]
-            ],
-            "pos_out": [
-                motion_data.positions_during_motion
-                for motion_data in positive_motion.motion_data[-4:]
-            ],
-            "pos_in": [
-                motion_data.positions_during_motion
-                for motion_data in negative_motion.motion_data[-4:]
-            ],
-            "max_effort_pct_pos": positive_motion.motion_data[-1].effort_percent_max,
-            "min_effort_pct_neg": negative_motion.motion_data[-1].effort_percent_min,
-        }
-    )
-
-    return results
+    return (positive_motion, negative_motion)
 
 
 def run_calibration_trajectory(
     joint: PrismaticJoint, label: str
-) -> list[CalibrationResults]:
+) -> list[tuple[TrajectoryCalibrationData, TrajectoryCalibrationData]]:
     """
     Uses trajectory mode to construct paths, to dynamically calibrate dynamic limits for your robot's joint.
 
@@ -1326,7 +1305,7 @@ if __name__ == "__main__":
             "The Lift, Arm and Wrist yaw will need to be first homed. Ensure workspace is collision free.",
             fg="yellow",
         )
-        if not click.confirm("Proceed?"):
+        if not click.confirm("Proceed?", default=True):
             exit(0)
 
         subprocess.call(
