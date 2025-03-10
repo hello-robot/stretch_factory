@@ -1028,11 +1028,15 @@ def _bad_step(
     # Add the motion_data after adding all the correct statuses and attributes.
     calibration_data.motion_data.append(motion_data)
 
+    backtracking_message= ""
+    if run_mode == _RunMode.dynamic_limit_mode:
+        backtracking_message = 'Step_calibration will backtrack to find the optimal calibration values.'
+
     return motion_data.motion_overview(
         joint=joint,
         prefix=f"""
 {calibration_data.direction_name} {joint.name} {calibration_data.profile_name} Motion Profile: 
-The  dynamic range has been exceeded. Step_calibration is backtracking to find the optimal calibration values. 
+The  dynamic range has been exceeded. {backtracking_message}
 """,
     )
 
@@ -1533,6 +1537,13 @@ def run_trajectory_effort_calibration(
 
     filename_prefix = f"{label}_"  # time in ms
 
+    linear_calibration_targets = CalibrationTargets.linear_default(joint)
+    linear_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+    cubic_calibration_targets = CalibrationTargets.cubic_default(joint)
+    cubic_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+    quintic_calibration_targets = CalibrationTargets.quintic_default(joint)
+    quintic_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+
     # Linear:
     tictoc_timer("Linear Calibration")
     results_linear = _do_calibration_trajectory_efforts(
@@ -1540,8 +1551,8 @@ def run_trajectory_effort_calibration(
         is_use_velocity=False,
         is_use_acceleration=False,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.linear_default(joint),
-        negative_calibration_targets=CalibrationTargets.linear_default(joint),
+        negative_calibration_targets=linear_calibration_targets,
+        positive_calibration_targets=linear_calibration_targets,
     )
     tictoc_timer("Linear Calibration")
 
@@ -1552,8 +1563,8 @@ def run_trajectory_effort_calibration(
         is_use_velocity=True,
         is_use_acceleration=False,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.cubic_default(joint),
-        negative_calibration_targets=CalibrationTargets.cubic_default(joint),
+        positive_calibration_targets=cubic_calibration_targets,
+        negative_calibration_targets=cubic_calibration_targets,
     )
     tictoc_timer("Cubic Calibration")
 
@@ -1564,8 +1575,8 @@ def run_trajectory_effort_calibration(
         is_use_velocity=True,
         is_use_acceleration=True,
         filename_prefix=filename_prefix,
-        positive_calibration_targets=CalibrationTargets.quintic_default(joint),
-        negative_calibration_targets=CalibrationTargets.quintic_default(joint),
+        positive_calibration_targets=quintic_calibration_targets,
+        negative_calibration_targets=quintic_calibration_targets,
     )
     tictoc_timer("Quintic Calibration")
 
