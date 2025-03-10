@@ -807,12 +807,15 @@ def run_profile_trajectory(
     Follows a trajectory and captures position and effort data.
 
     This monitors joint effort and calls `joint.motor.enable_safety()` if the effort exceeds a threshold.
-
-    Call `_set_trajectory_based_on_joint_limits()` before calling this.
     """
     motion_data = MotionData(
         trajectory=trajectory, calibration_targets=calibration_targets
     )
+
+    if isinstance(joint, Base):
+        _set_trajectory_diff_drive(joint=joint, flattened_trajectory=trajectory)
+    else:
+        _set_trajectory(joint=joint, flattened_trajectory=trajectory)
 
     if len(joint.trajectory.waypoints) == 0:
         raise Exception(
@@ -881,7 +884,7 @@ def run_profile_trajectory(
     return motion_data
 
 
-def _set_trajectory_based_on_joint_limits(
+def _get_trajectory_based_on_joint_limits(
     joint: "PrismaticJoint",
     is_positive_direction: bool,
     travel_duration: float,
@@ -909,21 +912,10 @@ def _set_trajectory_based_on_joint_limits(
     v_m = [0.0, 0.0] if is_use_velocity else None
     a_m = [0.0, 0.0] if is_use_acceleration else None
 
-    joint.trajectory.clear()
-
-    for index in range(len(t_s)):
-        joint.trajectory.add(
-            t_s=t_s[index],
-            x_m=x_m[index] if x_m else None,
-            v_m=v_m[index] if v_m else None,
-            a_m=a_m[index] if a_m else None,
-        )
-
     return TrajectoryFlattened(t_s, x_m, v_m, a_m)
 
 
-def _set_trajectory_diff_drive(
-    joint: "Base",
+def _get_trajectory_diff_drive(
     is_positive_direction: bool,
     travel_duration: float,
     is_use_velocity: bool,
@@ -956,22 +948,6 @@ def _set_trajectory_diff_drive(
     translational_accel = [0.0, 0.0] if is_use_acceleration else None
     rotational_accel = translational_accel
 
-    joint.trajectory.clear()
-
-    for index in range(len(t_s)):
-        joint.trajectory.add(
-            time=t_s[index],
-            x=x[index],
-            y=y[index],
-            theta=theta[index],
-            translational_vel=translational_vel[index] if translational_vel else None,
-            rotational_vel=rotational_vel[index] if rotational_vel else None,
-            translational_accel=(
-                translational_accel[index] if translational_accel else None
-            ),
-            rotational_accel=rotational_accel[index] if rotational_accel else None,
-        )
-
     return TrajectoryFlattened(
         timestamps=t_s,
         positions=x,
@@ -982,6 +958,35 @@ def _set_trajectory_diff_drive(
         accelerations=rotational_accel,
         accelerations_translational=translational_accel,
     )
+
+def _set_trajectory(joint:"PrismaticJoint", flattened_trajectory:"TrajectoryFlattened"):
+    joint.trajectory.clear()
+
+    for index in range(len(flattened_trajectory.timestamps)):
+        joint.trajectory.add(
+            t_s=flattened_trajectory.timestamps[index],
+            x_m=flattened_trajectory.positions[index],
+            v_m=flattened_trajectory.velocities[index] if flattened_trajectory.velocities else None,
+            a_m=flattened_trajectory.accelerations[index] if flattened_trajectory.accelerations else None,
+        )
+
+def _set_trajectory_diff_drive(joint:"Base", flattened_trajectory:"TrajectoryFlattened"):
+
+    joint.trajectory.clear()
+
+    for index in range(len(flattened_trajectory.timestamps)):
+        joint.trajectory.add(
+            time=flattened_trajectory.timestamps[index],
+            x=flattened_trajectory.positions[index],
+            y=flattened_trajectory.positions_y[index],
+            theta=flattened_trajectory.thetas[index],
+            translational_vel=flattened_trajectory.velocities_translational[index] if flattened_trajectory.velocities_translational else None,
+            rotational_vel=flattened_trajectory.velocities[index] if flattened_trajectory.velocities else None,
+            translational_accel=(
+                flattened_trajectory.accelerations_translational[index] if flattened_trajectory.accelerations_translational else None
+            ),
+            rotational_accel=flattened_trajectory.accelerations[index] if flattened_trajectory.accelerations else None,
+        )
 
 
 def _map_range(
@@ -1262,7 +1267,7 @@ def _step_calibration(
             print(message)
 
         if not isinstance(joint, Base):
-            trajectory_to_run = _set_trajectory_based_on_joint_limits(
+            trajectory_to_run = _get_trajectory_based_on_joint_limits(
                 joint=joint,
                 is_positive_direction=calibration_data.is_positive_direction,
                 travel_duration=travel_duration,
@@ -1272,8 +1277,7 @@ def _step_calibration(
                 offset_from_joint_limit_max=calibration_data.calibration_targets.offset_from_joint_limit_max,
             )
         else:
-            trajectory_to_run = _set_trajectory_diff_drive(
-                joint=joint,
+            trajectory_to_run = _get_trajectory_diff_drive(
                 is_positive_direction=calibration_data.is_positive_direction,
                 travel_duration=travel_duration,
                 is_use_velocity=calibration_data.is_use_velocity,
