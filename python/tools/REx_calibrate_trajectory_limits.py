@@ -1522,11 +1522,16 @@ def _print_calibration_trajectory_efforts(
         f"""
 Positive {joint.name} {positive_motion.profile_name} Motion Profile Overview:
 Max efforts: {positive_max_efforts}, Average effort: {np.average(positive_max_efforts)}%
+The following are the overviews for the positive run(s):
 {positive_overviews}
 
+-----------
 Negative {joint.name} {negative_motion.profile_name} Motion Profile Overview: 
 Max efforts: {negative_max_efforts}, Average effort: {np.average(negative_max_efforts)}%
+The following are the overviews for the negative run(s):
 {negative_overviews}
+
+----------------------
 """
     )
 
