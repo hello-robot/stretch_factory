@@ -48,6 +48,14 @@ class JointTypes(IntEnum):
 
         raise NotImplementedError(f"{self} joint type is not supported.")
 
+    @staticmethod
+    def available_joints(run_mode: "_RunMode"):
+        if run_mode != _RunMode.trajectory_effort_mode:
+            return JointTypes
+
+        # If we're running trajectory_effort_mode, return all the joints except base
+        return [j for j in JointTypes if (j != JointTypes.base)]
+
 
 class StepCalibrationResult(IntEnum):
     TARGETS_NOT_REACHED = 0
@@ -138,10 +146,10 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets(
                 effort_percent_target=80,
-                goal_error_absolute_target_cm=1.2,
-                goal_error_percentage_target=10.0,
-                offset_from_joint_limit_min=-1,
-                offset_from_joint_limit_max=1,
+                goal_error_absolute_target_cm=0.5,
+                goal_error_percentage_target=5.0,
+                offset_from_joint_limit_min=1.0,
+                offset_from_joint_limit_max=-1.0,
                 travel_duration_start_seconds=travel_duration_start_seconds,
                 travel_duration_decrement_by_max_seconds=travel_duration_decrement_by_max_seconds,
                 end_condition_time_step=0.3,
@@ -172,7 +180,7 @@ class CalibrationTargets:
             return CalibrationTargets._shared_defaults(
                 joint=joint,
                 travel_duration_start_seconds=9.0,
-                travel_duration_decrement_by_max_seconds=3.5,
+                travel_duration_decrement_by_max_seconds=3.0,
             )
 
         raise NotImplementedError(
@@ -198,7 +206,7 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-                travel_duration_start_seconds=10.0,
+                travel_duration_start_seconds=13.0,
                 travel_duration_decrement_by_max_seconds=3.0,
             )
 
@@ -225,7 +233,7 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-                travel_duration_start_seconds=14.0,
+                travel_duration_start_seconds=15.0,
                 travel_duration_decrement_by_max_seconds=3.0,
             )
 
@@ -592,7 +600,7 @@ class TrajectoryCalibrationData:
         return calibration_data
 
 
-def _collect_data(motion_data: MotionData, joint: "PrismaticJoint"):
+def _collect_data_prismatic(motion_data: MotionData, joint: "PrismaticJoint"):
     motion_data.timestamps_during_motion.append(time.time())
     motion_data.positions_during_motion.append(joint.status["pos"])
     motion_data.velocities_during_motion.append(joint.status["vel"])
@@ -600,17 +608,26 @@ def _collect_data(motion_data: MotionData, joint: "PrismaticJoint"):
     motion_data.current_during_motion.append(joint.motor.status["current"])
 
 
-def _collect_data_base(motion_data: MotionData, joint: "Base"):
+def _collect_data_base(
+    motion_data: MotionData,
+    joint: "Base",
+    starting_position: tuple[float, float, float],
+):
     motion_data.timestamps_during_motion.append(time.time())
 
-    x = joint.status["x"]
-    y = joint.status["y"]
-    theta = joint.status["theta"]
+    x = (
+        joint.status["x"] - starting_position[0]
+    )  # Convert relative position to absolute
+    y = (
+        joint.status["y"] - starting_position[1]
+    )  # Convert relative position to absolute
+    theta = (
+        joint.status["theta"] - starting_position[2]
+    )  # Convert relative position to absolute
     x_vel = joint.status["x_vel"]
     y_vel = joint.status["y_vel"]
     theta_vel = joint.status["theta_vel"]
 
-    # TODO: Support y and theta
     motion_data.positions_during_motion.append(x)
     motion_data.positions_y_during_motion.append(y)
     motion_data.positions_theta_during_motion.append(theta)
@@ -619,10 +636,29 @@ def _collect_data_base(motion_data: MotionData, joint: "Base"):
     motion_data.velocities_y_during_motion.append(y_vel)
     motion_data.velocities_theta_during_motion.append(theta_vel)
 
-    motion_data.effort_during_motion.append(joint.status["effort"][0])
+    current = joint.status["left_wheel"]["current"]
+    current_right_wheel = joint.status["right_wheel"]["current"]
+
+    motion_data.effort_during_motion.append(
+        joint.status["effort"][0]
+    )  # Note: effort is always zero for the base
     motion_data.effort_2_during_motion.append(joint.status["effort"][1])
-    motion_data.current_during_motion.append(joint.status["left_wheel"]["current"])
-    motion_data.current_2_during_motion.append(joint.status["right_wheel"]["current"])
+    motion_data.current_during_motion.append(current)
+    motion_data.current_2_during_motion.append(current_right_wheel)
+
+
+def _collect_data(
+    motion_data: MotionData,
+    joint: "Base|PrismaticJoint",
+    starting_position: tuple[float, float, float],
+):
+    # is this "reflection" too slow?
+    if not isinstance(joint, Base):
+        _collect_data_prismatic(motion_data=motion_data, joint=joint)
+    else:
+        _collect_data_base(
+            motion_data=motion_data, joint=joint, starting_position=starting_position
+        )
 
 
 def _plot_motion_profiles_and_save_outputs(
@@ -792,12 +828,21 @@ def run_profile_trajectory(
             joint.params["motion"]["trajectory_max"]["vel_m"] = 0.5
             joint.params["motion"]["trajectory_max"]["accel_m"] = 0.5
         else:
-            joint.params["motion"]["trajectory_max"]["vel_r"] = 100
-            joint.params["motion"]["trajectory_max"]["accel_r"] = 100
+            joint.params["motion"]["trajectory_max"]["vel_r"] = 200
+            joint.params["motion"]["trajectory_max"]["accel_r"] = 200
 
     joint.pull_status()
 
     time.sleep(1)  # let things settle
+
+    if not isinstance(joint, Base):
+        starting_position = joint.status["pos"]
+    else:
+        starting_position = (
+            joint.status["x"],
+            joint.status["y"],
+            joint.status["theta"],
+        )
 
     assert _follow_trajectory(joint), "Setting trajectory failed."
 
@@ -806,17 +851,18 @@ def run_profile_trajectory(
     joint.update_trajectory()
     joint.pull_status()
     SAMPLING_RATE_HZ = 10
-    while joint.get_trajectory_time_remaining() != 0:
+
+    assert joint.is_trajectory_active(), "Trajectory is not active, when it should be."
+
+    while joint.is_trajectory_active():
         time.sleep(1 / SAMPLING_RATE_HZ)  # Sample at 1/SAMPLING_RATE seconds
 
         joint.pull_status()
         joint.update_trajectory()
 
-        # is this "reflection" too slow?
-        if not isinstance(joint, Base):
-            _collect_data(motion_data=motion_data, joint=joint)
-        else:
-            _collect_data_base(motion_data=motion_data, joint=joint)
+        _collect_data(
+            motion_data=motion_data, joint=joint, starting_position=starting_position
+        )
 
         if (
             abs(motion_data.last_max_effort_during_motion)
@@ -955,7 +1001,9 @@ def _map_range(
 
 
 def _get_dynamic_decrease_time_by(
-    calibration_data: TrajectoryCalibrationData, motion_data: MotionData
+    calibration_data: TrajectoryCalibrationData,
+    motion_data: MotionData,
+    is_use_effort_for_dynamic_decrease: bool,
 ) -> float:
     """
     Linearly decreases the travel duration by a value between 0.1 and 1.5, depending on distance to the goal.
@@ -964,22 +1012,25 @@ def _get_dynamic_decrease_time_by(
         calibration_data.calibration_targets.travel_duration_decrement_by_max_seconds
     )
 
-    return np.min(
-        [
-            decrement_by
-            - _map_range(
-                motion_data.error_percent,
-                (0, calibration_data.calibration_targets.goal_error_percentage_target),
-                (0.1, decrement_by),
-            ),
-            decrement_by
-            - _map_range(
-                motion_data.effort_percent_max,
-                (0, calibration_data.calibration_targets.effort_percent_target),
-                (0.1, decrement_by),
-            ),
-        ]
+    decrement_error_percent = decrement_by - _map_range(
+        motion_data.error_percent,
+        (0, calibration_data.calibration_targets.goal_error_percentage_target),
+        (0.1, decrement_by),
     )
+
+    if not is_use_effort_for_dynamic_decrease:
+        return decrement_error_percent
+
+    decrement_effort = (
+        decrement_by
+        - _map_range(
+            motion_data.effort_percent_max,
+            (0, calibration_data.calibration_targets.effort_percent_target),
+            (0.1, decrement_by),
+        ),
+    )
+
+    return np.min([decrement_error_percent, decrement_effort])
 
 
 def _good_step(
@@ -1028,9 +1079,11 @@ def _bad_step(
     # Add the motion_data after adding all the correct statuses and attributes.
     calibration_data.motion_data.append(motion_data)
 
-    backtracking_message= ""
+    backtracking_message = ""
     if run_mode == _RunMode.dynamic_limit_mode:
-        backtracking_message = 'Step_calibration will backtrack to find the optimal calibration values.'
+        backtracking_message = (
+            "Step_calibration will backtrack to find the optimal calibration values."
+        )
 
     return motion_data.motion_overview(
         joint=joint,
@@ -1043,6 +1096,7 @@ The  dynamic range has been exceeded. {backtracking_message}
 
 def _get_next_travel_duration_in_seconds(
     calibration_data: TrajectoryCalibrationData,
+    is_use_effort_for_dynamic_decrease: bool,
 ) -> tuple[float, float, str]:
     """
     This method figures our how much the next calibration step/run is going to change the travel duration by.
@@ -1074,6 +1128,20 @@ def _get_next_travel_duration_in_seconds(
     message = f"""New {calibration_data.direction_name} calibration step:"""
 
     if (
+        not good_travel_duration
+        and bad_travel_duration
+        and calibration_data.last_bad_calibration
+    ):
+        # We've already overshot without finding a good value on the first run.
+        # We could try to backtrack to find a good starting value, but we're going to error instead, for safety.
+        raise ValueError(
+            f"Bad initial travel duration in Calibration Targets. Started at {bad_travel_duration}s, achieiving {calibration_data.last_bad_calibration.linear_speed_cm_per_second}m/s, and faulted. Please review the Calibration Targets: {calibration_data.calibration_targets}"
+        )
+
+    if not good_travel_duration:
+        raise ValueError("good_travel_duration should have a value here.")
+
+    if (
         good_travel_duration
         and not bad_travel_duration
         and calibration_data.last_good_calibration
@@ -1082,6 +1150,7 @@ def _get_next_travel_duration_in_seconds(
         change_time_by = -1 * _get_dynamic_decrease_time_by(
             calibration_data=calibration_data,
             motion_data=calibration_data.last_good_calibration,
+            is_use_effort_for_dynamic_decrease=is_use_effort_for_dynamic_decrease,
         )
 
         new_travel_duration = round(good_travel_duration + change_time_by, 2)
@@ -1089,16 +1158,6 @@ def _get_next_travel_duration_in_seconds(
         message += f"""
     Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
 """
-
-    if (
-        not good_travel_duration
-        and bad_travel_duration
-        and calibration_data.last_bad_calibration
-    ):
-        # We've already overshot without finding a good value.
-        raise ValueError(
-            f"Bad initial travel duration in Calibration Targets. Started at {bad_travel_duration}s, achieiving {calibration_data.last_bad_calibration.linear_speed_cm_per_second}m/s, and faulted. Please review the Calibration Targets: {calibration_data.calibration_targets}"
-        )
 
     if (
         good_travel_duration
@@ -1117,6 +1176,14 @@ def _get_next_travel_duration_in_seconds(
         message += f"""
     Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
     The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {calibration_data.last_motion_stopped_for_safety} else ''}
+"""
+
+    if new_travel_duration <= 1.0:
+        # Can't have travel duration go below zero. For safety, if it's below 1, we're done going to assume we're done.
+        new_travel_duration: float = good_travel_duration
+        change_time_by = 0
+        message = f"""
+    Cannot decrease the travel time below {new_travel_duration}. This will be taken as the optimal value.
 """
 
     return new_travel_duration, change_time_by, message
@@ -1144,7 +1211,7 @@ def _step_calibration(
     joint: "PrismaticJoint|Base",
     disable_guarded_mode: bool,
     disable_dynamic_limits: bool,
-    trajectory:TrajectoryFlattened|None = None
+    trajectory: TrajectoryFlattened | None = None,
 ) -> bool:
     """
     Decreases the `current_travel_duration` until one of the `MotionData::is_exceeded_calibration_targets()` conditions is met.
@@ -1158,7 +1225,10 @@ def _step_calibration(
     trajectory_to_run = trajectory
     if trajectory_to_run is None:
         travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
-            calibration_data=calibration_data
+            calibration_data=calibration_data,
+            is_use_effort_for_dynamic_decrease=not isinstance(
+                joint, Base
+            ),  # Base does not have effort
         )
 
         end_condition_1 = (
@@ -1167,8 +1237,13 @@ def _step_calibration(
             < calibration_data.calibration_targets.end_condition_time_step
             and not calibration_data.last_motion_stopped_for_safety
         )
+        end_condition_2 = (
+            change_time_by == 0
+        )  # If we're not changing the travel duration at all, we don't need to continue.
 
-        if calibration_data.last_good_calibration and end_condition_1:
+        if calibration_data.last_good_calibration and (
+            end_condition_1 or end_condition_2
+        ):
             # we're close enough, accept this motion_data as optimal
             calibration_data.optimal_calibration_motion_data = (
                 calibration_data.last_good_calibration
@@ -1211,7 +1286,7 @@ def _step_calibration(
         trajectory=trajectory_to_run,
         calibration_targets=calibration_data.calibration_targets,
         disable_guarded_mode=disable_guarded_mode,
-        disable_dynamic_limits=disable_dynamic_limits
+        disable_dynamic_limits=disable_dynamic_limits,
     )
 
     if calibration_data.is_calibrated():
@@ -1286,10 +1361,10 @@ def _do_calibration_trajectory_mode_dynamic_limits(
     while not positive_motion.is_calibrated() or not negative_motion.is_calibrated():
 
         new_motion_to_plot = _step_calibration(
-            calibration_data=positive_motion, 
+            calibration_data=positive_motion,
             joint=joint,
             disable_guarded_mode=True,
-            disable_dynamic_limits=True
+            disable_dynamic_limits=True,
         )
 
         if new_motion_to_plot:
@@ -1300,10 +1375,10 @@ def _do_calibration_trajectory_mode_dynamic_limits(
             )
 
         new_motion_to_plot = _step_calibration(
-            calibration_data=negative_motion, 
+            calibration_data=negative_motion,
             joint=joint,
             disable_guarded_mode=True,
-            disable_dynamic_limits=True
+            disable_dynamic_limits=True,
         )
 
         if new_motion_to_plot:
@@ -1413,16 +1488,34 @@ def run_dynamic_limit_calibration(
 
     return [results_linear, results_cubic, results_quintic]
 
+
 def _print_calibration_trajectory_efforts(
-        positive_motion: TrajectoryCalibrationData,
-        negative_motion: TrajectoryCalibrationData
+    joint: "PrismaticJoint|Base",
+    positive_motion: TrajectoryCalibrationData,
+    negative_motion: TrajectoryCalibrationData,
 ):
 
     # Save and print optimal motion profile data:
-    positive_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in positive_motion.motion_data]
-    positive_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in positive_motion.motion_data])
-    negative_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in negative_motion.motion_data]
-    negative_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in negative_motion.motion_data])
+    positive_max_efforts = [
+        motion_data.effort_percent_max_absolute
+        for motion_data in positive_motion.motion_data
+    ]
+    positive_overviews = "\n".join(
+        [
+            motion_data.motion_overview(joint=joint)
+            for motion_data in positive_motion.motion_data
+        ]
+    )
+    negative_max_efforts = [
+        motion_data.effort_percent_max_absolute
+        for motion_data in negative_motion.motion_data
+    ]
+    negative_overviews = "\n".join(
+        [
+            motion_data.motion_overview(joint=joint)
+            for motion_data in negative_motion.motion_data
+        ]
+    )
     print(
         f"""
 Positive {joint.name} {positive_motion.profile_name} Motion Profile Overview:
@@ -1434,6 +1527,7 @@ Max efforts: {negative_max_efforts}, Average effort: {np.average(negative_max_ef
 {negative_overviews}
 """
     )
+
 
 def _do_calibration_trajectory_efforts(
     joint: "PrismaticJoint|Base",
@@ -1474,11 +1568,15 @@ def _do_calibration_trajectory_efforts(
     for _ in range(args.ncycle):
 
         new_motion_to_plot = _step_calibration(
-            calibration_data=positive_motion, 
+            calibration_data=positive_motion,
             joint=joint,
             disable_guarded_mode=False,
             disable_dynamic_limits=False,
-            trajectory=positive_motion.motion_data[-1].trajectory if positive_motion.motion_data else None
+            trajectory=(
+                positive_motion.motion_data[-1].trajectory
+                if positive_motion.motion_data
+                else None
+            ),
         )
 
         if new_motion_to_plot:
@@ -1489,11 +1587,15 @@ def _do_calibration_trajectory_efforts(
             )
 
         new_motion_to_plot = _step_calibration(
-            calibration_data=negative_motion, 
+            calibration_data=negative_motion,
             joint=joint,
             disable_guarded_mode=False,
             disable_dynamic_limits=False,
-            trajectory=negative_motion.motion_data[-1].trajectory if negative_motion.motion_data else None
+            trajectory=(
+                negative_motion.motion_data[-1].trajectory
+                if negative_motion.motion_data
+                else None
+            ),
         )
 
         if new_motion_to_plot:
@@ -1503,7 +1605,9 @@ def _do_calibration_trajectory_efforts(
                 filename_prefix=filename_prefix,
             )
 
-    _print_calibration_trajectory_efforts(positive_motion, negative_motion)
+    _print_calibration_trajectory_efforts(
+        joint=joint, positive_motion=positive_motion, negative_motion=negative_motion
+    )
 
     return (positive_motion, negative_motion)
 
@@ -1538,11 +1642,17 @@ def run_trajectory_effort_calibration(
     filename_prefix = f"{label}_"  # time in ms
 
     linear_calibration_targets = CalibrationTargets.linear_default(joint)
-    linear_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+    linear_calibration_targets.travel_duration_start_seconds += (
+        2  # Slow it down for this test.
+    )
     cubic_calibration_targets = CalibrationTargets.cubic_default(joint)
-    cubic_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+    cubic_calibration_targets.travel_duration_start_seconds += (
+        2  # Slow it down for this test.
+    )
     quintic_calibration_targets = CalibrationTargets.quintic_default(joint)
-    quintic_calibration_targets.travel_duration_start_seconds += 2 # Slow it down for this test.
+    quintic_calibration_targets.travel_duration_start_seconds += (
+        2  # Slow it down for this test.
+    )
 
     # Linear:
     tictoc_timer("Linear Calibration")
@@ -1583,7 +1693,6 @@ def run_trajectory_effort_calibration(
     return [results_linear, results_cubic, results_quintic]
 
 
-
 tictoc_timer_tracker = {}
 
 
@@ -1610,6 +1719,9 @@ def tictoc_timer(tag: str):
 
 
 def _run_dynamic_limits_calibration(joint: "PrismaticJoint|Base"):
+    """
+    Entry point for running Dynamic Limits Calibration.
+    """
     global trajectory_folder_to_save_plots
 
     trajectory_folder_to_save_plots = get_stretch_directory(
@@ -1629,7 +1741,11 @@ def _run_dynamic_limits_calibration(joint: "PrismaticJoint|Base"):
 
     tictoc_timer("Calibration Trajectory")
 
+
 def _run_trajectory_efforts_calibration(joint: "PrismaticJoint|Base"):
+    """
+    Run Trajectory Effort calibration then print results.
+    """
     global trajectory_folder_to_save_plots
 
     trajectory_folder_to_save_plots = get_stretch_directory(
@@ -1647,13 +1763,19 @@ def _run_trajectory_efforts_calibration(joint: "PrismaticJoint|Base"):
 
     results = run_trajectory_effort_calibration(joint, label=label)
 
-    print("""
+    print(
+        """
 Trajectory calibration results:
           
-""")
-    
-    for (positive_motion, negative_motion) in results:
-        _print_calibration_trajectory_efforts(positive_motion, negative_motion)
+"""
+    )
+
+    for positive_motion, negative_motion in results:
+        _print_calibration_trajectory_efforts(
+            joint=joint,
+            positive_motion=positive_motion,
+            negative_motion=negative_motion,
+        )
 
     tictoc_timer("Calibration Trajectory")
 
@@ -1732,17 +1854,19 @@ def _idle_wait_for_battery(target_voltage: float) -> float:
 
     return battery_voltage
 
-class _RunMode(IntEnum):
-    dynamic_limit_mode=0
-    trajectory_effort_mode=1
 
-    def run(self, joint:"PrismaticJoint|Base"):
+class _RunMode(IntEnum):
+    dynamic_limit_mode = 0
+    trajectory_effort_mode = 1
+
+    def run(self, joint: "PrismaticJoint|Base"):
         if self == _RunMode.dynamic_limit_mode:
             return _run_dynamic_limits_calibration(joint)
         if self == _RunMode.trajectory_effort_mode:
             return _run_trajectory_efforts_calibration(joint)
-        
+
         raise NotImplementedError("This mode is not implemented.")
+
 
 if __name__ == "__main__":
     print_stretch_re_use()
@@ -1756,8 +1880,16 @@ if __name__ == "__main__":
     group.add_argument("--base", help="Calibrate the base joint", action="store_true")
 
     group2 = parser.add_mutually_exclusive_group(required=False)
-    group2.add_argument("--dynamic_limit_mode", help="Calibrate the joint to test its dynamic limits", action="store_true")
-    group2.add_argument("--trajectory_effort_mode", help="Find the linear, cubic and quintic motion profile efforts for your robot.", action="store_true")
+    group2.add_argument(
+        "--dynamic_limit_mode",
+        help="Calibrate the joint to test its dynamic limits",
+        action="store_true",
+    )
+    group2.add_argument(
+        "--trajectory_effort_mode",
+        help="Find the linear, cubic and quintic motion profile efforts for your robot.",
+        action="store_true",
+    )
     parser.add_argument(
         "--ncycle", type=int, help="Number of sweeps to run [4]", default=4
     )
@@ -1784,23 +1916,45 @@ if __name__ == "__main__":
         subprocess.call("stretch_wrist_yaw_home.py")
 
     if not (args.dynamic_limit_mode or args.trajectory_effort_mode):
-        run_choices = ''.join([f'{mode.name}[{mode.value}]\n' for mode in _RunMode])
-        run_mode = _RunMode(int(
-            click.prompt(f"""Choose the type of calibration you want to do: 
-{run_choices}""", type=click.Choice([f"{mode.value}" for mode in _RunMode]), show_choices=False)
-        ))
+        run_choices = "".join([f"{mode.name}[{mode.value}]\n" for mode in _RunMode])
+        run_mode = _RunMode(
+            int(
+                click.prompt(
+                    f"""Choose the type of calibration you want to do: 
+{run_choices}""",
+                    type=click.Choice([f"{mode.value}" for mode in _RunMode]),
+                    show_choices=False,
+                )
+            )
+        )
     else:
         run_mode = _RunMode.dynamic_limit_mode
         if args.trajectory_effort_mode:
             run_mode = _RunMode.trajectory_effort_mode
 
     if not (args.arm or args.lift or args.arm):
-        joint_choices = ''.join([f'{j.name}[{j.value}]\n' for j in JointTypes])
-        joint_type = JointTypes(int(
-            click.prompt(f"""
+        joint_choices = "".join(
+            [
+                f"{j.name}[{j.value}]\n"
+                for j in JointTypes.available_joints(run_mode=run_mode)
+            ]
+        )
+        joint_type = JointTypes(
+            int(
+                click.prompt(
+                    f"""
 Choose the joint to run the calibration on: 
-{joint_choices}""", type=click.Choice([f"{j.value}" for j in JointTypes]), show_choices=False)
-        ))
+{joint_choices}""",
+                    type=click.Choice(
+                        [
+                            f"{j.value}"
+                            for j in JointTypes.available_joints(run_mode=run_mode)
+                        ]
+                    ),
+                    show_choices=False,
+                )
+            )
+        )
     else:
         joint_type = JointTypes.lift
         if args.arm:
@@ -1808,21 +1962,23 @@ Choose the joint to run the calibration on:
         if args.base:
             joint_type = JointTypes.base
 
-    if joint_type == JointTypes.base and not click.confirm("The base calibration is still experimental. Proceed?", default=True):
+    if joint_type == JointTypes.base and not click.confirm(
+        "The base calibration is still experimental. Proceed?", default=True
+    ):
         exit(1)
 
-    joint = joint_type.get_joint_instance()
+    _joint = joint_type.get_joint_instance()
 
-    if not isinstance(joint, Base):
+    if not isinstance(_joint, Base):
         # Skip contact sensing for base:
         check_deprecated_contact_model_prismatic_joint(
-            joint, "REx_calibrate_guarded_contacts.py", None, None, None, None
+            _joint, "REx_calibrate_guarded_contacts.py", None, None, None, None
         )
 
-    if not joint.startup(threaded=False):
+    if not _joint.startup(threaded=False):
         exit(1)
 
-    if not _is_homed(joint):
+    if not _is_homed(_joint):
         print("Joint not calibrated. Exiting.")
         exit(1)
 
@@ -1835,24 +1991,24 @@ Choose the joint to run the calibration on:
 
     if (
         (
-            joint.name in joint.user_params
-            and "contact_models" in joint.user_params[joint.name]
+            _joint.name in _joint.user_params
+            and "contact_models" in _joint.user_params[_joint.name]
         )
-        and ("effort_pct" in joint.user_params[joint.name]["contact_models"])
+        and ("effort_pct" in _joint.user_params[_joint.name]["contact_models"])
         and (
             "contact_thresh_default"
-            in joint.user_params[joint.name]["contact_models"]["effort_pct"]
+            in _joint.user_params[_joint.name]["contact_models"]["effort_pct"]
         )
     ):
         click.secho("------------------------", fg="yellow")
         click.secho(
             "NOTE: This tool updates contact_thresh_default for %s in stretch_configuration_params.yaml"
-            % joint.name.upper(),
+            % _joint.name.upper(),
             fg="yellow",
         )
         click.secho(
             "NOTE: Your stretch_user_params.yaml overrides contact_thresh_default for %s"
-            % joint.name.upper(),
+            % _joint.name.upper(),
             fg="yellow",
         )
         click.secho(
@@ -1867,7 +2023,7 @@ Joint %s will go through its full range-of-motion.
 2. Dynamic limits will be significantly increased - effectively disabled - for the duration of this test, be careful!
 3. The lift or joints may suddenly accelerate and/or freefall. Safety measures are in place to brake the motors, however, still be careful!
 """
-        % joint.name.capitalize(),
+        % _joint.name.capitalize(),
         fg="yellow",
     )
     if click.confirm("Proceed?", default=True):
@@ -1898,7 +2054,7 @@ Note: while the robot is idling, the rplidar and camera will be turned on to con
             if click.confirm(
                 f"Run calibration immediately? Choosing NO will wait until the next target {targets[0]}V to start."
             ):
-                run_mode.run(joint)
+                run_mode.run(_joint)
 
             for target_voltage in targets:
                 current_voltage = _idle_wait_for_battery(target_voltage=target_voltage)
@@ -1911,8 +2067,8 @@ Note: while the robot is idling, the rplidar and camera will be turned on to con
 
                 print("Target battery voltage reached, starting calibration.")
 
-                run_mode.run(joint)
+                run_mode.run(_joint)
 
             exit(0)
 
-        run_mode.run(joint)
+        run_mode.run(_joint)
