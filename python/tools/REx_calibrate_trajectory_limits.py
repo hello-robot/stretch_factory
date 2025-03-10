@@ -233,7 +233,7 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-                travel_duration_start_seconds=18.0,
+                travel_duration_start_seconds=21.0,
                 travel_duration_decrement_by_max_seconds=3.0,
             )
 
@@ -1175,9 +1175,13 @@ def _get_next_travel_duration_in_seconds(
 
         new_travel_duration = round(good_travel_duration - change_time_by, 2)
 
+        stopped_for_safety_message = ""
+        if calibration_data.last_motion_stopped_for_safety:
+            stopped_for_safety_message = 'NOTE: The last run motion was stopped for safety.'
+            
         message += f"""
     Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
-    The last known good travel time is {good_travel_duration}s. {'NOTE: The last run motion was stopped for safety.' if {calibration_data.last_motion_stopped_for_safety} else ''}
+    The last known good travel time is {good_travel_duration}s. {stopped_for_safety_message}
 """
 
     if new_travel_duration <= 1.0:
