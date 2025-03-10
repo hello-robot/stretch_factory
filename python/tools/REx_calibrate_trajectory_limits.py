@@ -257,9 +257,9 @@ class MotionData:
     velocities_during_motion: list[float] = field(default_factory=list)
     effort_during_motion: list[float] = field(default_factory=list)
     current_during_motion: list[float] = field(default_factory=list)
-    step_calibration_result: StepCalibrationResult|None = None
+    step_calibration_result: StepCalibrationResult | None = None
 
-    is_motion_stopped_for_safety:bool = False
+    is_motion_stopped_for_safety: bool = False
 
     # For DiffDrive
     positions_y_during_motion: list[float] = field(default_factory=list)
@@ -643,7 +643,7 @@ def _collect_data_base(
     effort = joint.status["left_wheel"]["effort_pct"]
     effort_2 = joint.status["right_wheel"]["effort_pct"]
 
-    motion_data.effort_during_motion.append(effort) 
+    motion_data.effort_during_motion.append(effort)
     motion_data.effort_2_during_motion.append(effort_2)
     motion_data.current_during_motion.append(current)
     motion_data.current_2_during_motion.append(current_right_wheel)
@@ -1023,13 +1023,10 @@ def _get_dynamic_decrease_time_by(
     if not is_use_effort_for_dynamic_decrease:
         return decrement_error_percent
 
-    decrement_effort = (
-        decrement_by
-        - _map_range(
-            motion_data.effort_percent_max,
-            (0, calibration_data.calibration_targets.effort_percent_target),
-            (0.1, decrement_by),
-        )
+    decrement_effort = decrement_by - _map_range(
+        motion_data.effort_percent_max,
+        (0, calibration_data.calibration_targets.effort_percent_target),
+        (0.1, decrement_by),
     )
 
     return np.min([decrement_error_percent, decrement_effort])
@@ -1158,7 +1155,7 @@ def _get_next_travel_duration_in_seconds(
         new_travel_duration = round(good_travel_duration + change_time_by, 2)
 
         message += f"""
-    Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
+    Decreasing the last travel time from {good_travel_duration}s to {new_travel_duration}s ({change_time_by:.2f}s) for this run.
 """
 
     if (
@@ -1177,8 +1174,10 @@ def _get_next_travel_duration_in_seconds(
 
         stopped_for_safety_message = ""
         if calibration_data.last_motion_stopped_for_safety:
-            stopped_for_safety_message = 'NOTE: The last run motion was stopped for safety.'
-            
+            stopped_for_safety_message = (
+                "NOTE: The last run motion was stopped for safety."
+            )
+
         message += f"""
     Increasing the last travel time from {bad_travel_duration}s to {new_travel_duration}s ({change_time_by}s) for this run.
     The last known good travel time is {good_travel_duration}s. {stopped_for_safety_message}
@@ -1231,8 +1230,7 @@ def _step_calibration(
     trajectory_to_run = trajectory
     if trajectory_to_run is None:
         travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
-            calibration_data=calibration_data,
-            is_use_effort_for_dynamic_decrease=True
+            calibration_data=calibration_data, is_use_effort_for_dynamic_decrease=True
         )
 
         end_condition_1 = (
@@ -1967,7 +1965,8 @@ Choose the joint to run the calibration on:
             joint_type = JointTypes.base
 
     if joint_type == JointTypes.base and not click.confirm(
-        "The base calibration is experimental. Keep the robot on a level surface. Be careful, the base may drift during calibration. Proceed?", default=True
+        "The base calibration is experimental. Keep the robot on a level surface. Be careful, the base may drift during calibration. Proceed?",
+        default=True,
     ):
         exit(1)
 
