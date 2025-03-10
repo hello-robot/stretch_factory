@@ -11,7 +11,7 @@ d = stretch_body.device.Device(name='dummy_device',req_params=False) # to initia
 parser=argparse.ArgumentParser(description='Change the baudrate of a servo')
 parser.add_argument("usb", help="The dynamixel USB bus e.g.: /dev/hello-dynamixel-head")
 parser.add_argument("id", help="The servo ID ", type=int)
-parser.add_argument("baud", help="The new baud rate (e.g. 57600, 115200, or 1000000) for dxl", type=int, choices=[57600,115200,1000000])
+parser.add_argument("baud", help="The new baud rate (e.g. 57600 or 115200) for dxl", type=int, choices=[57600, 115200])
 args = parser.parse_args()
 
 curr_baud = DynamixelXL430.identify_baud_rate(dxl_id=args.id, usb=args.usb)
