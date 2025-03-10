@@ -1150,36 +1150,36 @@ def _step_calibration(
     Returns `False` if there is no new motion data generated.
     """
 
-    travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
-        calibration_data=calibration_data
-    )
-
-    end_condition_1 = (
-        calibration_data.last_bad_calibration
-        and abs(change_time_by)
-        < calibration_data.calibration_targets.end_condition_time_step
-        and not calibration_data.last_motion_stopped_for_safety
-    )
-
-    if calibration_data.last_good_calibration and end_condition_1:
-        # we're close enough, accept this motion_data as optimal
-        calibration_data.optimal_calibration_motion_data = (
-            calibration_data.last_good_calibration
-        )
-        calibration_data.optimal_calibration_motion_data.step_calibration_result = (
-            StepCalibrationResult.TARGET_REACHED
-        )
-
-        # don't change the travel duration for the next run.
-        travel_duration = (
-            calibration_data.last_good_calibration.trajectory.travel_duration_seconds
-        )
-    else:
-        print(message)
-
     # Set the motion trajectory:
     trajectory_to_run = trajectory
     if trajectory_to_run is None:
+        travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
+            calibration_data=calibration_data
+        )
+
+        end_condition_1 = (
+            calibration_data.last_bad_calibration
+            and abs(change_time_by)
+            < calibration_data.calibration_targets.end_condition_time_step
+            and not calibration_data.last_motion_stopped_for_safety
+        )
+
+        if calibration_data.last_good_calibration and end_condition_1:
+            # we're close enough, accept this motion_data as optimal
+            calibration_data.optimal_calibration_motion_data = (
+                calibration_data.last_good_calibration
+            )
+            calibration_data.optimal_calibration_motion_data.step_calibration_result = (
+                StepCalibrationResult.TARGET_REACHED
+            )
+
+            # don't change the travel duration for the next run.
+            travel_duration = (
+                calibration_data.last_good_calibration.trajectory.travel_duration_seconds
+            )
+        else:
+            print(message)
+
         if not isinstance(joint, Base):
             trajectory_to_run = _set_trajectory_based_on_joint_limits(
                 joint=joint,
@@ -1409,6 +1409,27 @@ def run_dynamic_limit_calibration(
 
     return [results_linear, results_cubic, results_quintic]
 
+def _print_calibration_trajectory_efforts(
+        positive_motion: TrajectoryCalibrationData,
+        negative_motion: TrajectoryCalibrationData
+):
+
+    # Save and print optimal motion profile data:
+    positive_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in positive_motion.motion_data]
+    positive_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in positive_motion.motion_data])
+    negative_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in negative_motion.motion_data]
+    negative_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in negative_motion.motion_data])
+    print(
+        f"""
+Positive {joint.name} {positive_motion.profile_name} Motion Profile Overview:
+Max efforts: {positive_max_efforts}, Average effort: {np.average(positive_max_efforts)}%
+{positive_overviews}
+
+Negative {joint.name} {negative_motion.profile_name} Motion Profile Overview: 
+Max efforts: {negative_max_efforts}, Average effort: {np.average(negative_max_efforts)}%
+{negative_overviews}
+"""
+    )
 
 def _do_calibration_trajectory_efforts(
     joint: "PrismaticJoint|Base",
@@ -1478,22 +1499,7 @@ def _do_calibration_trajectory_efforts(
                 filename_prefix=filename_prefix,
             )
 
-    # Save and print optimal motion profile data:
-    positive_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in positive_motion.motion_data]
-    positive_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in positive_motion.motion_data])
-    negative_max_efforts = [motion_data.effort_percent_max_absolute for motion_data in negative_motion.motion_data]
-    negative_overviews = '\n'.join([motion_data.motion_overview(joint=joint) for motion_data in negative_motion.motion_data])
-    print(
-        f"""
-Positive {joint.name} {positive_motion.profile_name} Motion Profile Overview:
-Max efforts: {positive_max_efforts}, Average effort: {np.average(positive_max_efforts)}%
-{positive_overviews}
-
-Negative {joint.name} {negative_motion.profile_name} Motion Profile Overview: 
-Max efforts: {negative_max_efforts}, Average effort: {np.average(negative_max_efforts)}%
-{negative_overviews}
-"""
-    )
+    _print_calibration_trajectory_efforts(positive_motion, negative_motion)
 
     return (positive_motion, negative_motion)
 
@@ -1628,7 +1634,15 @@ def _run_trajectory_efforts_calibration(joint: "PrismaticJoint|Base"):
     robot_name = __import__("platform").node()  # get computer name
     label = f"{robot_name}_{round(time.time()*1000)}"
 
-    run_trajectory_effort_calibration(joint, label=label)
+    results = run_trajectory_effort_calibration(joint, label=label)
+
+    print("""
+Trajectory calibration results:
+          
+""")
+    
+    for (positive_motion, negative_motion) in results:
+        _print_calibration_trajectory_efforts(positive_motion, negative_motion)
 
     tictoc_timer("Calibration Trajectory")
 
@@ -1713,9 +1727,9 @@ class _RunMode(IntEnum):
 
     def run(self, joint:"PrismaticJoint|Base"):
         if self == _RunMode.dynamic_limit_mode:
-            _run_dynamic_limits_calibration(joint)
+            return _run_dynamic_limits_calibration(joint)
         if self == _RunMode.trajectory_effort_mode:
-            _run_trajectory_efforts_calibration(joint)
+            return _run_trajectory_efforts_calibration(joint)
         
         raise NotImplementedError("This mode is not implemented.")
 
