@@ -206,7 +206,7 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-                travel_duration_start_seconds=13.0,
+                travel_duration_start_seconds=16.0,
                 travel_duration_decrement_by_max_seconds=3.0,
             )
 
@@ -233,7 +233,7 @@ class CalibrationTargets:
         if isinstance(joint, Base):
             return CalibrationTargets._shared_defaults(
                 joint=joint,
-                travel_duration_start_seconds=15.0,
+                travel_duration_start_seconds=18.0,
                 travel_duration_decrement_by_max_seconds=3.0,
             )
 
@@ -257,9 +257,9 @@ class MotionData:
     velocities_during_motion: list[float] = field(default_factory=list)
     effort_during_motion: list[float] = field(default_factory=list)
     current_during_motion: list[float] = field(default_factory=list)
-    step_calibration_result: "StepCalibrationResult|None" = None
+    step_calibration_result: StepCalibrationResult|None = None
 
-    is_motion_stopped_for_safety = False
+    is_motion_stopped_for_safety:bool = False
 
     # For DiffDrive
     positions_y_during_motion: list[float] = field(default_factory=list)
@@ -639,10 +639,12 @@ def _collect_data_base(
     current = joint.status["left_wheel"]["current"]
     current_right_wheel = joint.status["right_wheel"]["current"]
 
-    motion_data.effort_during_motion.append(
-        joint.status["effort"][0]
-    )  # Note: effort is always zero for the base
-    motion_data.effort_2_during_motion.append(joint.status["effort"][1])
+    # TODO: use effort for both wheels.
+    effort = joint.status["left_wheel"]["effort_pct"]
+    effort_2 = joint.status["right_wheel"]["effort_pct"]
+
+    motion_data.effort_during_motion.append(effort) 
+    motion_data.effort_2_during_motion.append(effort_2)
     motion_data.current_during_motion.append(current)
     motion_data.current_2_during_motion.append(current_right_wheel)
 
@@ -1027,7 +1029,7 @@ def _get_dynamic_decrease_time_by(
             motion_data.effort_percent_max,
             (0, calibration_data.calibration_targets.effort_percent_target),
             (0.1, decrement_by),
-        ),
+        )
     )
 
     return np.min([decrement_error_percent, decrement_effort])
@@ -1226,9 +1228,7 @@ def _step_calibration(
     if trajectory_to_run is None:
         travel_duration, change_time_by, message = _get_next_travel_duration_in_seconds(
             calibration_data=calibration_data,
-            is_use_effort_for_dynamic_decrease=not isinstance(
-                joint, Base
-            ),  # Base does not have effort
+            is_use_effort_for_dynamic_decrease=True
         )
 
         end_condition_1 = (
@@ -1384,7 +1384,7 @@ def _do_calibration_trajectory_mode_dynamic_limits(
         if new_motion_to_plot:
             _plot_motion_profiles_and_save_outputs(
                 calibration_data=negative_motion,
-                motion_data=positive_motion.motion_data[-1],
+                motion_data=negative_motion.motion_data[-1],
                 filename_prefix=filename_prefix,
             )
 
