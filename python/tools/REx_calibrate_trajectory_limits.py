@@ -1608,7 +1608,7 @@ def _do_calibration_trajectory_efforts(
         if new_motion_to_plot:
             _plot_motion_profiles_and_save_outputs(
                 calibration_data=negative_motion,
-                motion_data=positive_motion.motion_data[-1],
+                motion_data=negative_motion.motion_data[-1],
                 filename_prefix=filename_prefix,
             )
 
