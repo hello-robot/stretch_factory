@@ -1872,7 +1872,7 @@ if __name__ == "__main__":
     print_stretch_re_use()
 
     parser = argparse.ArgumentParser(
-        description="Calibrate the default guarded contacts for a joint."
+        description="Calibrate the linear, cubic and quintic trajectory dynamic limits or the trajectory effort of a joint."
     )
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--lift", help="Calibrate the lift joint", action="store_true")
@@ -1963,7 +1963,7 @@ Choose the joint to run the calibration on:
             joint_type = JointTypes.base
 
     if joint_type == JointTypes.base and not click.confirm(
-        "The base calibration is still experimental. Proceed?", default=True
+        "The base calibration is experimental. Keep the robot on a level surface. Be careful, the base may drift during calibration. Proceed?", default=True
     ):
         exit(1)
 
@@ -2018,10 +2018,12 @@ Choose the joint to run the calibration on:
     click.secho("------------------------", fg="yellow")
     click.secho(
         """
-Joint %s will go through its full range-of-motion.
+Joint %s will go through its full range-of-motion (up to 1m).
 1. Ensure workspace is collision free
 2. Dynamic limits will be significantly increased - effectively disabled - for the duration of this test, be careful!
 3. The lift or joints may suddenly accelerate and/or freefall. Safety measures are in place to brake the motors, however, still be careful!
+
+Note: If you get a matplotlib related error when running this script, please run `export QT_QPA_PLATFORM_PLUGIN_PATH='/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms/libqxcb.so'`
 """
         % _joint.name.capitalize(),
         fg="yellow",
