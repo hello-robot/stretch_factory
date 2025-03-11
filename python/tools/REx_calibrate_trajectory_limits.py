@@ -959,18 +959,32 @@ def _get_trajectory_diff_drive(
         accelerations_translational=translational_accel,
     )
 
-def _set_trajectory(joint:"PrismaticJoint", flattened_trajectory:"TrajectoryFlattened"):
+
+def _set_trajectory(
+    joint: "PrismaticJoint", flattened_trajectory: "TrajectoryFlattened"
+):
     joint.trajectory.clear()
 
     for index in range(len(flattened_trajectory.timestamps)):
         joint.trajectory.add(
             t_s=flattened_trajectory.timestamps[index],
             x_m=flattened_trajectory.positions[index],
-            v_m=flattened_trajectory.velocities[index] if flattened_trajectory.velocities else None,
-            a_m=flattened_trajectory.accelerations[index] if flattened_trajectory.accelerations else None,
+            v_m=(
+                flattened_trajectory.velocities[index]
+                if flattened_trajectory.velocities
+                else None
+            ),
+            a_m=(
+                flattened_trajectory.accelerations[index]
+                if flattened_trajectory.accelerations
+                else None
+            ),
         )
 
-def _set_trajectory_diff_drive(joint:"Base", flattened_trajectory:"TrajectoryFlattened"):
+
+def _set_trajectory_diff_drive(
+    joint: "Base", flattened_trajectory: "TrajectoryFlattened"
+):
 
     joint.trajectory.clear()
 
@@ -980,12 +994,26 @@ def _set_trajectory_diff_drive(joint:"Base", flattened_trajectory:"TrajectoryFla
             x=flattened_trajectory.positions[index],
             y=flattened_trajectory.positions_y[index],
             theta=flattened_trajectory.thetas[index],
-            translational_vel=flattened_trajectory.velocities_translational[index] if flattened_trajectory.velocities_translational else None,
-            rotational_vel=flattened_trajectory.velocities[index] if flattened_trajectory.velocities else None,
-            translational_accel=(
-                flattened_trajectory.accelerations_translational[index] if flattened_trajectory.accelerations_translational else None
+            translational_vel=(
+                flattened_trajectory.velocities_translational[index]
+                if flattened_trajectory.velocities_translational
+                else None
             ),
-            rotational_accel=flattened_trajectory.accelerations[index] if flattened_trajectory.accelerations else None,
+            rotational_vel=(
+                flattened_trajectory.velocities[index]
+                if flattened_trajectory.velocities
+                else None
+            ),
+            translational_accel=(
+                flattened_trajectory.accelerations_translational[index]
+                if flattened_trajectory.accelerations_translational
+                else None
+            ),
+            rotational_accel=(
+                flattened_trajectory.accelerations[index]
+                if flattened_trajectory.accelerations
+                else None
+            ),
         )
 
 
@@ -1199,12 +1227,10 @@ def _get_next_travel_duration_in_seconds(
     return new_travel_duration, change_time_by, message
 
 
-def _check_runstop(motion_data: MotionData):
+def _check_runstop():
     pimu.pull_status()
     is_runstopped = pimu.status["runstop_event"]
     if is_runstopped:
-        motion_data.is_motion_stopped_for_safety = True
-
         while is_runstopped:
             pimu.pull_status()
             is_runstopped = pimu.status["runstop_event"]
@@ -1214,6 +1240,8 @@ def _check_runstop(motion_data: MotionData):
             )
 
             time.sleep(3)
+        return True
+    return False
 
 
 def _step_calibration(
@@ -1230,6 +1258,9 @@ def _step_calibration(
 
     Returns `False` if there is no new motion data generated.
     """
+
+
+    _check_runstop()
 
     # Set the motion trajectory:
     trajectory_to_run = trajectory
@@ -1301,11 +1332,22 @@ def _step_calibration(
         )
         return False
 
-    _check_runstop(motion_data=motion_data)
+    if _check_runstop():
+        # If the robot is runstopped, we'll mark this step as a bad step
+        print("\nWARNING: Marking the step as a bad step because the runstop button was pressed. If this was not intentional, please restart the calibration.\n")
+        motion_data.is_motion_stopped_for_safety = True
 
     calibration_data.last_motion_stopped_for_safety = (
         motion_data.is_motion_stopped_for_safety
     )
+
+    if motion_data.is_motion_stopped_for_safety and isinstance(joint, Base):
+        # Try to move the robot where it was supposed to end up.
+        distance = motion_data.trajectory.positions[-1] - motion_data.positions_during_motion[-1]
+        if abs(distance) > 0:
+            joint.translate_by(distance)
+            joint.push_command()
+            joint.wait_until_at_setpoint()
 
     message = ""
 
