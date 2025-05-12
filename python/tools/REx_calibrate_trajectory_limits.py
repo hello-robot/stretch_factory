@@ -861,7 +861,7 @@ def run_profile_trajectory(
         else:
             joint.params["motion"]["trajectory_max"]["vel_r"] = 200
             joint.params["motion"]["trajectory_max"]["accel_r"] = 200
-            
+
         try: del joint.params["motion"]["trajectory_max"]["linear"]
         except: ...
         try: del joint.params["motion"]["trajectory_max"]["cubic"]
@@ -1992,6 +1992,14 @@ def _write_dynamic_limits_config_config(
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel_m",
         calibration_data.get_optimal_calibration_motion_data().max_acceletation_during_motion,
+        force_creation=True,
+    )
+
+    # Write effort threshold for contacts:
+    effort = calibration_data.get_optimal_calibration_motion_data().calibration_targets.effort_percent_target
+    joint.write_configuration_param_to_YAML(
+        f"{joint.name}.contact_models.effort_pct.contact_thresh_default",
+        [-effort, effort],
         force_creation=True,
     )
 
