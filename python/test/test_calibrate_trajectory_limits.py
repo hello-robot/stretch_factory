@@ -7,7 +7,7 @@ from python.tools.REx_calibrate_trajectory_limits import JointTypes, MotionProfi
 
 test_dir = os.path.dirname(os.path.abspath(__file__))
 
-class TestCalibrateTrajectoryLiimts(unittest.TestCase):
+class TestCalibrateTrajectoryLimits(unittest.TestCase):
     def test_save_config(self):
         calibration_data = []
         for motion_type in MotionProfileTypes:

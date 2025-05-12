@@ -308,7 +308,10 @@ class MotionData:
         return np.round(np.multiply(self.positions_during_motion, 100), 2)
 
     @property
-    def accelerations(self):
+    def accelerations(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Returns a tuple of accelerations (m/s^2) and the timestamps corresponding to those values.
+        """
         timestamps_normalized = self.timestamps_normalized
 
         accelerations = np.diff(self.velocities_during_motion) / np.diff(
@@ -353,7 +356,7 @@ class MotionData:
         )
 
     def current_linear_speed_meters_per_second(self, is_round: bool = True) -> float:
-        speed = (
+        speed = float(
             self.trajectory.trajectory_range / self.trajectory.travel_duration_seconds
         )
         return round(speed, 2) if is_round else speed
@@ -1960,14 +1963,17 @@ def _write_dynamic_limits_config_config(
     motion_type = calibration_data.motion_type.name
     direction = "positive" if calibration_data.is_positive_direction else "negative"
 
+    max_vel = float(np.max(np.abs(calibration_data.get_optimal_calibration_motion_data().velocities_during_motion)))
+    max_accel = float(np.max(np.abs(calibration_data.get_optimal_calibration_motion_data().accelerations[0])))
+
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel_m",
-        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(),
+        max_vel,
         force_creation=True,
     )
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel_m",
-        float(np.max(calibration_data.get_optimal_calibration_motion_data().accelerations)),
+        max_accel,
         force_creation=True,
     )
 
@@ -2024,7 +2030,7 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "--ncycle", type=int, help="Number of sweeps to run [4]", default=4
+        "--ncycle", type=int, help="Number of sweeps to run. Applies to trajectory_effort_mode only. [4]", default=4
     )
     parser.add_argument("--skip_homing", help="Skip joint homing", action="store_true")
     parser.add_argument(
