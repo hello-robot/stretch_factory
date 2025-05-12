@@ -1984,13 +1984,17 @@ def _write_dynamic_limits_config_config(
     motion_type = calibration_data.motion_type.name
     direction = "positive" if calibration_data.is_positive_direction else "negative"
 
+    unit_suffix = "_m"
+    if isinstance(joint, Base):
+        unit_suffix = "_r"
+
     joint.write_configuration_param_to_YAML(
-        f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel_m",
+        f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel{unit_suffix}",
         calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(is_round=False),
         force_creation=True,
     )
     joint.write_configuration_param_to_YAML(
-        f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel_m",
+        f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel{unit_suffix}",
         calibration_data.get_optimal_calibration_motion_data().max_acceletation_during_motion,
         force_creation=True,
     )
