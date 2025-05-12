@@ -1986,7 +1986,7 @@ def _write_dynamic_limits_config_config(
 
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel_m",
-        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(),
+        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(is_round=False),
         force_creation=True,
     )
     joint.write_configuration_param_to_YAML(
