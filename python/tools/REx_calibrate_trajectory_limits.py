@@ -283,6 +283,7 @@ class MotionData:
 
         return f"""{prefix}
     Moved {self.travel_range_cm}cm in {self.trajectory.travel_duration_seconds} seconds ({self.linear_speed_cm_per_second})cm/s. 
+    Max Velocity {self.max_velocity_during_motion}. Max Acceleration: {self.max_acceletation_during_motion}
     Average effort: {self.effort_percent_average_last_10_readings}%, Abs Max Effort: {self.effort_percent_max_absolute}, Max effort: {self.effort_percent_max}% , Min effort: {self.effort_percent_min}%
     Goal Position: {self.goal_position_cm}cm. Sampled Position: {self.actual_position_cm}cm. Error: {self.error_percent}% ({self.error_absolute_cm}cm)
     Target effort reached? {self.is_exceeds_effort_target()} 
@@ -324,6 +325,18 @@ class MotionData:
         ) / 2
 
         return (accelerations, acceleration_times)
+    
+    @property
+    def max_velocity_during_motion(self) -> float:
+        if not self.velocities_during_motion:
+            return 0
+        return float(np.max(np.abs(self.velocities_during_motion)))
+    
+    @property
+    def max_acceletation_during_motion(self) -> float:
+        accelerations = self.accelerations[0]
+        if accelerations.size == 0: return 0
+        return float(np.max(np.abs(accelerations)))
 
     def is_exceeds_effort_target(self) -> bool:
         return (
@@ -533,6 +546,7 @@ class TrajectoryCalibrationData:
             json.dumps(
                 {
                     "description": self.description,
+                    "motion_type": self.motion_type,
                     "travel_duration_seconds": (
                         self.optimal_calibration_motion_data.trajectory.travel_duration_seconds
                         if self.optimal_calibration_motion_data
@@ -847,6 +861,13 @@ def run_profile_trajectory(
         else:
             joint.params["motion"]["trajectory_max"]["vel_r"] = 200
             joint.params["motion"]["trajectory_max"]["accel_r"] = 200
+            
+        try: del joint.params["motion"]["trajectory_max"]["linear"]
+        except: ...
+        try: del joint.params["motion"]["trajectory_max"]["cubic"]
+        except: ...
+        try: del joint.params["motion"]["trajectory_max"]["quintic"]
+        except: ...
 
     joint.pull_status()
 
@@ -1963,17 +1984,14 @@ def _write_dynamic_limits_config_config(
     motion_type = calibration_data.motion_type.name
     direction = "positive" if calibration_data.is_positive_direction else "negative"
 
-    max_vel = float(np.max(np.abs(calibration_data.get_optimal_calibration_motion_data().velocities_during_motion)))
-    max_accel = float(np.max(np.abs(calibration_data.get_optimal_calibration_motion_data().accelerations[0])))
-
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel_m",
-        max_vel,
+        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(),
         force_creation=True,
     )
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel_m",
-        max_accel,
+        calibration_data.get_optimal_calibration_motion_data().max_acceletation_during_motion,
         force_creation=True,
     )
 
