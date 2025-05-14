@@ -283,7 +283,7 @@ class MotionData:
 
         return f"""{prefix}
     Moved {self.travel_range_cm}cm in {self.trajectory.travel_duration_seconds} seconds ({self.linear_speed_cm_per_second})cm/s. 
-    Max Velocity {self.max_velocity_during_motion}. Max Acceleration: {self.max_acceletation_during_motion}
+    Max Velocity {self.max_abs_velocity_during_motion}. Max Acceleration: {self.max_abs_acceletation_during_motion}
     Average effort: {self.effort_percent_average_last_10_readings}%, Abs Max Effort: {self.effort_percent_max_absolute}, Max effort: {self.effort_percent_max}% , Min effort: {self.effort_percent_min}%
     Goal Position: {self.goal_position_cm}cm. Sampled Position: {self.actual_position_cm}cm. Error: {self.error_percent}% ({self.error_absolute_cm}cm)
     Target effort reached? {self.is_exceeds_effort_target()} 
@@ -327,13 +327,13 @@ class MotionData:
         return (accelerations, acceleration_times)
     
     @property
-    def max_velocity_during_motion(self) -> float:
+    def max_abs_velocity_during_motion(self) -> float:
         if not self.velocities_during_motion:
             return 0
         return float(np.max(np.abs(self.velocities_during_motion)))
     
     @property
-    def max_acceletation_during_motion(self) -> float:
+    def max_abs_acceletation_during_motion(self) -> float:
         accelerations = self.accelerations[0]
         if accelerations.size == 0: return 0
         return float(np.max(np.abs(accelerations)))
@@ -942,8 +942,8 @@ def _get_trajectory_based_on_joint_limits(
 
     t_s = [0.0, travel_duration]
     x_m = [start_position, end_position]
-    v_m = [0.0, 0.0] if is_use_velocity else None
-    a_m = [0.0, 0.0] if is_use_acceleration else None
+    v_m = [0.0, 0.0] if is_use_velocity else None # we want to start at 0 and end at 0
+    a_m = [0.0, 0.0] if is_use_acceleration else None # we want to start at 0 and end at 0
 
     return TrajectoryFlattened(t_s, x_m, v_m, a_m)
 
@@ -1985,27 +1985,52 @@ def _write_dynamic_limits_config_config(
     direction = "positive" if calibration_data.is_positive_direction else "negative"
 
     unit_suffix = "_m"
+    scaling_factor = 1.0
     if isinstance(joint, Base):
         unit_suffix = "_r"
+        scaling_factor = 100.0
 
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.vel{unit_suffix}",
-        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(is_round=False),
+        calibration_data.get_optimal_calibration_motion_data().current_linear_speed_meters_per_second(is_round=False)*scaling_factor,
         force_creation=True,
     )
     joint.write_configuration_param_to_YAML(
         f"{joint.name}.motion.trajectory_max.{motion_type}.{direction}.accel{unit_suffix}",
-        calibration_data.get_optimal_calibration_motion_data().max_acceletation_during_motion,
+        calibration_data.get_optimal_calibration_motion_data().max_abs_acceletation_during_motion*scaling_factor,
         force_creation=True,
     )
 
+
     # Write effort threshold for contacts:
     effort = calibration_data.get_optimal_calibration_motion_data().calibration_targets.effort_percent_target
-    joint.write_configuration_param_to_YAML(
-        f"{joint.name}.contact_models.effort_pct.contact_thresh_default",
-        [-effort, effort],
-        force_creation=True,
-    )
+    if isinstance(joint, PrismaticJoint):
+        joint.write_configuration_param_to_YAML(
+            f"{joint.name}.contact_models.effort_pct.contact_thresh_default",
+            [-effort, effort],
+            force_creation=True,
+        )
+    if isinstance(joint, Base):
+        joint.write_configuration_param_to_YAML(
+            f"{joint.name}.contact_models.effort_pct.contact_thresh_translate_default",
+            effort,
+            force_creation=True,
+        )
+        joint.write_configuration_param_to_YAML(
+            f"{joint.name}.contact_models.effort_pct.contact_thresh_rotate_default",
+            effort,
+            force_creation=True,
+        )
+        joint.write_configuration_param_to_YAML(
+            f"{joint.name}.contact_models.effort_pct.contact_thresh_translate_max",
+            100.0,
+            force_creation=True,
+        )
+        joint.write_configuration_param_to_YAML(
+            f"{joint.name}.contact_models.effort_pct.contact_thresh_rotate_max",
+            100.0,
+            force_creation=True,
+        )
 
 
 def save_calibrated_dynamic_limits_to_config(
