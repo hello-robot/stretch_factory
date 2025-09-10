@@ -45,6 +45,8 @@ if __name__ == '__main__':
         turn_angle_rad = hu.deg_to_rad(turn_angle_deg)
         
         robot = rb.Robot()
+        if robot.params['model_name'] not in ['RE1V0', 'RE2V0']:
+            raise Exception(f"This CLI not supported for Stretch {robot.params['model_name']}")
 
         #Temporarily set imu calibration on Pimu to Identity
         if not args.validate:
