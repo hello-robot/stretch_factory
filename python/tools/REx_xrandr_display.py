@@ -24,9 +24,6 @@ group.add_argument('--current', action='store_true', help='Print out the current
 args = vars(parser.parse_args())
 
 def issue_xrandr_command(output, resolution):
-    if hu.get_display() != ":0":
-        print("Error: Cannot change resolution when the DISPLAY env var isn't set to ':0'. Try export DISPLAY=':0'")
-        sys.exit(1)
     width, height, fps = resolution.split('x')
     os.system(f"xrandr --output {output} --mode {width}x{height} --rate {fps}")
 
@@ -36,8 +33,9 @@ def find_mode(id, modes):
             return f"{mode.width}x{mode.height}x{mode.dot_clock / (mode.h_total * mode.v_total):.2f}"
 
 def get_display_info():
+    display_num = os.getenv('DISPLAY')
     try:
-        d = display.Display(':0')
+        d = display.Display(display_num)
     except:
         print('Error: No display available')
         sys.exit(1)
