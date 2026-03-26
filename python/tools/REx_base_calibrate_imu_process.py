@@ -18,9 +18,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 import yaml
 
-
 import stretch_body.hello_utils as hu
 hu.print_stretch_re_use()
+
+import stretch_body.robot
+robot = stretch_body.robot.Robot()
+if robot.params['model_name'] not in ['RE1V0', 'RE2V0']:
+    raise Exception(f"This CLI not supported for Stretch {robot.params['model_name']}")
 
 def use_all_data(sample_number, sample):
     return True
